@@ -6,7 +6,6 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,15 +17,15 @@ public class KnowledgeFileService {
 
     private final KnowledgeBaseRepository knowledgeBaseRepository;
     private final KnowledgeFileRepository knowledgeFileRepository;
-    private final VectorStore vectorStore;
+    private final VectorStoreFilterDeletion vectorStoreFilterDeletion;
 
     public KnowledgeFileService(
             KnowledgeBaseRepository knowledgeBaseRepository,
             KnowledgeFileRepository knowledgeFileRepository,
-            VectorStore vectorStore) {
+            VectorStoreFilterDeletion vectorStoreFilterDeletion) {
         this.knowledgeBaseRepository = knowledgeBaseRepository;
         this.knowledgeFileRepository = knowledgeFileRepository;
-        this.vectorStore = vectorStore;
+        this.vectorStoreFilterDeletion = vectorStoreFilterDeletion;
     }
 
     @Transactional(readOnly = true)
@@ -49,7 +48,8 @@ public class KnowledgeFileService {
                                         new IllegalArgumentException(
                                                 "file not found in knowledge base: " + fileUuid));
 
-        vectorStore.delete(new FilterExpressionBuilder().eq("file_id", fileUuid).build());
+        vectorStoreFilterDeletion.deleteByFilter(
+                new FilterExpressionBuilder().eq("file_id", fileUuid).build());
 
         Path path = Paths.get(file.getStoredRelativePath()).normalize();
         try {

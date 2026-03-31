@@ -26,16 +26,19 @@ public class KnowledgeIngestionService {
     private final KnowledgeFileRepository knowledgeFileRepository;
     private final VectorStore vectorStore;
     private final KnowledgeProperties knowledgeProperties;
+    private final VectorStoreFilterDeletion vectorStoreFilterDeletion;
 
     public KnowledgeIngestionService(
             KnowledgeBaseRepository knowledgeBaseRepository,
             KnowledgeFileRepository knowledgeFileRepository,
             VectorStore vectorStore,
-            KnowledgeProperties knowledgeProperties) {
+            KnowledgeProperties knowledgeProperties,
+            VectorStoreFilterDeletion vectorStoreFilterDeletion) {
         this.knowledgeBaseRepository = knowledgeBaseRepository;
         this.knowledgeFileRepository = knowledgeFileRepository;
         this.vectorStore = vectorStore;
         this.knowledgeProperties = knowledgeProperties;
+        this.vectorStoreFilterDeletion = vectorStoreFilterDeletion;
     }
 
     @Transactional
@@ -111,7 +114,8 @@ public class KnowledgeIngestionService {
         } catch (RuntimeException e) {
             Files.deleteIfExists(target);
             try {
-                vectorStore.delete(new FilterExpressionBuilder().eq("file_id", fileUuid).build());
+                vectorStoreFilterDeletion.deleteByFilter(
+                        new FilterExpressionBuilder().eq("file_id", fileUuid).build());
             } catch (Exception ignore) {
                 // best-effort rollback vectors
             }
