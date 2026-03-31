@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { apiClient } from '@/api/client'
 import type { ApiResult } from '@/types/api'
 import type { KnowledgeBase, KnowledgeFileView, KnowledgeQueryResponse } from '@/types/knowledge'
@@ -131,11 +131,14 @@ async function runQuery() {
   }
 }
 
+watch(selectedBaseId, () => {
+  void loadFiles()
+})
+
 onMounted(async () => {
   await refreshHealth()
   try {
     await loadBases()
-    await loadFiles()
   } catch (e) {
     ingestMsg.value = e instanceof Error ? e.message : '加载失败'
   }
@@ -152,7 +155,7 @@ onMounted(async () => {
       <div class="row">
         <label>
           当前库
-          <select v-model.number="selectedBaseId" @change="loadFiles">
+          <select v-model.number="selectedBaseId">
             <option v-for="b in bases" :key="b.id" :value="b.id">
               {{ b.name }} (id={{ b.id }})
             </option>
