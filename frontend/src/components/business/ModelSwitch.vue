@@ -53,6 +53,18 @@ function pick(m: (typeof options)[number]) {
   background: #fff;
   cursor: pointer;
   font-size: 0.875rem;
+  touch-action: manipulation;
+  transition: transform 0.1s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.trigger:active {
+  transform: scale(0.97);
+  background: #f3f4f6;
+}
+
+.trigger:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.35);
 }
 .menu {
   position: absolute;
@@ -77,8 +89,18 @@ function pick(m: (typeof options)[number]) {
   text-align: left;
   cursor: pointer;
   font-size: 0.875rem;
+  touch-action: manipulation;
+  transition: background-color 0.12s ease, transform 0.08s ease;
 }
 .item:hover {
   background: #f3f4f6;
+}
+.item:active {
+  transform: scale(0.99);
+  background: #e5e7eb;
+}
+.item:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px rgba(124, 58, 237, 0.4);
 }
 </style>

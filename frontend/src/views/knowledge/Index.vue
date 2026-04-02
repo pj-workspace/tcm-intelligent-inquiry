@@ -1,8 +1,16 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
-import { apiClient } from '@/api/client'
-import { getErrorMessage } from '@/api/errors'
-import type { ApiResult } from '@/types/api'
+import { computed, onMounted, ref, watch } from 'vue'
+import { getErrorMessage } from '@/api/core/errors'
+import DsSelect from '@/components/common/DsSelect.vue'
+import type { DsSelectOption } from '@/components/common/DsSelect.vue'
+import {
+  createKnowledgeBase,
+  deleteKnowledgeDocument,
+  getKnowledgeHealth,
+  listKnowledgeBases,
+  listKnowledgeDocuments,
+  uploadKnowledgeDocument,
+} from '@/api/modules/knowledge'
 import type { KnowledgeBase, KnowledgeFileView } from '@/types/knowledge'
 import {
   formatHealthStatus,
@@ -21,9 +29,19 @@ const newBaseName = ref('默认知识库')
 const newBaseEmbed = ref('bge-m3:latest')
 const chunkSize = ref(512)
 
+const baseSelectOptions = computed<DsSelectOption[]>(() => {
+  if (bases.value.length === 0) {
+    return [{ value: null, label: '请先创建知识库', disabled: true }]
+  }
+  return bases.value.map((b) => ({
+    value: b.id,
+    label: `${b.name} (id=${b.id})`,
+  }))
+})
+
 async function refreshHealth() {
   try {
-    const { data } = await apiClient.get<ApiResult<string>>('/v1/knowledge/health')
+    const { data } = await getKnowledgeHealth()
     health.value = formatHealthStatus(data.code, data.message ?? '')
   } catch (e) {
     health.value = getErrorMessage(e)
@@ -31,7 +49,7 @@ async function refreshHealth() {
 }
 
 async function loadBases() {
-  const { data } = await apiClient.get<ApiResult<KnowledgeBase[]>>('/v1/knowledge/bases')
+  const { data } = await listKnowledgeBases()
   if (data.code !== 0) throw new Error(data.message)
   bases.value = data.data ?? []
   if (selectedBaseId.value == null && bases.value.length > 0) {
@@ -41,7 +59,7 @@ async function loadBases() {
 
 async function createBase() {
   ingestMsg.value = ''
-  const { data } = await apiClient.post<ApiResult<KnowledgeBase>>('/v1/knowledge/bases', {
+  const { data } = await createKnowledgeBase({
     name: newBaseName.value.trim() || '未命名知识库',
     embeddingModel: newBaseEmbed.value.trim() || 'bge-m3:latest',
   })
@@ -58,9 +76,7 @@ async function loadFiles() {
   }
   loadingFiles.value = true
   try {
-    const { data } = await apiClient.get<ApiResult<KnowledgeFileView[]>>(
-      `/v1/knowledge/bases/${selectedBaseId.value}/documents`
-    )
+    const { data } = await listKnowledgeDocuments(selectedBaseId.value)
     if (data.code !== 0) throw new Error(data.message)
     files.value = data.data ?? []
   } finally {
@@ -81,10 +97,7 @@ async function onFileChange(e: Event) {
     if (chunkSize.value > 32) {
       fd.append('chunkSize', String(chunkSize.value))
     }
-    const { data } = await apiClient.post<ApiResult<KnowledgeFileView>>(
-      `/v1/knowledge/bases/${selectedBaseId.value}/documents`,
-      fd
-    )
+    const { data } = await uploadKnowledgeDocument(selectedBaseId.value, fd)
     if (data.code !== 0) throw new Error(data.message)
     ingestMsg.value = `已入库：${data.data?.originalFilename ?? ''}`
     await loadFiles()
@@ -98,9 +111,7 @@ async function onFileChange(e: Event) {
 async function removeFile(fileUuid: string) {
   if (selectedBaseId.value == null) return
   if (!confirm('确定从该知识库删除此文档及其向量？')) return
-  await apiClient.delete<ApiResult<unknown>>(
-    `/v1/knowledge/bases/${selectedBaseId.value}/documents/${fileUuid}`
-  )
+  await deleteKnowledgeDocument(selectedBaseId.value, fileUuid)
   await loadFiles()
 }
 
@@ -153,23 +164,18 @@ onMounted(async () => {
       <h3 class="ds-h3 ds-card__title">
         知识库
       </h3>
-      <div class="ds-row kb-row">
-        <label class="ds-field">
+      <div class="kb-card-stack">
+        <label class="ds-field kb-field-current">
           当前库
-          <select
-            v-model.number="selectedBaseId"
-            class="ds-select"
-          >
-            <option
-              v-for="b in bases"
-              :key="b.id"
-              :value="b.id"
-            >
-              {{ b.name }} (id={{ b.id }})
-            </option>
-          </select>
+          <DsSelect
+            v-model="selectedBaseId"
+            class="kb-base-select"
+            :options="baseSelectOptions"
+            placeholder="请选择知识库"
+            aria-label="当前知识库"
+          />
         </label>
-        <div class="kb-create">
+        <div class="kb-create-fields">
           <input
             v-model="newBaseName"
             class="ds-input kb-input"
@@ -180,6 +186,8 @@ onMounted(async () => {
             class="ds-input kb-input"
             placeholder="Embedding 模型"
           >
+        </div>
+        <div class="kb-create-actions">
           <button
             type="button"
             class="ds-btn ds-btn--primary"
@@ -283,9 +291,36 @@ onMounted(async () => {
             <tr v-if="files.length === 0">
               <td
                 colspan="5"
-                class="ds-muted"
+                class="kb-table-empty"
               >
-                暂无文件
+                <div
+                  class="kb-empty"
+                  role="status"
+                >
+                  <svg
+                    class="kb-empty__icon"
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="40"
+                    height="40"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    aria-hidden="true"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+                    />
+                  </svg>
+                  <p class="kb-empty__title">
+                    暂无文件
+                  </p>
+                  <p class="kb-empty__hint">
+                    点击上方「选择文件上传」添加文档到当前知识库
+                  </p>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -307,22 +342,65 @@ onMounted(async () => {
 .kb-health {
   margin-bottom: 1.25rem;
 }
-.kb-row {
-  align-items: center;
-  margin-top: 0;
+.kb-card-stack {
+  display: flex;
+  flex-direction: column;
   gap: 1rem;
+  margin-top: 0;
 }
-.kb-create {
+.kb-field-current {
+  max-width: min(100%, 28rem);
+}
+.kb-base-select {
+  margin-top: 0.35rem;
+  width: 100%;
+  max-width: min(100%, 28rem);
+}
+.kb-create-fields {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
   align-items: center;
-  flex: 1;
-  min-width: min(100%, 18rem);
+}
+.kb-create-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 .kb-input {
   flex: 1;
   min-width: 9rem;
+  max-width: min(100%, 20rem);
+}
+.kb-table-empty {
+  padding: 0;
+  border-bottom: none;
+  vertical-align: middle;
+}
+.kb-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 2rem 1.25rem 2.25rem;
+  color: var(--color-muted);
+}
+.kb-empty__icon {
+  color: var(--color-border-strong);
+  margin-bottom: 0.65rem;
+}
+.kb-empty__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+.kb-empty__hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  max-width: 22rem;
 }
 .kb-upload-row {
   margin-top: 0.5rem;

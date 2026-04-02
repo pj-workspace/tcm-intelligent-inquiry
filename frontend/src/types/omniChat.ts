@@ -16,4 +16,6 @@ export type OmniSendPayload = {
   ragTopK: number
   ragSimilarityThreshold: number
   scrollRoot: HTMLElement | null
+  /** 为 true 时不向列表追加用户气泡（用于「重新生成」沿用上一轮提问） */
+  skipAppendUser?: boolean
 }

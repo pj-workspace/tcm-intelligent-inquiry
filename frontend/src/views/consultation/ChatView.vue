@@ -1,19 +1,30 @@
 <script setup lang="ts">
-import { inject, onMounted, ref, watch, nextTick } from 'vue'
-import { apiClient } from '@/api/client'
-import { getErrorMessage } from '@/api/errors'
-import type { ApiResult } from '@/types/api'
-import type { AgentConfigView } from '@/types/agent'
-import type { KnowledgeBase } from '@/types/knowledge'
-import type { LiteratureFileView } from '@/types/literature'
-import ChatBubble from '@/components/ChatBubble.vue'
-import { useOmniChatContext } from '@/composables/useOmniChatContext'
 import {
-  formatHealthStatus,
-  isHealthStatusErr,
-  isHealthStatusOk,
-} from '@/utils/formatHealthStatus'
-import { CONSULT_CHAT_KEY } from '@/views/consultation/consultChatKey'
+  computed,
+  inject,
+  onMounted,
+  onUnmounted,
+  ref,
+  watch,
+  nextTick,
+} from 'vue'
+import { getErrorMessage } from '@/api/core/errors'
+import { getAgentConfig } from '@/api/modules/agent'
+import { getConsultationHealth } from '@/api/modules/consultation'
+import {
+  listKnowledgeBases,
+} from '@/api/modules/knowledge'
+import { listLiteratureUploads } from '@/api/modules/literature'
+import type { KnowledgeBase } from '@/types/knowledge'
+import type { OmniSendPayload } from '@/types/omniChat'
+import type { ConsultationRagMeta } from '@/composables/useChat'
+import ChatDocMessage from '@/components/business/ChatDocMessage.vue'
+import DsAlert from '@/components/common/DsAlert.vue'
+import DsSelect from '@/components/common/DsSelect.vue'
+import type { DsSelectOption } from '@/components/common/DsSelect.vue'
+import { useOmniChatContext } from '@/composables/useOmniChatContext'
+import { formatHealthStatus, isHealthStatusErr } from '@/utils/formatHealthStatus'
+import { CONSULT_CHAT_KEY } from '@/constants/injectionKeys'
 
 const chat = inject(CONSULT_CHAT_KEY)
 if (!chat) {
@@ -21,7 +32,6 @@ if (!chat) {
 }
 
 const {
-  sessionId,
   messages,
   loading,
   error,
@@ -43,7 +53,9 @@ const {
   clearPendingImages,
 } = useOmniChatContext()
 
-const health = ref<string>('加载中…')
+const health = ref<string>('')
+const settingsOpen = ref(false)
+const settingsWrapRef = ref<HTMLElement | null>(null)
 const threadEl = ref<HTMLElement | null>(null)
 const input = ref('')
 const temperature = ref(0.7)
@@ -56,11 +68,67 @@ const literatureThreshold = ref(0)
 const literatureCollections = ref<{ id: string; label: string }[]>([])
 const attachInput = ref<HTMLInputElement | null>(null)
 
+const knowledgeSelectOptions = computed<DsSelectOption[]>(() => {
+  const head: DsSelectOption[] = [
+    { value: null, label: '请选择', disabled: true },
+  ]
+  return [
+    ...head,
+    ...knowledgeBases.value.map((b) => ({
+      value: b.id as number,
+      label: b.name,
+    })),
+  ]
+})
+
+const literatureSelectOptions = computed<DsSelectOption[]>(() => {
+  const head: DsSelectOption[] = [{ value: '', label: '请选择' }]
+  return [
+    ...head,
+    ...literatureCollections.value.map((c) => ({
+      value: c.id,
+      label: c.label,
+    })),
+  ]
+})
+
+const visionKbSelectOptions = computed<DsSelectOption[]>(() => {
+  const head: DsSelectOption[] = [
+    { value: null, label: '请选择', disabled: true },
+  ]
+  return [
+    ...head,
+    ...knowledgeBases.value.map((b) => ({
+      value: b.id as number,
+      label: b.name,
+    })),
+  ]
+})
+
+function formatRagLog(meta: ConsultationRagMeta | null): string | null {
+  if (!meta) return null
+  const lines: string[] = []
+  if (meta.literatureCollectionId) {
+    lines.push(`文献库 ID：${meta.literatureCollectionId}`)
+  } else if (meta.knowledgeBaseId != null) {
+    lines.push(`知识库 ID：${meta.knowledgeBaseId}`)
+  }
+  lines.push(`检索命中：${meta.retrievedChunks} 条片段`)
+  if (meta.sources.length) {
+    lines.push(`来源：${meta.sources.join('、')}`)
+  }
+  return lines.join('\n')
+}
+
+/** 流式输出期间收入助手折叠区，避免与顶栏 RAG 提示重复 */
+const streamingRagLog = computed(() => {
+  if (!loading.value || !streamingContent.value) return null
+  return formatRagLog(ragMeta.value)
+})
+
 async function loadKnowledgeBases() {
   try {
-    const { data } = await apiClient.get<ApiResult<KnowledgeBase[]>>(
-      '/v1/knowledge/bases'
-    )
+    const { data } = await listKnowledgeBases()
     if (data.code !== 0) return
     knowledgeBases.value = data.data ?? []
   } catch {
@@ -70,9 +138,7 @@ async function loadKnowledgeBases() {
 
 async function loadLiteratureCollections() {
   try {
-    const { data } = await apiClient.get<ApiResult<LiteratureFileView[]>>(
-      '/v1/literature/uploads'
-    )
+    const { data } = await listLiteratureUploads()
     if (data.code !== 0) return
     const files = data.data ?? []
     const seen = new Set<string>()
@@ -92,9 +158,7 @@ async function loadLiteratureCollections() {
 
 async function loadAgentDefaults() {
   try {
-    const { data } = await apiClient.get<ApiResult<AgentConfigView>>(
-      '/v1/agent/config'
-    )
+    const { data } = await getAgentConfig()
     if (data.code !== 0 || !data.data) return
     const kb = data.data.defaultKnowledgeBaseId
     if (kb != null && visionKnowledgeBaseId.value == null) {
@@ -125,16 +189,34 @@ watch(
   }
 )
 
+function closeSettingsOnOutside(ev: MouseEvent) {
+  if (!settingsOpen.value) return
+  const el = settingsWrapRef.value
+  const t = ev.target
+  if (el && t instanceof Node && el.contains(t)) return
+  settingsOpen.value = false
+}
+
+function toggleSettings() {
+  settingsOpen.value = !settingsOpen.value
+}
+
 onMounted(async () => {
+  document.addEventListener('click', closeSettingsOnOutside)
   try {
-    const { data } = await apiClient.get<ApiResult<string>>('/v1/consultation/health')
-    health.value = formatHealthStatus(data.code, data.message ?? '')
+    const { data } = await getConsultationHealth()
+    const line = formatHealthStatus(data.code, data.message ?? '')
+    health.value = isHealthStatusErr(line) ? line : ''
   } catch (e) {
     health.value = `后端不可用: ${getErrorMessage(e)}`
   }
   void loadKnowledgeBases()
   void loadLiteratureCollections()
   void loadAgentDefaults()
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', closeSettingsOnOutside)
 })
 
 function onAttachClick() {
@@ -147,40 +229,16 @@ function onAttachChange(e: Event) {
   el.value = ''
 }
 
-async function onSend() {
-  const text = input.value.trim()
-  if (!text || loading.value) return
-
+function buildOmniPayload(
+  visionImage: File | null,
+  skipAppendUser = false
+): OmniSendPayload {
   const m = mode.value
   const lit =
     literatureCollectionId.value.trim() === ''
       ? null
       : literatureCollectionId.value.trim()
-
-  if (m === 'vision') {
-    const first = pendingImages.value[0] ?? null
-    input.value = ''
-    await sendOmni(text, {
-      mode: 'vision',
-      knowledgeBaseId: knowledgeBaseId.value,
-      literatureCollectionId: lit,
-      visionUseKb: visionUseKnowledgeBase.value,
-      visionKbId: visionKnowledgeBaseId.value,
-      literatureTopK: literatureTopK.value,
-      literatureThreshold: literatureThreshold.value,
-      visionImage: first,
-      temperature: temperature.value,
-      maxHistoryTurns: maxHistoryTurns.value,
-      ragTopK: ragTopK.value,
-      ragSimilarityThreshold: ragSimilarityThreshold.value,
-      scrollRoot: threadEl.value,
-    })
-    if (!error.value) clearPendingImages()
-    return
-  }
-
-  input.value = ''
-  await sendOmni(text, {
+  return {
     mode: m,
     knowledgeBaseId: knowledgeBaseId.value,
     literatureCollectionId: lit,
@@ -188,13 +246,43 @@ async function onSend() {
     visionKbId: visionKnowledgeBaseId.value,
     literatureTopK: literatureTopK.value,
     literatureThreshold: literatureThreshold.value,
-    visionImage: null,
+    visionImage: m === 'vision' ? visionImage : null,
     temperature: temperature.value,
     maxHistoryTurns: maxHistoryTurns.value,
     ragTopK: ragTopK.value,
     ragSimilarityThreshold: ragSimilarityThreshold.value,
     scrollRoot: threadEl.value,
-  })
+    skipAppendUser,
+  }
+}
+
+async function onSend() {
+  const text = input.value.trim()
+  if (!text || loading.value) return
+
+  if (mode.value === 'vision') {
+    const first = pendingImages.value[0] ?? null
+    input.value = ''
+    await sendOmni(text, buildOmniPayload(first, false))
+    if (!error.value) clearPendingImages()
+    return
+  }
+
+  input.value = ''
+  await sendOmni(text, buildOmniPayload(null, false))
+}
+
+async function onRegenerateAssistant() {
+  if (loading.value || mode.value === 'vision') return
+  const arr = messages.value
+  if (arr.length < 2) return
+  const last = arr[arr.length - 1]
+  const prev = arr[arr.length - 2]
+  if (last.role !== 'assistant' || prev.role !== 'user') return
+  messages.value = arr.slice(0, -1)
+  const text = prev.content.trim()
+  if (!text) return
+  await sendOmni(text, buildOmniPayload(null, true))
 }
 
 function canSend() {
@@ -218,29 +306,77 @@ function canSend() {
             中医智能问诊
           </h2>
           <p
-            class="ds-status consult-header__status"
-            :class="
-              isHealthStatusErr(health)
-                ? 'ds-status--err'
-                : isHealthStatusOk(health)
-                  ? 'ds-status--ok'
-                  : ''
-            "
+            v-if="health"
+            class="ds-status consult-header__status ds-status--err"
           >
             {{ health }}
           </p>
-
-          <div class="omni-bar">
+        </div>
+        <div class="consult-header__side">
+          <button
+            v-if="loading"
+            type="button"
+            class="ds-btn ds-btn--warn consult-header__stop"
+            @click="stop"
+          >
+            停止
+          </button>
+          <div
+            ref="settingsWrapRef"
+            class="consult-settings"
+          >
+            <button
+              type="button"
+              class="ds-btn ds-btn--icon ds-btn--subtle consult-settings__trigger"
+              :aria-expanded="settingsOpen"
+              aria-controls="consult-settings-panel"
+              aria-label="问诊设置：模式、挂载项与模型参数"
+              title="问诊设置"
+              @click.stop="toggleSettings"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="22"
+                height="22"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.75"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.281Z"
+                />
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                />
+              </svg>
+            </button>
+            <div
+              v-show="settingsOpen"
+              id="consult-settings-panel"
+              class="consult-settings__panel"
+              role="dialog"
+              aria-label="问诊设置"
+              @click.stop
+            >
+          <div class="omni-bar omni-bar--panel">
             <span class="omni-bar__label">会话模式</span>
             <div
-              class="omni-bar__modes"
-              role="group"
+              class="omni-segmented"
+              role="tablist"
               aria-label="会话模式"
             >
               <button
                 type="button"
-                class="omni-chip"
-                :class="mode === 'standard' ? 'omni-chip--active' : ''"
+                role="tab"
+                class="omni-segment"
+                :class="mode === 'standard' ? 'omni-segment--active' : ''"
+                :aria-selected="mode === 'standard'"
                 :disabled="loading"
                 @click="mode = 'standard'"
               >
@@ -248,8 +384,10 @@ function canSend() {
               </button>
               <button
                 type="button"
-                class="omni-chip"
-                :class="mode === 'knowledge' ? 'omni-chip--active' : ''"
+                role="tab"
+                class="omni-segment"
+                :class="mode === 'knowledge' ? 'omni-segment--active' : ''"
+                :aria-selected="mode === 'knowledge'"
                 :disabled="loading"
                 @click="mode = 'knowledge'"
               >
@@ -257,8 +395,10 @@ function canSend() {
               </button>
               <button
                 type="button"
-                class="omni-chip"
-                :class="mode === 'literature' ? 'omni-chip--active' : ''"
+                role="tab"
+                class="omni-segment"
+                :class="mode === 'literature' ? 'omni-segment--active' : ''"
+                :aria-selected="mode === 'literature'"
                 :disabled="loading"
                 @click="mode = 'literature'"
               >
@@ -266,8 +406,10 @@ function canSend() {
               </button>
               <button
                 type="button"
-                class="omni-chip"
-                :class="mode === 'vision' ? 'omni-chip--active' : ''"
+                role="tab"
+                class="omni-segment"
+                :class="mode === 'vision' ? 'omni-segment--active' : ''"
+                :aria-selected="mode === 'vision'"
                 :disabled="loading"
                 @click="mode = 'vision'"
               >
@@ -281,25 +423,14 @@ function canSend() {
             >
               <label class="omni-mount-label">
                 挂载知识库
-                <select
-                  v-model.number="knowledgeBaseId"
-                  class="ds-select omni-select"
+                <DsSelect
+                  v-model="knowledgeBaseId"
+                  class="omni-select"
+                  :options="knowledgeSelectOptions"
+                  placeholder="请选择"
                   :disabled="loading"
-                >
-                  <option
-                    :value="null"
-                    disabled
-                  >
-                    请选择
-                  </option>
-                  <option
-                    v-for="b in knowledgeBases"
-                    :key="b.id"
-                    :value="b.id"
-                  >
-                    {{ b.name }}
-                  </option>
-                </select>
+                  aria-label="挂载知识库"
+                />
               </label>
             </div>
             <div
@@ -315,22 +446,14 @@ function canSend() {
             >
               <label class="omni-mount-label">
                 文献集合
-                <select
+                <DsSelect
                   v-model="literatureCollectionId"
-                  class="ds-select omni-select"
+                  class="omni-select"
+                  :options="literatureSelectOptions"
+                  placeholder="请选择"
                   :disabled="loading"
-                >
-                  <option value="">
-                    请选择
-                  </option>
-                  <option
-                    v-for="c in literatureCollections"
-                    :key="c.id"
-                    :value="c.id"
-                  >
-                    {{ c.label }}
-                  </option>
-                </select>
+                  aria-label="文献集合"
+                />
               </label>
               <button
                 type="button"
@@ -365,27 +488,19 @@ function canSend() {
                 class="omni-mount-label"
               >
                 知识库
-                <select
-                  v-model.number="visionKnowledgeBaseId"
-                  class="ds-select omni-select"
+                <DsSelect
+                  v-model="visionKnowledgeBaseId"
+                  class="omni-select"
+                  :options="visionKbSelectOptions"
+                  placeholder="请选择"
                   :disabled="loading"
-                >
-                  <option :value="null">
-                    请选择
-                  </option>
-                  <option
-                    v-for="b in knowledgeBases"
-                    :key="b.id"
-                    :value="b.id"
-                  >
-                    {{ b.name }}
-                  </option>
-                </select>
+                  aria-label="视觉模式知识库"
+                />
               </label>
             </div>
           </div>
 
-          <details class="consult-adv">
+          <details class="consult-adv consult-adv--panel">
             <summary class="consult-adv__summary">
               模型、RAG 参数与上下文
             </summary>
@@ -474,35 +589,21 @@ function canSend() {
               </div>
             </div>
           </details>
-        </div>
-        <div class="consult-header__side">
-          <button
-            v-if="loading"
-            type="button"
-            class="ds-btn ds-btn--warn consult-header__stop"
-            @click="stop"
-          >
-            停止
-          </button>
-          <p
-            v-if="sessionId != null"
-            class="consult-meta"
-            title="调试/技术支持用会话标识"
-          >
-            会话 #{{ sessionId }}
-          </p>
+            </div>
+          </div>
         </div>
       </div>
     </header>
 
-    <p
+    <DsAlert
       v-if="error"
-      class="ds-msg--error"
+      variant="error"
+      class="consult-alert"
     >
       {{ error }}
-    </p>
+    </DsAlert>
     <p
-      v-if="ragMeta"
+      v-if="ragMeta && !(loading && streamingContent)"
       class="ds-hint consult-rag-meta"
     >
       <template v-if="ragMeta.literatureCollectionId">
@@ -523,18 +624,6 @@ function canSend() {
         >；来源：{{ ragMeta.sources.join('、') }}</span>。
       </template>
     </p>
-    <p
-      v-if="loading && !streamingContent && mode !== 'vision'"
-      class="ds-hint consult-thinking"
-    >
-      助手思考中…
-    </p>
-    <p
-      v-if="loading && mode === 'vision'"
-      class="ds-hint consult-thinking"
-    >
-      视觉智能体处理中（非流式）…
-    </p>
 
     <div
       ref="threadEl"
@@ -542,28 +631,41 @@ function canSend() {
       role="region"
       aria-label="对话内容"
     >
-      <div
-        v-if="messages.length === 0 && !loading && !streamingContent"
-        class="ds-thread-empty"
-      >
-        <p class="ds-thread-empty__title">
-          开始一次问诊
-        </p>
-        <p class="ds-thread-empty__hint">
-          顶部选择模式与挂载项；Enter 发送。「视觉智能体」模式下可上传图片，其它模式请用纯文本。
-        </p>
+      <div class="consult-doc-stream">
+        <div
+          v-if="messages.length === 0 && !loading && !streamingContent"
+          class="ds-thread-empty"
+        >
+          <p class="ds-thread-empty__title">
+            开始一次问诊
+          </p>
+          <p class="ds-thread-empty__hint">
+            点击右上角设置选择模式与挂载项；Enter 发送。「视觉智能体」模式下可上传图片，其它模式请用纯文本。
+          </p>
+        </div>
+        <ChatDocMessage
+          v-for="(m, i) in messages"
+          :key="i"
+          :role="m.role"
+          :content="m.content"
+          :allow-regenerate="
+            m.role === 'assistant' &&
+              i === messages.length - 1 &&
+              !loading &&
+              mode !== 'vision'
+          "
+          @regenerate="onRegenerateAssistant"
+        />
+        <ChatDocMessage
+          v-if="loading"
+          role="assistant"
+          :content="streamingContent"
+          :rag-log="streamingRagLog"
+          :is-streaming="true"
+          :stream-vision="mode === 'vision'"
+          :allow-regenerate="false"
+        />
       </div>
-      <ChatBubble
-        v-for="(m, i) in messages"
-        :key="i"
-        :role="m.role"
-        :content="m.content"
-      />
-      <ChatBubble
-        v-if="loading && streamingContent"
-        role="assistant"
-        :content="streamingContent"
-      />
     </div>
 
     <form
@@ -606,7 +708,7 @@ function canSend() {
         >
         <button
           type="button"
-          class="ds-btn ds-btn--ghost consult-composer__attach"
+          class="ds-btn ds-btn--icon ds-btn--subtle consult-composer__attach"
           :disabled="loading || mode !== 'vision'"
           title="上传图片（仅视觉智能体模式）"
           aria-label="上传附件或图片"
@@ -672,18 +774,19 @@ function canSend() {
   flex-direction: column;
   min-height: 0;
   flex: 1;
+  background: transparent;
 }
 
 .consult-header {
   flex-shrink: 0;
-  margin-bottom: 0.2rem;
+  margin-bottom: 0.35rem;
 }
 
 .consult-header__top {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .consult-header__main {
@@ -693,39 +796,119 @@ function canSend() {
 }
 
 .consult-header__title {
-  margin: 0 0 0.25rem;
+  margin: 0;
+  font-size: 1.15rem;
+  line-height: 1.35;
 }
 
 .consult-header__status {
-  margin: 0 0 0.35rem;
+  margin: 0.35rem 0 0;
+  width: fit-content;
+  max-width: 100%;
 }
 
-.omni-chip {
-  font-size: 0.75rem;
-  padding: 0.35rem 0.65rem;
-  border-radius: 999px;
-  border: 1px solid var(--color-border);
+.consult-header__side {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.consult-settings {
+  position: relative;
+}
+
+.consult-settings__trigger {
+  min-width: var(--ds-control-height);
+}
+
+.consult-settings__panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  width: min(calc(100vw - 1.5rem), 24rem);
+  max-height: min(72vh, 34rem);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.85rem;
+  box-sizing: border-box;
   background: var(--color-surface);
+  border: 1px solid var(--color-border-neutral);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-dropdown);
+}
+
+.consult-settings__panel .omni-select {
+  max-width: 100%;
+}
+
+.omni-bar--panel {
+  margin: 0 0 0.75rem;
+}
+
+.consult-adv--panel {
+  margin: 0;
+}
+
+.consult-adv--panel .consult-adv__body {
+  margin-top: 0.35rem;
+  padding-top: 0.45rem;
+  border-top: 1px dashed var(--color-border-neutral);
+}
+
+.omni-segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  padding: 0.25rem;
+  border-radius: 0.65rem;
+  background: var(--color-border-subtle);
+  border: 1px solid var(--color-border-neutral);
+}
+
+.omni-segment {
+  flex: 1 1 auto;
+  min-width: fit-content;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.4rem 0.7rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: transparent;
   color: var(--color-text-secondary);
   cursor: pointer;
-  transition: var(--transition-fast);
+  touch-action: manipulation;
+  transition: var(--transition-fast), color 0.15s ease, box-shadow 0.15s ease,
+    background 0.15s ease, transform 0.1s cubic-bezier(0.33, 1, 0.68, 1);
 }
 
-.omni-chip:hover:not(:disabled) {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+.omni-segment:hover:not(:disabled) {
+  color: var(--color-primary-hover);
 }
 
-.omni-chip:disabled {
+.omni-segment:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.omni-segment:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.omni-segment:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
 
-.omni-chip--active {
-  background: rgba(124, 58, 237, 0.12);
-  border-color: var(--color-primary);
+.omni-segment--active {
+  background: var(--color-surface, #fff);
   color: var(--color-primary-hover);
   font-weight: 600;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
 .omni-bar {
@@ -742,12 +925,6 @@ function canSend() {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--color-muted);
-}
-
-.omni-bar__modes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
 }
 
 .omni-bar__mount {
@@ -795,6 +972,12 @@ function canSend() {
   gap: 0.4rem;
   font-size: 0.8125rem;
   cursor: pointer;
+  touch-action: manipulation;
+  transition: opacity 0.12s ease;
+}
+
+.omni-check:active {
+  opacity: 0.78;
 }
 
 .omni-refresh {
@@ -802,27 +985,10 @@ function canSend() {
   padding: 0.25rem 0.5rem;
 }
 
-.consult-header__side {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0.6rem;
-  flex-shrink: 0;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
 .consult-header__stop {
   font-size: 0.8125rem;
   padding-left: 0.75rem;
   padding-right: 0.75rem;
-}
-
-.consult-meta {
-  margin: 0;
-  font-size: 0.6875rem;
-  color: var(--color-muted);
-  font-variant-numeric: tabular-nums;
 }
 
 .consult-adv {
@@ -839,12 +1005,15 @@ function canSend() {
   width: fit-content;
   max-width: 100%;
   margin: 0;
-  padding: 0.1rem 0;
+  padding: 0.1rem 0.25rem;
   font-size: 0.75rem;
   font-weight: 500;
   color: var(--color-muted);
   border: none;
   background: transparent;
+  touch-action: manipulation;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s ease, transform 0.1s ease, background-color 0.15s ease;
 }
 
 .consult-adv__summary::-webkit-details-marker {
@@ -863,6 +1032,16 @@ function canSend() {
 
 .consult-adv__summary:hover {
   color: var(--color-primary-hover);
+}
+
+.consult-adv__summary:active {
+  transform: scale(0.98);
+  background: rgba(124, 58, 237, 0.06);
+}
+
+.consult-adv__summary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .consult-adv__body {
@@ -890,9 +1069,9 @@ function canSend() {
   font-size: 0.8125rem;
 }
 
-.consult-thinking {
-  margin-top: 0.15rem;
-  margin-bottom: 0;
+.consult-alert {
+  margin: 0.5rem 0 0.35rem;
+  max-width: min(100%, 40rem);
 }
 
 .consult-thread {
@@ -900,8 +1079,22 @@ function canSend() {
   min-height: 0;
 }
 
+.consult-doc-stream {
+  width: 100%;
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 0 0.35rem 1.5rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+}
+
 .consult-composer {
-  margin-top: 0.75rem;
+  margin-top: 1.25rem;
+  padding-top: 0.25rem;
   flex-shrink: 0;
 }
 
@@ -931,10 +1124,22 @@ function canSend() {
   padding: 0 0.15rem;
   line-height: 1;
   color: var(--color-muted);
+  touch-action: manipulation;
+  border-radius: var(--radius-sm);
+  transition: transform 0.1s ease, color 0.15s ease;
 }
 
 .consult-attachments__x:hover:not(:disabled) {
   color: var(--color-danger);
+}
+
+.consult-attachments__x:active:not(:disabled) {
+  transform: scale(0.9);
+}
+
+.consult-attachments__x:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .consult-composer__shell {

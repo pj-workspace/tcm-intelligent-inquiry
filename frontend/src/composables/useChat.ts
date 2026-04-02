@@ -1,20 +1,23 @@
 import { ref, nextTick } from 'vue'
-import { getErrorMessage } from '@/api/errors'
-import { openSseStream } from '@/api/sse'
-import { apiClient } from '@/api/client'
+import { getErrorMessage } from '@/api/core/errors'
+import { openSseStream } from '@/api/core/sse'
+import {
+  CONSULTATION_CHAT_STREAM_URL,
+  createConsultationSession,
+  deleteConsultationSession,
+  listConsultationMessages,
+  listConsultationSessions,
+} from '@/api/modules/consultation'
+import { postAgentRunJson, postAgentRunMultipart } from '@/api/modules/agent'
 import type { AgentRunResponse } from '@/types/agent'
 import type { ApiResult } from '@/types/api'
-import type { ChatMessageView } from '@/types/consultation'
+import type { ChatSessionInfo } from '@/types/consultation'
 import type { OmniSendPayload } from '@/types/omniChat'
 
 export type ChatTurn = { role: 'user' | 'assistant'; content: string }
 
-export type ChatSessionInfo = {
-  id: number
-  title: string
-  createdAt: string
-  updatedAt: string
-}
+/** 兼容旧路径：`import type { ChatSessionInfo } from '@/composables/useChat'` */
+export type { ChatSessionInfo }
 
 /** localStorage 键：刷新后恢复上次打开的问诊会话。 */
 export const CONSULTATION_LAST_SESSION_KEY = 'tcm-consultation-last-session-id'
@@ -31,6 +34,8 @@ export type SendOptions = {
   literatureCollectionId?: string | null
   literatureRagTopK?: number | null
   literatureSimilarityThreshold?: number | null
+  /** 不向消息列表追加用户条目（重新生成上一答时，列表末尾已是用户） */
+  skipAppendUser?: boolean
 }
 
 /** 问诊流式接口首包 {@code event: meta}（知识库或文献 RAG）。 */
@@ -62,9 +67,7 @@ export function useChat() {
   }
 
   async function fetchSessions() {
-    const { data } = await apiClient.get<ApiResult<ChatSessionInfo[]>>(
-      '/v1/consultation/sessions'
-    )
+    const { data } = await listConsultationSessions()
     if (data.code !== 0) {
       throw new Error(data.message || '加载会话列表失败')
     }
@@ -73,9 +76,7 @@ export function useChat() {
 
   async function ensureSession() {
     if (sessionId.value != null) return
-    const { data } = await apiClient.post<
-      ApiResult<ChatSessionInfo>
-    >('/v1/consultation/sessions', {})
+    const { data } = await createConsultationSession()
     if (data.code !== 0 || !data.data) {
       throw new Error(data.message || '创建会话失败')
     }
@@ -84,9 +85,7 @@ export function useChat() {
 
   async function loadHistory() {
     if (sessionId.value == null) return
-    const { data } = await apiClient.get<ApiResult<ChatMessageView[]>>(
-      `/v1/consultation/sessions/${sessionId.value}/messages`
-    )
+    const { data } = await listConsultationMessages(sessionId.value)
     if (data.code !== 0) {
       throw new Error(data.message || '加载历史失败')
     }
@@ -127,9 +126,7 @@ export function useChat() {
   }
 
   async function deleteSession(id: number) {
-    await apiClient.delete<ApiResult<unknown>>(
-      `/v1/consultation/sessions/${id}`
-    )
+    await deleteConsultationSession(id)
     await fetchSessions()
     if (sessionId.value === id) {
       const next = sessions.value[0]
@@ -158,7 +155,9 @@ export function useChat() {
 
     error.value = null
     ragMeta.value = null
-    messages.value = [...messages.value, { role: 'user', content: text }]
+    if (!opts?.skipAppendUser) {
+      messages.value = [...messages.value, { role: 'user', content: text }]
+    }
     streamingContent.value = ''
     loading.value = true
     abort = new AbortController()
@@ -194,7 +193,7 @@ export function useChat() {
     const litIdForMeta = opts?.literatureCollectionId ?? null
     try {
       await openSseStream(
-        '/api/v1/consultation/chat',
+        CONSULTATION_CHAT_STREAM_URL,
         (chunk) => {
           if (chunk === '[DONE]') return
           assistant += chunk
@@ -251,12 +250,14 @@ export function useChat() {
             ...messages.value,
             { role: 'assistant', content: assistant + '\n…（已中断）' },
           ]
-        } else {
+        } else if (!opts?.skipAppendUser) {
           messages.value = messages.value.slice(0, -1)
         }
       } else {
         error.value = getErrorMessage(e)
-        messages.value = messages.value.slice(0, -1)
+        if (!opts?.skipAppendUser) {
+          messages.value = messages.value.slice(0, -1)
+        }
       }
       streamingContent.value = ''
     } finally {
@@ -282,6 +283,7 @@ export function useChat() {
       | 'knowledgeBaseId'
       | 'ragTopK'
       | 'ragSimilarityThreshold'
+      | 'skipAppendUser'
     >
   ) {
     const text = userText.trim()
@@ -294,7 +296,9 @@ export function useChat() {
     ragMeta.value = null
     const userLabel =
       image != null ? `${text}\n\n（附图：${image.name}）` : text
-    messages.value = [...messages.value, { role: 'user', content: userLabel }]
+    if (!opts?.skipAppendUser) {
+      messages.value = [...messages.value, { role: 'user', content: userLabel }]
+    }
     streamingContent.value = ''
     loading.value = true
 
@@ -317,10 +321,7 @@ export function useChat() {
             )
           }
         }
-        const res = await apiClient.post<ApiResult<AgentRunResponse>>(
-          '/v1/agent/run',
-          fd
-        )
+        const res = await postAgentRunMultipart(fd)
         data = res.data
       } else {
         const body: Record<string, unknown> = { task: text }
@@ -332,10 +333,7 @@ export function useChat() {
             body.ragSimilarityThreshold = opts.ragSimilarityThreshold
           }
         }
-        const res = await apiClient.post<ApiResult<AgentRunResponse>>(
-          '/v1/agent/run',
-          body
-        )
+        const res = await postAgentRunJson(body)
         data = res.data
       }
       if (data.code !== 0) throw new Error(data.message || '智能体调用失败')
@@ -356,7 +354,9 @@ export function useChat() {
       await fetchSessions()
     } catch (e: unknown) {
       error.value = getErrorMessage(e)
-      messages.value = messages.value.slice(0, -1)
+      if (!opts?.skipAppendUser) {
+        messages.value = messages.value.slice(0, -1)
+      }
     } finally {
       loading.value = false
       scrollToBottom(opts?.scrollRoot ?? null)
@@ -364,6 +364,7 @@ export function useChat() {
   }
 
   async function sendOmni(userText: string, p: OmniSendPayload) {
+    const skip = p.skipAppendUser === true
     if (p.mode === 'vision') {
       const kb =
         p.visionUseKb && p.visionKbId != null ? p.visionKbId : null
@@ -373,6 +374,7 @@ export function useChat() {
         knowledgeBaseId: kb,
         ragTopK: p.ragTopK,
         ragSimilarityThreshold: p.ragSimilarityThreshold,
+        skipAppendUser: skip,
       })
     }
     if (p.mode === 'literature') {
@@ -388,6 +390,7 @@ export function useChat() {
         literatureCollectionId: cid,
         literatureRagTopK: p.literatureTopK,
         literatureSimilarityThreshold: p.literatureThreshold,
+        skipAppendUser: skip,
       })
     }
     if (p.mode === 'knowledge') {
@@ -403,12 +406,14 @@ export function useChat() {
         knowledgeBaseId: kb,
         ragTopK: p.ragTopK,
         ragSimilarityThreshold: p.ragSimilarityThreshold,
+        skipAppendUser: skip,
       })
     }
     return send(userText, {
       temperature: p.temperature,
       maxHistoryTurns: p.maxHistoryTurns,
       scrollRoot: p.scrollRoot,
+      skipAppendUser: skip,
     })
   }
 

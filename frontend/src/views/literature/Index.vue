@@ -1,8 +1,13 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
-import { apiClient } from '@/api/client'
-import { getErrorMessage } from '@/api/errors'
-import type { ApiResult } from '@/types/api'
+import { getErrorMessage } from '@/api/core/errors'
+import {
+  deleteLiteratureCollection,
+  deleteLiteratureDocument,
+  getLiteratureHealth,
+  listLiteratureCollectionFiles,
+  uploadLiteratureFile,
+} from '@/api/modules/literature'
 import type { LiteratureFileView } from '@/types/literature'
 import {
   formatHealthStatus,
@@ -20,7 +25,7 @@ const chunkSize = ref(512)
 
 async function refreshHealth() {
   try {
-    const { data } = await apiClient.get<ApiResult<string>>('/v1/literature/health')
+    const { data } = await getLiteratureHealth()
     health.value = formatHealthStatus(data.code, data.message ?? '')
   } catch (e) {
     health.value = getErrorMessage(e)
@@ -34,9 +39,7 @@ async function loadFiles() {
   }
   loadingFiles.value = true
   try {
-    const { data } = await apiClient.get<ApiResult<LiteratureFileView[]>>(
-      `/v1/literature/collections/${encodeURIComponent(collectionId.value)}/files`
-    )
+    const { data } = await listLiteratureCollectionFiles(collectionId.value)
     if (data.code !== 0) throw new Error(data.message)
     files.value = data.data ?? []
   } finally {
@@ -64,7 +67,7 @@ async function onFileChange(e: Event) {
     if (chunkSize.value > 32) {
       fd.append('chunkSize', String(chunkSize.value))
     }
-    const { data } = await apiClient.post<ApiResult<LiteratureFileView>>('/v1/literature/uploads', fd)
+    const { data } = await uploadLiteratureFile(fd)
     if (data.code !== 0) throw new Error(data.message)
     const row = data.data
     if (row) {
@@ -82,16 +85,14 @@ async function onFileChange(e: Event) {
 async function removeFile(fileUuid: string) {
   if (!collectionId.value) return
   if (!confirm('确定从当前文献库删除此文件及其向量？')) return
-  await apiClient.delete(
-    `/v1/literature/collections/${encodeURIComponent(collectionId.value)}/documents/${encodeURIComponent(fileUuid)}`
-  )
+  await deleteLiteratureDocument(collectionId.value, fileUuid)
   await loadFiles()
 }
 
 async function purgeCollection() {
   if (!collectionId.value) return
   if (!confirm('确定删除当前临时文献库及其向量？')) return
-  await apiClient.delete(`/v1/literature/collections/${encodeURIComponent(collectionId.value)}`)
+  await deleteLiteratureCollection(collectionId.value)
   collectionId.value = null
   files.value = []
   msg.value = '已清空临时库'
@@ -265,12 +266,43 @@ onMounted(async () => {
                 >—</span>
               </td>
             </tr>
-            <tr v-if="files.length === 0 && collectionId">
+            <tr v-if="files.length === 0">
               <td
                 colspan="5"
-                class="ds-muted"
+                class="lit-table-empty"
               >
-                库内暂无文件记录
+                <div
+                  class="lit-empty"
+                  role="status"
+                >
+                  <svg
+                    class="lit-empty__icon"
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="40"
+                    height="40"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    aria-hidden="true"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"
+                    />
+                  </svg>
+                  <p class="lit-empty__title">
+                    {{ collectionId ? '库内暂无文件' : '暂无文件' }}
+                  </p>
+                  <p class="lit-empty__hint">
+                    {{
+                      collectionId
+                        ? '可在上方「选择文件」继续添加文献'
+                        : '上传首个文件将自动创建临时文献库，也可点击上方「选择文件」开始'
+                    }}
+                  </p>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -350,5 +382,34 @@ onMounted(async () => {
   font-variant-numeric: tabular-nums;
   font-size: 0.8125rem;
   color: var(--color-muted);
+}
+.lit-table-empty {
+  padding: 0;
+  border-bottom: none;
+  vertical-align: middle;
+}
+.lit-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 2rem 1.25rem 2.25rem;
+  color: var(--color-muted);
+}
+.lit-empty__icon {
+  color: var(--color-border-strong);
+  margin-bottom: 0.65rem;
+}
+.lit-empty__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+.lit-empty__hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  max-width: 24rem;
 }
 </style>

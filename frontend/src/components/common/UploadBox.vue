@@ -62,9 +62,19 @@ function openPicker() {
   color: #fff;
   cursor: pointer;
   font-size: 0.875rem;
+  touch-action: manipulation;
+  transition: transform 0.1s ease, background-color 0.15s ease;
 }
 .btn:hover {
   background: #047857;
+}
+.btn:active {
+  transform: scale(0.97);
+  background: #065f46;
+}
+.btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.45);
 }
 .hint {
   font-size: 0.8rem;

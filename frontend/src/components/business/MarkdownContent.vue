@@ -2,7 +2,7 @@
 /**
  * 兼容旧 props 名 `source`；实际渲染由 {@link MarkdownRenderer} 统一完成。
  */
-import MarkdownRenderer from './MarkdownRenderer.vue'
+import MarkdownRenderer from '@/components/common/MarkdownRenderer.vue'
 
 const props = defineProps<{
   source: string

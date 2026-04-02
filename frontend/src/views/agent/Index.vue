@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { apiClient } from '@/api/client'
-import { getErrorMessage } from '@/api/errors'
-import type { ApiResult } from '@/types/api'
-import type { AgentConfigView } from '@/types/agent'
+import { computed, onMounted, ref } from 'vue'
+import { getErrorMessage } from '@/api/core/errors'
+import DsAlert from '@/components/common/DsAlert.vue'
+import DsSelect from '@/components/common/DsSelect.vue'
+import type { DsSelectOption } from '@/components/common/DsSelect.vue'
+import { getAgentConfig, getAgentHealth, updateAgentConfig } from '@/api/modules/agent'
+import { listKnowledgeBases } from '@/api/modules/knowledge'
 import type { KnowledgeBase } from '@/types/knowledge'
 import {
   formatHealthStatus,
@@ -24,9 +26,17 @@ const visionSystemPrompt = ref('')
 const visionModelName = ref('')
 const defaultKnowledgeBaseId = ref<number | null>(null)
 
+const defaultKbOptions = computed<DsSelectOption[]>(() => [
+  { value: null, label: '不默认' },
+  ...bases.value.map((b) => ({
+    value: b.id,
+    label: `${b.name} (id=${b.id})`,
+  })),
+])
+
 async function refreshHealth() {
   try {
-    const { data } = await apiClient.get<ApiResult<string>>('/v1/agent/health')
+    const { data } = await getAgentHealth()
     health.value = formatHealthStatus(data.code, data.message ?? '')
   } catch (e) {
     health.value = getErrorMessage(e)
@@ -35,7 +45,7 @@ async function refreshHealth() {
 
 async function loadBases() {
   try {
-    const { data } = await apiClient.get<ApiResult<KnowledgeBase[]>>('/v1/knowledge/bases')
+    const { data } = await listKnowledgeBases()
     if (data.code !== 0) throw new Error(data.message)
     bases.value = data.data ?? []
   } catch {
@@ -47,7 +57,7 @@ async function loadConfig() {
   loadErr.value = null
   loading.value = true
   try {
-    const { data } = await apiClient.get<ApiResult<AgentConfigView>>('/v1/agent/config')
+    const { data } = await getAgentConfig()
     if (data.code !== 0) throw new Error(data.message)
     const c = data.data
     if (c) {
@@ -69,7 +79,7 @@ async function saveConfig() {
   saveErr.value = null
   loading.value = true
   try {
-    const { data } = await apiClient.put<ApiResult<AgentConfigView>>('/v1/agent/config', {
+    const { data } = await updateAgentConfig({
       displayName: displayName.value.trim() || '中医智能体',
       textSystemPrompt: textSystemPrompt.value.trim() || null,
       visionSystemPrompt: visionSystemPrompt.value.trim() || null,
@@ -116,19 +126,19 @@ onMounted(async () => {
       {{ health }}
     </p>
 
-    <p
+    <DsAlert
       v-if="loadErr"
-      class="ds-msg--error"
+      class="agent-alert"
     >
       {{ loadErr }}
-    </p>
+    </DsAlert>
 
     <section class="ds-card">
       <h3 class="ds-h3 ds-card__title">
         基本与模型
       </h3>
       <div class="agent-fields">
-        <label class="ds-field">
+        <label class="ds-field agent-field-text">
           显示名称
           <input
             v-model="displayName"
@@ -138,7 +148,7 @@ onMounted(async () => {
             :disabled="loading"
           >
         </label>
-        <label class="ds-field">
+        <label class="ds-field agent-field-text">
           默认视觉模型（Ollama）
           <input
             v-model="visionModelName"
@@ -150,25 +160,17 @@ onMounted(async () => {
         </label>
         <label
           v-if="bases.length"
-          class="ds-field"
+          class="ds-field agent-field-kb"
         >
           默认关联知识库（问诊视觉模式可预填）
-          <select
-            v-model.number="defaultKnowledgeBaseId"
-            class="ds-select"
+          <DsSelect
+            v-model="defaultKnowledgeBaseId"
+            class="agent-kb-select"
+            :options="defaultKbOptions"
+            placeholder="不默认"
             :disabled="loading"
-          >
-            <option :value="null">
-              不默认
-            </option>
-            <option
-              v-for="b in bases"
-              :key="b.id"
-              :value="b.id"
-            >
-              {{ b.name }} (id={{ b.id }})
-            </option>
-          </select>
+            aria-label="默认关联知识库"
+          />
         </label>
       </div>
     </section>
@@ -218,18 +220,19 @@ onMounted(async () => {
         重新加载
       </button>
     </div>
-    <p
+    <DsAlert
       v-if="saveMsg"
-      class="ds-msg--success"
+      variant="success"
+      class="agent-alert"
     >
       {{ saveMsg }}
-    </p>
-    <p
+    </DsAlert>
+    <DsAlert
       v-if="saveErr"
-      class="ds-msg--error"
+      class="agent-alert"
     >
       {{ saveErr }}
-    </p>
+    </DsAlert>
   </div>
 </template>
 
@@ -249,6 +252,20 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+.agent-field-text {
+  max-width: min(100%, 28rem);
+}
+.agent-field-kb {
+  max-width: min(100%, 28rem);
+}
+.agent-kb-select {
+  margin-top: 0.35rem;
+  width: 100%;
+  max-width: min(100%, 28rem);
+}
+.agent-alert {
+  margin: 0 0 0.85rem;
 }
 .agent-prompt-field {
   margin-top: 0.75rem;

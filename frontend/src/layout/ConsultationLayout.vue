@@ -5,8 +5,8 @@ import {
   CONSULTATION_LAST_SESSION_KEY,
   useChat,
 } from '@/composables/useChat'
-import { getErrorMessage } from '@/api/errors'
-import { CONSULT_CHAT_KEY } from '@/views/consultation/consultChatKey'
+import { getErrorMessage } from '@/api/core/errors'
+import { CONSULT_CHAT_KEY } from '@/constants/injectionKeys'
 
 const chat = useChat()
 provide(CONSULT_CHAT_KEY, chat)
@@ -94,10 +94,12 @@ onMounted(async () => {
       aria-label="历史会话"
     >
       <div class="consult-history__head">
-        <span class="consult-history__title">历史会话</span>
+        <h2 class="consult-history__title">
+          历史会话
+        </h2>
         <button
           type="button"
-          class="ds-btn ds-btn--secondary consult-history__new"
+          class="ds-btn ds-btn--ghost consult-history__new"
           :disabled="loading"
           @click="onNewChat"
         >
@@ -175,7 +177,7 @@ onMounted(async () => {
   align-items: stretch;
   height: 100%;
   min-height: 0;
-  padding: 0.65rem 0.75rem 0.65rem 0;
+  padding: 0.65rem 0.75rem;
   border-right: 1px solid var(--color-border);
   background: var(--color-bg);
   /* 故意不用阴影、圆角卡片，避免「悬浮层」观感 */
@@ -187,8 +189,8 @@ onMounted(async () => {
   justify-content: space-between;
   gap: 0.5rem;
   flex-shrink: 0;
-  min-height: var(--ds-control-height);
   margin-bottom: 0.75rem;
+  padding-left: 0.45rem;
   padding-bottom: 0.65rem;
   border-bottom: 1px solid var(--color-border);
 }
@@ -225,16 +227,23 @@ onMounted(async () => {
 
 .consult-history__new {
   flex-shrink: 0;
-  padding-left: 0.6rem;
-  padding-right: 0.6rem;
-  font-size: 0.8125rem;
+  align-self: center;
+  min-height: 0;
+  height: auto;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.25;
 }
 
 .consult-history__title {
   margin: 0;
-  line-height: var(--ds-control-height);
-  font-size: 0.8125rem;
+  flex: 1;
+  min-width: 0;
+  font-size: 0.75rem;
   font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: 0.02em;
   color: var(--color-text-secondary);
 }
 
@@ -247,7 +256,7 @@ onMounted(async () => {
 .consult-history__empty {
   font-size: 0.8125rem;
   color: var(--color-text-secondary);
-  padding: 0.35rem 0;
+  padding: 0.35rem 0.45rem;
 }
 
 .consult-history__item {
@@ -290,6 +299,18 @@ onMounted(async () => {
   cursor: pointer;
   font: inherit;
   color: inherit;
+  touch-action: manipulation;
+  border-radius: var(--radius-sm);
+  transition: transform 0.1s ease, background-color 0.15s ease;
+}
+
+.consult-history__pick:active {
+  transform: scale(0.98);
+}
+
+.consult-history__pick:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .consult-history__item-title {
@@ -317,11 +338,22 @@ onMounted(async () => {
   line-height: 1;
   padding: 0.2rem;
   border-radius: var(--radius-sm);
+  touch-action: manipulation;
+  transition: transform 0.1s ease, color 0.15s ease, background-color 0.15s ease;
 }
 
 .consult-history__del:hover {
   color: var(--color-danger);
   background: var(--color-danger-bg);
+}
+
+.consult-history__del:active {
+  transform: scale(0.9);
+}
+
+.consult-history__del:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .consult-stage {
@@ -332,7 +364,7 @@ onMounted(async () => {
   flex-direction: column;
   overflow: hidden;
   background: var(--color-bg);
-  padding: 0.85rem 1.15rem 1.1rem;
+  padding: 0.5rem 1rem 0.85rem;
 }
 
 @media (max-width: 52rem) {

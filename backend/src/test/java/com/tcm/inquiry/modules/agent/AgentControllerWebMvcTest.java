@@ -17,6 +17,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.tcm.inquiry.config.TcmApiPropertiesConfig;
+import com.tcm.inquiry.modules.agent.dto.AgentConfigView;
 import com.tcm.inquiry.modules.agent.service.AgentAppConfigService;
 import com.tcm.inquiry.modules.agent.service.AgentService;
 
@@ -43,6 +44,24 @@ class AgentControllerWebMvcTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data").value("agent"));
+    }
+
+    @Test
+    void getConfigOk() throws Exception {
+        org.mockito.Mockito.when(agentAppConfigService.getView())
+                .thenReturn(
+                        new AgentConfigView(
+                                "中医视觉智能体",
+                                null,
+                                null,
+                                null,
+                                null,
+                                "2026-01-01T00:00:00Z"));
+
+        mockMvc.perform(get("/api/v1/agent/config"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.displayName").value("中医视觉智能体"));
     }
 
     @Test
