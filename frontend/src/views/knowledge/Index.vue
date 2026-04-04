@@ -12,9 +12,15 @@ import {
   getKnowledgeHealth,
   listKnowledgeBases,
   listKnowledgeDocuments,
+  queryKnowledgeBase,
   uploadKnowledgeDocument,
 } from '@/api/modules/knowledge'
-import type { KnowledgeBase, KnowledgeFileView } from '@/types/knowledge'
+import DsAlert from '@/components/common/DsAlert.vue'
+import type {
+  KnowledgeBase,
+  KnowledgeFileView,
+  KnowledgeQueryResponse,
+} from '@/types/knowledge'
 import {
   formatHealthStatus,
   isHealthStatusErr,
@@ -33,6 +39,14 @@ const newBaseEmbed = ref('bge-m3:latest')
 const chunkSize = ref(512)
 /** 码点重叠；>0 时后端走滑动窗口，此时 chunkSize 表示码点窗口长度（建议 ≥128） */
 const chunkOverlap = ref(0)
+
+/** —— 检索试答：走独立 POST /query，不写入问诊会话 —— */
+const probeQuestion = ref('')
+const probeTopK = ref(4)
+const probeSimilarity = ref(0)
+const probeLoading = ref(false)
+const probeError = ref<string | null>(null)
+const probeAnswer = ref<KnowledgeQueryResponse | null>(null)
 
 const baseSelectOptions = computed<DsSelectOption[]>(() => {
   if (bases.value.length === 0) {
@@ -178,7 +192,44 @@ function formatDate(iso: string) {
 
 watch(selectedBaseId, () => {
   void loadFiles()
+  probeAnswer.value = null
+  probeError.value = null
 })
+
+/**
+ * 对当前选中库发起一次向量检索 + 模型生成，用于验收文档是否被正确召回（与问诊「知识库 RAG」参数语义一致）。
+ */
+async function runKnowledgeProbe() {
+  if (selectedBaseId.value == null) {
+    ElMessage.warning('请先选择知识库')
+    return
+  }
+  const q = probeQuestion.value.trim()
+  if (!q) {
+    ElMessage.warning('请输入试答问题')
+    return
+  }
+  probeLoading.value = true
+  probeError.value = null
+  probeAnswer.value = null
+  try {
+    const { data } = await queryKnowledgeBase(
+      selectedBaseId.value,
+      {
+        message: q,
+        topK: probeTopK.value,
+        similarityThreshold: probeSimilarity.value,
+      },
+      silentAxiosConfig
+    )
+    if (data.code !== 0) throw new Error(data.message || '试答失败')
+    probeAnswer.value = data.data ?? null
+  } catch (e) {
+    probeError.value = getErrorMessage(e)
+  } finally {
+    probeLoading.value = false
+  }
+}
 
 onMounted(async () => {
   await refreshHealth()
@@ -198,7 +249,7 @@ onMounted(async () => {
       知识库管理
     </h2>
     <p class="ds-lead kb-lead">
-      在此维护向量知识库与文档；问答与 RAG 请使用主导航「智能问诊」统一入口，并选择「知识库 RAG」模式。
+      在此维护向量知识库与文档；下方「检索试答」可对当前库做单次非流式验库。多轮问诊、导出与高级参数仍请使用「智能问诊」中的「知识库 RAG」模式。
     </p>
     <p
       class="ds-status kb-health"
@@ -248,6 +299,92 @@ onMounted(async () => {
           >
             创建知识库
           </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="ds-card kb-probe-card">
+      <h3 class="ds-h3 ds-card__title">
+        检索试答
+      </h3>
+      <p class="ds-hint kb-probe-hint">
+        调用与问诊同源的非流式接口，仅验证当前库的召回与回答质量；0 表示相似度阈值不过滤。结果不写入任何问诊会话。
+      </p>
+      <label class="ds-field kb-probe-field">
+        试答问题
+        <textarea
+          v-model="probeQuestion"
+          class="ds-textarea kb-probe-textarea"
+          rows="3"
+          placeholder="例如：黄芪的功效与禁忌有哪些？"
+          :disabled="probeLoading || selectedBaseId == null"
+          aria-label="知识库试答问题"
+        />
+      </label>
+      <div class="ds-row kb-probe-row">
+        <label class="ds-field kb-field-inline">
+          topK
+          <input
+            v-model.number="probeTopK"
+            class="ds-input ds-input--narrow"
+            type="number"
+            min="1"
+            max="20"
+            step="1"
+            :disabled="probeLoading || selectedBaseId == null"
+          >
+        </label>
+        <label class="ds-field kb-field-inline">
+          相似度阈值（0=不过滤）
+          <input
+            v-model.number="probeSimilarity"
+            class="ds-input ds-input--narrow"
+            type="number"
+            inputmode="decimal"
+            min="0"
+            max="1"
+            step="0.05"
+            :disabled="probeLoading || selectedBaseId == null"
+          >
+        </label>
+        <button
+          type="button"
+          class="ds-btn ds-btn--primary kb-probe-btn"
+          :disabled="probeLoading || selectedBaseId == null"
+          @click="runKnowledgeProbe"
+        >
+          {{ probeLoading ? '生成中…' : '发起试答' }}
+        </button>
+      </div>
+      <DsAlert
+        v-if="probeError"
+        class="kb-probe-alert"
+      >
+        {{ probeError }}
+      </DsAlert>
+      <div
+        v-if="probeLoading"
+        class="kb-probe-skeleton"
+        role="status"
+        aria-busy="true"
+        aria-label="试答生成中"
+      >
+        <div class="kb-probe-skeleton__line" />
+        <div class="kb-probe-skeleton__line kb-probe-skeleton__line--mid" />
+        <div class="kb-probe-skeleton__line kb-probe-skeleton__line--short" />
+      </div>
+      <div
+        v-else-if="probeAnswer"
+        class="kb-probe-result"
+      >
+        <p class="kb-probe-meta">
+          召回片段：{{ probeAnswer.retrievedChunks }} 条
+          <template v-if="probeAnswer.sources?.length">
+            ；来源：{{ probeAnswer.sources.join('、') }}
+          </template>
+        </p>
+        <div class="kb-probe-answer">
+          {{ probeAnswer.answer }}
         </div>
       </div>
     </section>
@@ -553,5 +690,77 @@ onMounted(async () => {
   font-variant-numeric: tabular-nums;
   font-size: 0.8125rem;
   color: var(--color-muted);
+}
+.kb-probe-card {
+  margin-top: 0;
+}
+.kb-probe-hint {
+  margin-top: -0.15rem;
+}
+.kb-probe-field {
+  margin-top: 0.65rem;
+  max-width: min(100%, 40rem);
+}
+.kb-probe-textarea {
+  margin-top: 0.35rem;
+  width: 100%;
+  max-width: min(100%, 40rem);
+}
+.kb-probe-row {
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1rem;
+}
+.kb-probe-btn {
+  flex-shrink: 0;
+}
+.kb-probe-alert {
+  margin-top: 0.75rem;
+}
+.kb-probe-skeleton {
+  margin-top: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.kb-probe-skeleton__line {
+  height: 1rem;
+  border-radius: 0.35rem;
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-elevated) 0%,
+    var(--color-border) 50%,
+    var(--color-surface-elevated) 100%
+  );
+  background-size: 200% 100%;
+  animation: kb-shimmer 1.2s ease-in-out infinite;
+}
+.kb-probe-skeleton__line--mid {
+  width: 92%;
+}
+.kb-probe-skeleton__line--short {
+  width: 55%;
+}
+.kb-probe-result {
+  margin-top: 0.85rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.65rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-elevated);
+}
+.kb-probe-meta {
+  margin: 0 0 0.65rem;
+  font-size: 0.8125rem;
+  color: var(--color-muted);
+  line-height: 1.45;
+}
+.kb-probe-answer {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--color-text);
 }
 </style>

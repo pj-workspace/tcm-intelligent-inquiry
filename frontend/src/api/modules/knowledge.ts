@@ -2,7 +2,11 @@ import type { AxiosRequestConfig } from 'axios'
 
 import { apiClient } from '@/api/core/client'
 import type { ApiResult } from '@/types/api'
-import type { KnowledgeBase, KnowledgeFileView } from '@/types/knowledge'
+import type {
+  KnowledgeBase,
+  KnowledgeFileView,
+  KnowledgeQueryResponse,
+} from '@/types/knowledge'
 
 export function getKnowledgeHealth(config?: AxiosRequestConfig) {
   return apiClient.get<ApiResult<string>>('/v1/knowledge/health', config)
@@ -48,6 +52,23 @@ export function deleteKnowledgeDocument(
 ) {
   return apiClient.delete<ApiResult<unknown>>(
     `/v1/knowledge/bases/${knowledgeBaseId}/documents/${fileUuid}`,
+    config
+  )
+}
+
+/** 单次 RAG 问答（非 SSE），与问诊知识库模式同源检索逻辑，供管理页快速验库。 */
+export function queryKnowledgeBase(
+  knowledgeBaseId: number,
+  body: {
+    message: string
+    topK?: number
+    similarityThreshold?: number
+  },
+  config?: AxiosRequestConfig
+) {
+  return apiClient.post<ApiResult<KnowledgeQueryResponse>>(
+    `/v1/knowledge/bases/${knowledgeBaseId}/query`,
+    body,
     config
   )
 }
