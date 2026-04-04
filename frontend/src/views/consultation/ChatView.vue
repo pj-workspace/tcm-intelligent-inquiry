@@ -24,6 +24,10 @@ import DsSelect from '@/components/common/DsSelect.vue'
 import type { DsSelectOption } from '@/components/common/DsSelect.vue'
 import { useOmniChatContext } from '@/composables/useOmniChatContext'
 import { formatHealthStatus, isHealthStatusErr } from '@/utils/formatHealthStatus'
+import {
+  downloadConsultationMarkdownFile,
+  downloadConsultationPdfFile,
+} from '@/utils/consultExport'
 import { CONSULT_CHAT_KEY } from '@/constants/injectionKeys'
 
 const chat = inject(CONSULT_CHAT_KEY)
@@ -33,6 +37,8 @@ if (!chat) {
 
 const {
   messages,
+  sessions,
+  sessionId,
   loading,
   error,
   streamingContent,
@@ -69,6 +75,68 @@ const literatureTopK = ref(4)
 const literatureThreshold = ref(0)
 const literatureCollections = ref<{ id: string; label: string }[]>([])
 const attachInput = ref<HTMLInputElement | null>(null)
+const exportBusy = ref(false)
+const exportHint = ref<string | null>(null)
+
+/** 侧边栏会话标题，用于导出文件名与文档抬头 */
+const currentSessionTitle = computed(() => {
+  const id = sessionId.value
+  if (id == null) return '问诊记录'
+  return sessions.value.find((s) => s.id === id)?.title ?? `会话 #${id}`
+})
+
+let exportHintTimer: ReturnType<typeof setTimeout> | null = null
+function flashExportHint(text: string) {
+  exportHint.value = text
+  if (exportHintTimer) clearTimeout(exportHintTimer)
+  exportHintTimer = setTimeout(() => {
+    exportHint.value = null
+    exportHintTimer = null
+  }, 4500)
+}
+
+async function onExportMarkdown() {
+  const title = currentSessionTitle.value
+  const streamSnap =
+    loading.value && streamingContent.value ? streamingContent.value : null
+  if (
+    messages.value.length === 0 &&
+    (streamSnap == null || streamSnap.trim() === '')
+  ) {
+    flashExportHint('当前没有可导出的对话内容')
+    return
+  }
+  try {
+    downloadConsultationMarkdownFile(title, messages.value, streamSnap)
+    flashExportHint('已下载 Markdown 文件')
+  } catch (e) {
+    flashExportHint(`导出失败：${getErrorMessage(e)}`)
+  }
+}
+
+async function onExportPdf() {
+  const title = currentSessionTitle.value
+  const streamSnap =
+    loading.value && streamingContent.value ? streamingContent.value : null
+  if (
+    messages.value.length === 0 &&
+    (streamSnap == null || streamSnap.trim() === '')
+  ) {
+    flashExportHint('当前没有可导出的对话内容')
+    return
+  }
+  exportBusy.value = true
+  exportHint.value = null
+  try {
+    // PDF 生成依赖离屏渲染与 canvas，体积大时可能阻塞片刻；按钮 loading 提升可感知性
+    await downloadConsultationPdfFile(title, messages.value, streamSnap)
+    flashExportHint('已生成并下载 PDF')
+  } catch (e) {
+    flashExportHint(`PDF 导出失败：${getErrorMessage(e)}`)
+  } finally {
+    exportBusy.value = false
+  }
+}
 
 const knowledgeSelectOptions = computed<DsSelectOption[]>(() => {
   const head: DsSelectOption[] = [
@@ -219,6 +287,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   document.removeEventListener('click', closeSettingsOnOutside)
+  if (exportHintTimer) clearTimeout(exportHintTimer)
 })
 
 function onAttachClick() {
@@ -312,6 +381,28 @@ function canSend() {
           </p>
         </div>
         <div class="consult-header__side">
+          <div
+            class="consult-export-actions"
+            role="group"
+            aria-label="导出当前会话"
+          >
+            <button
+              type="button"
+              class="ds-btn ds-btn--ghost consult-export__btn"
+              :disabled="loading || exportBusy"
+              @click="onExportMarkdown"
+            >
+              导出 Markdown
+            </button>
+            <button
+              type="button"
+              class="ds-btn ds-btn--ghost consult-export__btn"
+              :disabled="loading || exportBusy"
+              @click="onExportPdf"
+            >
+              {{ exportBusy ? '生成 PDF…' : '导出 PDF' }}
+            </button>
+          </div>
           <button
             v-if="loading"
             type="button"
@@ -605,6 +696,13 @@ function canSend() {
           </div>
         </div>
       </div>
+      <p
+        v-if="exportHint"
+        class="ds-hint consult-export-hint"
+        role="status"
+      >
+        {{ exportHint }}
+      </p>
     </header>
 
     <DsAlert
@@ -826,6 +924,23 @@ function canSend() {
   justify-content: flex-end;
   gap: 0.35rem;
   flex-shrink: 0;
+}
+
+.consult-export-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.consult-export__btn {
+  font-size: 0.82rem;
+  padding: 0.35rem 0.55rem;
+}
+
+.consult-export-hint {
+  margin: 0.5rem 0 0;
+  width: 100%;
 }
 
 .consult-settings {
