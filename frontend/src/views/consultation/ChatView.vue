@@ -23,6 +23,7 @@ import ChatDocMessage from '@/components/business/ChatDocMessage.vue'
 import DsAlert from '@/components/common/DsAlert.vue'
 import DsSelect from '@/components/common/DsSelect.vue'
 import type { DsSelectOption } from '@/components/common/DsSelect.vue'
+import { useConsultChatPrefs } from '@/composables/useConsultChatPrefs'
 import { useOmniChatContext } from '@/composables/useOmniChatContext'
 import { formatHealthStatus, isHealthStatusErr } from '@/utils/formatHealthStatus'
 import {
@@ -61,19 +62,24 @@ const {
 } = useOmniChatContext()
 
 const health = ref<string>('')
-const settingsOpen = ref(false)
 const settingsWrapRef = ref<HTMLElement | null>(null)
 const threadEl = ref<HTMLElement | null>(null)
 const input = ref('')
-const temperature = ref(0.7)
-/** 与后端 DEFAULT_TOP_P 保持一致，用户可在高级设置中调整 */
-const topP = ref(0.9)
-const maxHistoryTurns = ref(10)
 const knowledgeBases = ref<KnowledgeBase[]>([])
-const ragTopK = ref(4)
-const ragSimilarityThreshold = ref(0)
-const literatureTopK = ref(4)
-const literatureThreshold = ref(0)
+
+/** 模型参数、RAG 数值与设置面板展开态：localStorage + sessionStorage，见 composable 内中文说明 */
+const {
+  temperature,
+  topP,
+  maxHistoryTurns,
+  ragTopK,
+  ragSimilarityThreshold,
+  literatureTopK,
+  literatureThreshold,
+  settingsOpen,
+  advOpen,
+  onConsultAdvToggle,
+} = useConsultChatPrefs()
 const literatureCollections = ref<{ id: string; label: string }[]>([])
 const attachInput = ref<HTMLInputElement | null>(null)
 const exportBusy = ref(false)
@@ -591,7 +597,11 @@ function canSend() {
                 </div>
               </div>
 
-              <details class="consult-adv consult-adv--panel">
+              <details
+                class="consult-adv consult-adv--panel"
+                :open="advOpen"
+                @toggle="onConsultAdvToggle"
+              >
                 <summary class="consult-adv__summary">
                   模型、RAG 参数与上下文
                 </summary>
