@@ -115,8 +115,9 @@ onMounted(async () => {
       智能体配置
     </h2>
     <p class="ds-lead agent-lead">
-      编排视觉 / 文本智能体的 System Prompt 与默认模型。纯文本 <code>/run</code> 默认启用 ReAct 工具循环（知识库检索
-      <code>knowledge_retrieval_tool</code>、药材图 <code>herb_image_recognition_tool</code>）；问诊内多模态仍走「视觉智能体」上传。
+      编排视觉 / 文本智能体的 System Prompt 与默认模型。JSON <code>/run</code> 默认启用 ReAct 工具循环（知识库检索
+      <code>knowledge_retrieval_tool</code>、药材图 <code>herb_image_recognition_tool</code>）；问诊「视觉智能体」附图以 Base64 随 JSON
+      提交（大图由前端自动压缩），直连多模态的 <code>multipart</code> 仍可供其它客户端使用。
     </p>
     <p
       class="ds-status agent-health"
@@ -185,7 +186,8 @@ onMounted(async () => {
         System Prompt
       </h3>
       <p class="ds-hint">
-        留空则使用服务端内置默认文案。文本路径对应无图任务；视觉路径对应带图多模态调用。
+        留空则使用服务端内置默认文案。文本路径对应无图或「仅工具内看图」的 ReAct 任务；视觉 System 仍用于 multipart
+        直连视觉模型等场景。
       </p>
       <label class="ds-field agent-prompt-field">
         文本智能体 System

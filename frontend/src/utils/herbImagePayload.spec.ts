@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { encodeImageFileToHerbPayload, parseDataUrlPayload } from './herbImagePayload'
+import {
+  computeTargetSize,
+  encodeImageFileToHerbPayload,
+  parseDataUrlPayload,
+} from './herbImagePayload'
 
 describe('parseDataUrlPayload', () => {
   it('parses standard data url', () => {
@@ -10,6 +14,17 @@ describe('parseDataUrlPayload', () => {
 
   it('returns null for invalid', () => {
     expect(parseDataUrlPayload('not-a-data-url')).toBeNull()
+  })
+})
+
+describe('computeTargetSize', () => {
+  it('returns original when within max edge', () => {
+    expect(computeTargetSize(800, 600, 1280)).toEqual({ width: 800, height: 600 })
+  })
+
+  it('scales down proportionally', () => {
+    expect(computeTargetSize(4000, 2000, 1280)).toEqual({ width: 1280, height: 640 })
+    expect(computeTargetSize(100, 3000, 1280)).toEqual({ width: 43, height: 1280 })
   })
 })
 
