@@ -12,4 +12,10 @@ public record AgentRunRequest(
         @Deprecated String imagePath,
         Long knowledgeBaseId,
         Integer ragTopK,
-        Double ragSimilarityThreshold) {}
+        Double ragSimilarityThreshold,
+        /**
+         * 可选：JSON 随路传入的单张药材图 Base64；写入 ToolContext 供 {@code herb_image_recognition_tool} 调用视觉模型。
+         */
+        String herbImageBase64,
+        /** 可选：与 herbImageBase64 对应的 MIME（如 image/png），缺省按 image/jpeg。 */
+        String herbImageMimeType) {}

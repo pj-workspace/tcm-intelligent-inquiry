@@ -65,3 +65,6 @@ tcm:
     storage-dir: data/literature-files
   ollama:
     vision-model: qwen3-vl:2b
+  # 文本智能体：是否启用 Spring AI 工具循环（knowledge_retrieval_tool + herb_image_recognition_tool）
+  agent:
+    enable-react-tools: true

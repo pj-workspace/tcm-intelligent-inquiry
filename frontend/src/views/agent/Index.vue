@@ -111,7 +111,8 @@ onMounted(async () => {
       智能体配置
     </h2>
     <p class="ds-lead agent-lead">
-      编排视觉 / 文本智能体的 System Prompt 与默认模型；执行与多模态对话请在「智能问诊」中选择「视觉智能体」。
+      编排视觉 / 文本智能体的 System Prompt 与默认模型。纯文本 <code>/run</code> 默认启用 ReAct 工具循环（知识库检索
+      <code>knowledge_retrieval_tool</code>、药材图 <code>herb_image_recognition_tool</code>）；问诊内多模态仍走「视觉智能体」上传。
     </p>
     <p
       class="ds-status agent-health"
