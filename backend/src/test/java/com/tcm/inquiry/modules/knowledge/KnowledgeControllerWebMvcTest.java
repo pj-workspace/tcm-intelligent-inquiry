@@ -78,7 +78,7 @@ class KnowledgeControllerWebMvcTest {
     @Test
     void uploadDocumentDelegatesToIngestion() throws Exception {
         org.mockito.Mockito.when(
-                        knowledgeIngestionService.ingest(eq(1L), any(), any()))
+                        knowledgeIngestionService.ingest(eq(1L), any(), any(), any()))
                 .thenReturn(
                         new KnowledgeFileView(
                                 1L, "f.pdf", "uuid-1", 100, "application/pdf", 3, Instant.now()));

@@ -65,9 +65,11 @@ public class LiteratureController {
     public ResponseEntity<ApiResult<LiteratureFileView>> upload(
             @RequestPart("file") MultipartFile file,
             @RequestParam(value = "collectionId", required = false) String collectionId,
-            @RequestParam(value = "chunkSize", required = false) Integer chunkSize)
+            @RequestParam(value = "chunkSize", required = false) Integer chunkSize,
+            @RequestParam(value = "chunkOverlap", required = false) Integer chunkOverlap)
             throws IOException {
-        return ResponseEntity.ok(R.ok(literatureIngestionService.ingest(collectionId, file, chunkSize)));
+        return ResponseEntity.ok(
+                R.ok(literatureIngestionService.ingest(collectionId, file, chunkSize, chunkOverlap)));
     }
 
     @PostMapping("/collections/{collectionId}/query")

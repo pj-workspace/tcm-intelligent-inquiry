@@ -23,6 +23,8 @@ const loadingFiles = ref(false)
 const uploading = ref(false)
 const msg = ref('')
 const chunkSize = ref(512)
+/** 与知识库相同：>0 时滑动窗口（码点），chunkSize 为窗口长度 */
+const chunkOverlap = ref(0)
 
 async function refreshHealth() {
   try {
@@ -80,6 +82,9 @@ async function onFileChange(e: Event) {
         }
         if (chunkSize.value > 32) {
           fd.append('chunkSize', String(chunkSize.value))
+        }
+        if (chunkOverlap.value > 0) {
+          fd.append('chunkOverlap', String(chunkOverlap.value))
         }
         const { data } = await uploadLiteratureFile(fd, silentAxiosConfig)
         if (data.code !== 0) throw new Error(data.message)
@@ -224,7 +229,8 @@ onMounted(async () => {
         上传文献
       </h3>
       <p class="ds-hint lit-upload-hint">
-        可多选文件依次解析；同一批上传会共享当前临时库 ID（首批会自动建库）。
+        可多选文件依次解析；同一批上传会共享当前临时库 ID（首批会自动建库）。重叠为 0 时按 Token 分块；重叠
+        &gt;0 时按码点滑动窗口（参数含义与知识库页一致）。
       </p>
       <div class="ds-row ds-row--center lit-upload-row">
         <label class="ds-field lit-field-inline">
@@ -237,6 +243,19 @@ onMounted(async () => {
             min="128"
             max="2048"
             step="64"
+          >
+        </label>
+        <label class="ds-field lit-field-inline">
+          重叠（chunkOverlap）
+          <input
+            v-model.number="chunkOverlap"
+            class="ds-input ds-input--narrow"
+            type="number"
+            inputmode="numeric"
+            min="0"
+            max="1024"
+            step="32"
+            title="0=Token 切分；>0=码点滑动窗口"
           >
         </label>
         <label class="ds-file-label ds-file-label--solid lit-file-btn">

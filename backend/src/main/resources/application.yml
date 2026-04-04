@@ -54,7 +54,8 @@ tcm:
       - "*"
   knowledge:
     chunk-size: 512
-    # 当前依赖的 Spring AI TokenTextSplitter（1.0.5）Builder 未暴露 overlap；滑动重叠需在升级版本或自定义切分器后单独接入
+    # 默认 0：入库使用 TokenTextSplitter；>0 时走按码点滑动窗口（上传参数 chunkOverlap 可覆盖）
+    default-chunk-overlap-chars: 0
     min-chunk-size-chars: 60
     min-chunk-length-to-embed: 20
     max-num-chunks: 5000

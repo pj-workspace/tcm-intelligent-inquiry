@@ -9,7 +9,6 @@ import java.util.UUID;
 
 import org.springframework.ai.document.Document;
 import org.springframework.ai.reader.tika.TikaDocumentReader;
-import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.core.io.FileSystemResource;
@@ -21,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.tcm.inquiry.modules.knowledge.ai.VectorStoreFilterDeletion;
+import com.tcm.inquiry.modules.knowledge.ai.chunking.IngestionDocumentChunker;
 import com.tcm.inquiry.modules.knowledge.config.KnowledgeProperties;
 import com.tcm.inquiry.modules.knowledge.dto.resp.KnowledgeFileView;
 import com.tcm.inquiry.modules.knowledge.entity.KnowledgeBase;
@@ -39,22 +39,29 @@ public class KnowledgeIngestionService {
     private final VectorStore vectorStore;
     private final KnowledgeProperties knowledgeProperties;
     private final VectorStoreFilterDeletion vectorStoreFilterDeletion;
+    private final IngestionDocumentChunker ingestionDocumentChunker;
 
     public KnowledgeIngestionService(
             KnowledgeBaseRepository knowledgeBaseRepository,
             KnowledgeFileRepository knowledgeFileRepository,
             VectorStore vectorStore,
             KnowledgeProperties knowledgeProperties,
-            VectorStoreFilterDeletion vectorStoreFilterDeletion) {
+            VectorStoreFilterDeletion vectorStoreFilterDeletion,
+            IngestionDocumentChunker ingestionDocumentChunker) {
         this.knowledgeBaseRepository = knowledgeBaseRepository;
         this.knowledgeFileRepository = knowledgeFileRepository;
         this.vectorStore = vectorStore;
         this.knowledgeProperties = knowledgeProperties;
         this.vectorStoreFilterDeletion = vectorStoreFilterDeletion;
+        this.ingestionDocumentChunker = ingestionDocumentChunker;
     }
 
     @Transactional
-    public KnowledgeFileView ingest(Long knowledgeBaseId, MultipartFile multipart, Integer chunkSizeOverride)
+    public KnowledgeFileView ingest(
+            Long knowledgeBaseId,
+            MultipartFile multipart,
+            Integer chunkSizeOverride,
+            Integer chunkOverlapOverride)
             throws IOException {
         KnowledgeBase kb =
                 knowledgeBaseRepository
@@ -86,21 +93,16 @@ public class KnowledgeIngestionService {
                 throw new IllegalStateException("no text extracted from file");
             }
 
+            int overlapEff =
+                    chunkOverlapOverride != null
+                            ? chunkOverlapOverride
+                            : knowledgeProperties.getDefaultChunkOverlapChars();
             int chunk =
                     chunkSizeOverride != null && chunkSizeOverride > 32
                             ? chunkSizeOverride
                             : knowledgeProperties.getChunkSize();
 
-            TokenTextSplitter splitter =
-                    TokenTextSplitter.builder()
-                            .withChunkSize(chunk)
-                            .withMinChunkSizeChars(knowledgeProperties.getMinChunkSizeChars())
-                            .withMinChunkLengthToEmbed(knowledgeProperties.getMinChunkLengthToEmbed())
-                            .withMaxNumChunks(knowledgeProperties.getMaxNumChunks())
-                            .withKeepSeparator(knowledgeProperties.isKeepSeparator())
-                            .build();
-
-            List<Document> chunks = splitter.apply(loaded);
+            List<Document> chunks = ingestionDocumentChunker.chunk(loaded, chunkSizeOverride, chunkOverlapOverride);
             for (Document d : chunks) {
                 d.getMetadata().put("kb_id", kbIdStr);
                 d.getMetadata().put("file_id", fileUuid);
@@ -121,16 +123,17 @@ public class KnowledgeIngestionService {
             row.setContentType(
                     multipart.getContentType() != null ? multipart.getContentType() : "application/octet-stream");
             row.setSizeBytes(multipart.getSize());
-            // 管理端「向量化状态」：当前 Spring AI TokenTextSplitter 无公开 overlap 参数，仅记录块数
+            // 管理端「向量化状态」：记录实际写入向量库的切片条数
             row.setEmbedChunkCount(chunks.size());
             KnowledgeFile saved = knowledgeFileRepository.save(row);
 
             log.info(
-                    "知识库入库完成 kbId={} file={} chunks={} chunkSizeTokens≈{}",
+                    "知识库入库完成 kbId={} file={} chunks={} chunkSizeParam={} overlapChars={}",
                     knowledgeBaseId,
                     safeName,
                     chunks.size(),
-                    chunk);
+                    chunk,
+                    overlapEff);
 
             return toView(saved);
         } catch (RuntimeException e) {

@@ -6,6 +6,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class KnowledgeProperties {
 
     private int chunkSize = 512;
+    /** 默认重叠（码点）；为 0 表示入库走 Token 切分；上传可覆盖 */
+    private int defaultChunkOverlapChars = 0;
     private int minChunkSizeChars = 60;
     private int minChunkLengthToEmbed = 20;
     private int maxNumChunks = 5000;
@@ -20,6 +22,14 @@ public class KnowledgeProperties {
 
     public void setChunkSize(int chunkSize) {
         this.chunkSize = chunkSize;
+    }
+
+    public int getDefaultChunkOverlapChars() {
+        return defaultChunkOverlapChars;
+    }
+
+    public void setDefaultChunkOverlapChars(int defaultChunkOverlapChars) {
+        this.defaultChunkOverlapChars = defaultChunkOverlapChars;
     }
 
     public int getMinChunkSizeChars() {

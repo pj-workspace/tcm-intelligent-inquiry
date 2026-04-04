@@ -11,7 +11,6 @@ import java.util.UUID;
 
 import org.springframework.ai.document.Document;
 import org.springframework.ai.reader.tika.TikaDocumentReader;
-import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.core.io.FileSystemResource;
@@ -20,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.tcm.inquiry.modules.knowledge.ai.VectorStoreFilterDeletion;
-import com.tcm.inquiry.modules.knowledge.config.KnowledgeProperties;
+import com.tcm.inquiry.modules.knowledge.ai.chunking.IngestionDocumentChunker;
 import com.tcm.inquiry.modules.literature.config.LiteratureProperties;
 import com.tcm.inquiry.modules.literature.dto.resp.LiteratureFileView;
 import com.tcm.inquiry.modules.literature.entity.LiteratureUpload;
@@ -33,28 +32,32 @@ public class LiteratureIngestionService {
 
     private final LiteratureUploadRepository literatureUploadRepository;
     private final VectorStore vectorStore;
-    private final KnowledgeProperties knowledgeProperties;
     private final LiteratureProperties literatureProperties;
     private final VectorStoreFilterDeletion vectorStoreFilterDeletion;
+    private final IngestionDocumentChunker ingestionDocumentChunker;
 
     public LiteratureIngestionService(
             LiteratureUploadRepository literatureUploadRepository,
             VectorStore vectorStore,
-            KnowledgeProperties knowledgeProperties,
             LiteratureProperties literatureProperties,
-            VectorStoreFilterDeletion vectorStoreFilterDeletion) {
+            VectorStoreFilterDeletion vectorStoreFilterDeletion,
+            IngestionDocumentChunker ingestionDocumentChunker) {
         this.literatureUploadRepository = literatureUploadRepository;
         this.vectorStore = vectorStore;
-        this.knowledgeProperties = knowledgeProperties;
         this.literatureProperties = literatureProperties;
         this.vectorStoreFilterDeletion = vectorStoreFilterDeletion;
+        this.ingestionDocumentChunker = ingestionDocumentChunker;
     }
 
     /**
      * @param collectionId 为空则新建临时库 UUID；同一 ID 下可多次上传合并检索。
      */
     @Transactional
-    public LiteratureFileView ingest(String collectionId, MultipartFile multipart, Integer chunkSizeOverride)
+    public LiteratureFileView ingest(
+            String collectionId,
+            MultipartFile multipart,
+            Integer chunkSizeOverride,
+            Integer chunkOverlapOverride)
             throws IOException {
         if (multipart == null || multipart.isEmpty()) {
             throw new IllegalArgumentException("empty file");
@@ -81,21 +84,8 @@ public class LiteratureIngestionService {
                 throw new IllegalStateException("no text extracted from file");
             }
 
-            int chunk =
-                    chunkSizeOverride != null && chunkSizeOverride > 32
-                            ? chunkSizeOverride
-                            : knowledgeProperties.getChunkSize();
-
-            TokenTextSplitter splitter =
-                    TokenTextSplitter.builder()
-                            .withChunkSize(chunk)
-                            .withMinChunkSizeChars(knowledgeProperties.getMinChunkSizeChars())
-                            .withMinChunkLengthToEmbed(knowledgeProperties.getMinChunkLengthToEmbed())
-                            .withMaxNumChunks(knowledgeProperties.getMaxNumChunks())
-                            .withKeepSeparator(knowledgeProperties.isKeepSeparator())
-                            .build();
-
-            List<Document> chunks = splitter.apply(loaded);
+            List<Document> chunks =
+                    ingestionDocumentChunker.chunk(loaded, chunkSizeOverride, chunkOverlapOverride);
             for (Document d : chunks) {
                 d.getMetadata().put("lit_collection_id", collection);
                 d.getMetadata().put("file_id", fileUuid);

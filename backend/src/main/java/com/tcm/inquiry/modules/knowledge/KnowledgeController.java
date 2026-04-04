@@ -78,10 +78,11 @@ public class KnowledgeController {
     public ResponseEntity<ApiResult<KnowledgeFileView>> uploadDocument(
             @PathVariable("kbId") Long knowledgeBaseId,
             @RequestPart("file") MultipartFile file,
-            @RequestParam(value = "chunkSize", required = false) Integer chunkSize)
+            @RequestParam(value = "chunkSize", required = false) Integer chunkSize,
+            @RequestParam(value = "chunkOverlap", required = false) Integer chunkOverlap)
             throws IOException {
         return ResponseEntity.ok(
-                R.ok(knowledgeIngestionService.ingest(knowledgeBaseId, file, chunkSize)));
+                R.ok(knowledgeIngestionService.ingest(knowledgeBaseId, file, chunkSize, chunkOverlap)));
     }
 
     @DeleteMapping("/bases/{kbId}/documents/{fileUuid}")

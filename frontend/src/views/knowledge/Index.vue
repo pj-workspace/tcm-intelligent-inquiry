@@ -29,6 +29,8 @@ const ingestMsg = ref('')
 const newBaseName = ref('默认知识库')
 const newBaseEmbed = ref('bge-m3:latest')
 const chunkSize = ref(512)
+/** 码点重叠；>0 时后端走滑动窗口，此时 chunkSize 表示码点窗口长度（建议 ≥128） */
+const chunkOverlap = ref(0)
 
 const baseSelectOptions = computed<DsSelectOption[]>(() => {
   if (bases.value.length === 0) {
@@ -112,6 +114,9 @@ async function onFileChange(e: Event) {
         fd.append('file', f)
         if (chunkSize.value > 32) {
           fd.append('chunkSize', String(chunkSize.value))
+        }
+        if (chunkOverlap.value > 0) {
+          fd.append('chunkOverlap', String(chunkOverlap.value))
         }
         const { data } = await uploadKnowledgeDocument(
           selectedBaseId.value,
@@ -241,7 +246,9 @@ onMounted(async () => {
         上传与文档列表
       </h3>
       <p class="ds-hint">
-        使用 Apache Tika 解析 PDF/Word/TXT 等；可多选文件依次入库。分块约长（按 token 计）可调整；当前所用 Spring AI TokenTextSplitter 未开放 overlap 配置，表格中的「向量块数」表示入库切片条数。删除会移除向量切片，需重新上传才能再次检索。
+        使用 Apache Tika 解析 PDF/Word/TXT 等；可多选文件依次入库。<strong>重叠为 0</strong> 时按 Spring AI
+        Token 分块（chunkSize 为 token 上限）；<strong>重叠大于 0</strong> 时按 Unicode 码点滑动窗口（chunkSize
+        为窗口长度，须 ≥64，建议 ≥128；chunkOverlap 为相邻切片重叠码点数，须小于窗口）。「向量块数」为实际写入向量库的切片条数。删除会移除向量切片。
       </p>
       <div class="ds-row ds-row--center kb-upload-row">
         <label class="ds-field kb-field-inline">
@@ -254,6 +261,19 @@ onMounted(async () => {
             min="128"
             max="2048"
             step="64"
+          >
+        </label>
+        <label class="ds-field kb-field-inline">
+          重叠（chunkOverlap，码点）
+          <input
+            v-model.number="chunkOverlap"
+            class="ds-input ds-input--narrow"
+            type="number"
+            inputmode="numeric"
+            min="0"
+            max="1024"
+            step="32"
+            title="0 表示不重叠（Token 切分）；大于 0 启用滑动窗口"
           >
         </label>
         <label class="ds-file-label ds-file-label--solid kb-file-btn">

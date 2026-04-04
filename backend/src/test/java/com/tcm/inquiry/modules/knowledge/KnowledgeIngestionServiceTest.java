@@ -17,6 +17,7 @@ import org.mockito.quality.Strictness;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.tcm.inquiry.modules.knowledge.ai.VectorStoreFilterDeletion;
+import com.tcm.inquiry.modules.knowledge.ai.chunking.IngestionDocumentChunker;
 import com.tcm.inquiry.modules.knowledge.config.KnowledgeProperties;
 import com.tcm.inquiry.modules.knowledge.entity.KnowledgeBase;
 import com.tcm.inquiry.modules.knowledge.repository.KnowledgeBaseRepository;
@@ -32,6 +33,7 @@ class KnowledgeIngestionServiceTest {
     @Mock private org.springframework.ai.vectorstore.VectorStore vectorStore;
     @Mock private KnowledgeProperties knowledgeProperties;
     @Mock private VectorStoreFilterDeletion vectorStoreFilterDeletion;
+    @Mock private IngestionDocumentChunker ingestionDocumentChunker;
 
     private KnowledgeIngestionService ingestionService;
 
@@ -45,7 +47,8 @@ class KnowledgeIngestionServiceTest {
                         knowledgeFileRepository,
                         vectorStore,
                         knowledgeProperties,
-                        vectorStoreFilterDeletion);
+                        vectorStoreFilterDeletion,
+                        ingestionDocumentChunker);
     }
 
     @Test
@@ -53,7 +56,7 @@ class KnowledgeIngestionServiceTest {
         when(knowledgeBaseRepository.findById(1L)).thenReturn(Optional.empty());
         MultipartFile file = mock(MultipartFile.class);
 
-        assertThatThrownBy(() -> ingestionService.ingest(1L, file, null))
+        assertThatThrownBy(() -> ingestionService.ingest(1L, file, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("knowledge base not found");
     }
@@ -66,7 +69,7 @@ class KnowledgeIngestionServiceTest {
         MultipartFile file = mock(MultipartFile.class);
         when(file.isEmpty()).thenReturn(true);
 
-        assertThatThrownBy(() -> ingestionService.ingest(1L, file, null))
+        assertThatThrownBy(() -> ingestionService.ingest(1L, file, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("empty file");
     }
