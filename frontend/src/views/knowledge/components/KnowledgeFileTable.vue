@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Loading } from '@element-plus/icons-vue'
 import type { KnowledgeFileView, KnowledgeIngestionStatus } from '@/types/knowledge'
 
 defineProps<{
@@ -35,6 +36,14 @@ function statusClass(st: KnowledgeIngestionStatus) {
     'kb-status--completed': st === 'COMPLETED',
     'kb-status--failed': st === 'FAILED',
   }
+}
+
+function failureDetail(f: KnowledgeFileView) {
+  const m = f.errorMessage?.trim()
+  if (m) {
+    return m
+  }
+  return '未返回详细错误信息，可尝试删除该条后重新上传。'
 }
 </script>
 
@@ -98,10 +107,36 @@ function statusClass(st: KnowledgeIngestionStatus) {
               }}
             </td>
             <td>
+              <el-tooltip
+                v-if="f.status === 'FAILED'"
+                effect="dark"
+                placement="top"
+                :show-after="200"
+                popper-class="ingest-err-tooltip-popper"
+              >
+                <template #content>
+                  <div class="ingest-err-tooltip__body">
+                    {{ failureDetail(f) }}
+                  </div>
+                </template>
+                <span
+                  :class="statusClass(f.status)"
+                  class="kb-status-cell kb-status-cell--hoverable"
+                >{{ INGEST_STATUS_LABEL[f.status] }}</span>
+              </el-tooltip>
               <span
+                v-else
                 :class="statusClass(f.status)"
-                :title="f.errorMessage ?? undefined"
-              >{{ INGEST_STATUS_LABEL[f.status] }}</span>
+                class="kb-status-cell"
+              >
+                <el-icon
+                  v-if="f.status === 'PROCESSING'"
+                  class="is-loading kb-status-cell__spin"
+                >
+                  <Loading />
+                </el-icon>
+                {{ INGEST_STATUS_LABEL[f.status] }}
+              </span>
             </td>
             <td class="kb-table__mono">
               {{ formatDate(f.createdAt) }}
@@ -216,6 +251,21 @@ function statusClass(st: KnowledgeIngestionStatus) {
   font-size: 0.8125rem;
   color: var(--color-muted);
 }
+.kb-status-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  vertical-align: middle;
+}
+.kb-status-cell--hoverable {
+  cursor: help;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 0.12em;
+}
+.kb-status-cell__spin {
+  font-size: 0.95rem;
+}
 .kb-status {
   display: inline-block;
   padding: 0.15rem 0.45rem;
@@ -268,5 +318,16 @@ function statusClass(st: KnowledgeIngestionStatus) {
   font-size: 0.8125rem;
   line-height: 1.45;
   max-width: 22rem;
+}
+</style>
+
+<style>
+/* Teleport 至 body，需非 scoped */
+.ingest-err-tooltip-popper .ingest-err-tooltip__body {
+  max-width: min(26rem, 85vw);
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.45;
+  font-size: 0.8125rem;
 }
 </style>

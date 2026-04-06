@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { silentAxiosConfig } from '@/api/core/client'
 import { getErrorMessage } from '@/api/core/errors'
@@ -13,7 +13,9 @@ import KnowledgeBaseSelector from '@/views/knowledge/components/KnowledgeBaseSel
 import KnowledgeFileTable from '@/views/knowledge/components/KnowledgeFileTable.vue'
 import KnowledgeProbeChat from '@/views/knowledge/components/KnowledgeProbeChat.vue'
 import KnowledgeUploadManager from '@/views/knowledge/components/KnowledgeUploadManager.vue'
+import { useSmartIngestListPolling } from '@/composables/useSmartIngestListPolling'
 import type { KnowledgeBase, KnowledgeFileView } from '@/types/knowledge'
+import { knowledgeFilesNeedPoll } from '@/types/knowledge'
 import {
   formatHealthStatus,
   isHealthStatusErr,
@@ -25,7 +27,16 @@ const kbList = ref<KnowledgeBase[]>([])
 const currentKbId = ref<number | null>(null)
 const files = ref<KnowledgeFileView[]>([])
 const loadingFiles = ref(false)
+const loadFilesBusy = ref(false)
 const bootstrapMsg = ref('')
+const listPolling = useSmartIngestListPolling({ intervalMs: 4000 })
+
+function scheduleListPollingReconcile() {
+  const tick = () => {
+    void loadFiles()
+  }
+  listPolling.reconcile(knowledgeFilesNeedPoll(files.value), tick)
+}
 
 async function loadKnowledgeBases() {
   const { data } = await listKnowledgeBases(silentAxiosConfig)
@@ -37,8 +48,14 @@ async function loadKnowledgeBases() {
 }
 
 async function loadFiles() {
+  if (loadFilesBusy.value) {
+    return
+  }
+  loadFilesBusy.value = true
   if (currentKbId.value == null) {
     files.value = []
+    listPolling.stop()
+    loadFilesBusy.value = false
     return
   }
   loadingFiles.value = true
@@ -51,6 +68,8 @@ async function loadFiles() {
     files.value = data.data ?? []
   } finally {
     loadingFiles.value = false
+    loadFilesBusy.value = false
+    scheduleListPollingReconcile()
   }
 }
 
@@ -72,6 +91,7 @@ async function reloadBasesSafe() {
 }
 
 watch(currentKbId, () => {
+  listPolling.stop()
   void loadFiles()
 })
 
@@ -93,6 +113,10 @@ onMounted(async () => {
   } catch (e) {
     bootstrapMsg.value = getErrorMessage(e)
   }
+})
+
+onUnmounted(() => {
+  listPolling.stop()
 })
 </script>
 

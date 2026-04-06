@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { onBeforeRouteLeave } from 'vue-router'
 import { silentAxiosConfig } from '@/api/core/client'
@@ -13,7 +13,9 @@ import {
 import LiteratureFileTable from '@/views/literature/components/LiteratureFileTable.vue'
 import LiteratureProbeChat from '@/views/literature/components/LiteratureProbeChat.vue'
 import LiteratureUploadManager from '@/views/literature/components/LiteratureUploadManager.vue'
+import { useSmartIngestListPolling } from '@/composables/useSmartIngestListPolling'
 import type { LiteratureFileView } from '@/types/literature'
+import { literatureFilesNeedPoll } from '@/types/literature'
 import {
   formatHealthStatus,
   isHealthStatusErr,
@@ -28,14 +30,28 @@ const health = ref('加载中…')
 const collectionId = ref<string | null>(null)
 const files = ref<LiteratureFileView[]>([])
 const loadingFiles = ref(false)
+const loadFilesBusy = ref(false)
+const listPolling = useSmartIngestListPolling({ intervalMs: 4000 })
 
 const literatureUploadRef = ref<InstanceType<typeof LiteratureUploadManager> | null>(
   null
 )
 
+function scheduleListPollingReconcile() {
+  listPolling.reconcile(literatureFilesNeedPoll(files.value), () => {
+    void loadFiles()
+  })
+}
+
 async function loadFiles() {
+  if (loadFilesBusy.value) {
+    return
+  }
+  loadFilesBusy.value = true
   if (!collectionId.value) {
     files.value = []
+    listPolling.stop()
+    loadFilesBusy.value = false
     return
   }
   loadingFiles.value = true
@@ -48,6 +64,8 @@ async function loadFiles() {
     files.value = data.data ?? []
   } finally {
     loadingFiles.value = false
+    loadFilesBusy.value = false
+    scheduleListPollingReconcile()
   }
 }
 
@@ -61,6 +79,7 @@ async function refreshHealth() {
 }
 
 watch(collectionId, () => {
+  listPolling.stop()
   void loadFiles()
 })
 
@@ -127,6 +146,10 @@ onMounted(async () => {
     }
   }
   await refreshHealth()
+})
+
+onUnmounted(() => {
+  listPolling.stop()
 })
 
 onBeforeRouteLeave(async (_to, _from, next) => {

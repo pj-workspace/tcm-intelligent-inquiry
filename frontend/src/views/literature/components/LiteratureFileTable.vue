@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { LiteratureFileView } from '@/types/literature'
+import { Loading } from '@element-plus/icons-vue'
+import type { LiteratureFileView, LiteratureUploadStatus } from '@/types/literature'
 
 defineProps<{
   files: LiteratureFileView[]
@@ -21,6 +22,29 @@ function formatDate(iso: string) {
 
 function onRemove(fileUuid: string) {
   emit('remove', fileUuid)
+}
+
+const LIT_STATUS_LABEL: Record<LiteratureUploadStatus, string> = {
+  PENDING: '排队',
+  READY: '完成',
+  FAILED: '失败',
+}
+
+function litStatusClass(st: LiteratureUploadStatus) {
+  return {
+    'lit-ingest-status': true,
+    'lit-ingest-status--pending': st === 'PENDING',
+    'lit-ingest-status--ready': st === 'READY',
+    'lit-ingest-status--failed': st === 'FAILED',
+  }
+}
+
+function litFailureDetail(f: LiteratureFileView) {
+  const m = f.errorMessage?.trim()
+  if (m) {
+    return m
+  }
+  return '未返回详细错误信息，可尝试删除后重新上传。'
 }
 </script>
 
@@ -72,7 +96,36 @@ function onRemove(fileUuid: string) {
             <td>{{ f.originalFilename }}</td>
             <td>{{ (f.sizeBytes / 1024).toFixed(1) }} KB</td>
             <td>
-              <span class="ds-badge">{{ f.status }}</span>
+              <el-tooltip
+                v-if="f.status === 'FAILED'"
+                effect="dark"
+                placement="top"
+                :show-after="200"
+                popper-class="ingest-err-tooltip-popper"
+              >
+                <template #content>
+                  <div class="ingest-err-tooltip__body">
+                    {{ litFailureDetail(f) }}
+                  </div>
+                </template>
+                <span
+                  :class="litStatusClass(f.status)"
+                  class="lit-ingest-status-cell lit-ingest-status-cell--hoverable"
+                >{{ LIT_STATUS_LABEL[f.status] }}</span>
+              </el-tooltip>
+              <span
+                v-else
+                :class="litStatusClass(f.status)"
+                class="lit-ingest-status-cell"
+              >
+                <el-icon
+                  v-if="f.status === 'PENDING'"
+                  class="is-loading lit-ingest-status-cell__spin"
+                >
+                  <Loading />
+                </el-icon>
+                {{ LIT_STATUS_LABEL[f.status] }}
+              </span>
             </td>
             <td class="lit-table__mono">
               {{ formatDate(f.createdAt) }}
@@ -220,5 +273,50 @@ function onRemove(fileUuid: string) {
   font-size: 0.8125rem;
   line-height: 1.45;
   max-width: 24rem;
+}
+.lit-ingest-status-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  vertical-align: middle;
+}
+.lit-ingest-status-cell--hoverable {
+  cursor: help;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 0.12em;
+}
+.lit-ingest-status-cell__spin {
+  font-size: 0.95rem;
+}
+.lit-ingest-status {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+.lit-ingest-status--pending {
+  background: var(--color-surface-elevated);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+.lit-ingest-status--ready {
+  background: color-mix(in srgb, var(--color-success, #16a34a) 14%, transparent);
+  color: var(--color-success, #15803d);
+}
+.lit-ingest-status--failed {
+  background: color-mix(in srgb, var(--color-danger) 14%, transparent);
+  color: var(--color-danger);
+}
+</style>
+
+<style>
+.ingest-err-tooltip-popper .ingest-err-tooltip__body {
+  max-width: min(26rem, 85vw);
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.45;
+  font-size: 0.8125rem;
 }
 </style>

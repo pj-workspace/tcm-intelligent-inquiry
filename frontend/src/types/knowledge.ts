@@ -14,6 +14,12 @@ export type KnowledgeIngestionStatus =
   | 'COMPLETED'
   | 'FAILED'
 
+/** 仍处于异步流水线、需要列表轮询的状态 */
+export const KNOWLEDGE_INGEST_IN_FLIGHT_STATUSES: readonly KnowledgeIngestionStatus[] = [
+  'PENDING',
+  'PROCESSING',
+]
+
 export type KnowledgeFileView = {
   id: number
   originalFilename: string
@@ -25,6 +31,10 @@ export type KnowledgeFileView = {
   createdAt: string
   status: KnowledgeIngestionStatus
   errorMessage: string | null
+}
+
+export function knowledgeFilesNeedPoll(files: readonly KnowledgeFileView[]): boolean {
+  return files.some((f) => KNOWLEDGE_INGEST_IN_FLIGHT_STATUSES.includes(f.status))
 }
 
 export type KnowledgeQueryResponse = {
