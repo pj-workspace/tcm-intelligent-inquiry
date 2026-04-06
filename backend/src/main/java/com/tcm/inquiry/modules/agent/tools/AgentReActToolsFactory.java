@@ -122,6 +122,7 @@ public class AgentReActToolsFactory {
                                     TOOL_KNOWLEDGE,
                                     "start",
                                     args.query() != null ? args.query().trim() : "");
+                            KnowledgeContextBundle bundle = null;
                             try {
                                 Long kbId = resolveKnowledgeBaseId(args, ctx);
                                 if (kbId == null) {
@@ -134,7 +135,7 @@ public class AgentReActToolsFactory {
                                 Integer topK = resolveTopK(args, ctx);
                                 Double sim = resolveSimilarity(args, ctx);
 
-                                KnowledgeContextBundle bundle =
+                                bundle =
                                         knowledgeRagService.retrieveContext(
                                                 kbId, args.query().trim(), topK, sim);
 
@@ -157,7 +158,8 @@ public class AgentReActToolsFactory {
                                 return "【工具结果-异常】"
                                         + (ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName());
                             } finally {
-                                notifyToolProgress(ctx, TOOL_KNOWLEDGE, "end", null);
+                                notifyToolProgress(
+                                        ctx, TOOL_KNOWLEDGE, "end", summarizeRagEndDetail(bundle));
                             }
                         })
                 .description(
@@ -178,6 +180,7 @@ public class AgentReActToolsFactory {
                                     TOOL_LITERATURE,
                                     "start",
                                     args.query() != null ? args.query().trim() : "");
+                            KnowledgeContextBundle bundle = null;
                             try {
                                 String collId = resolveLiteratureCollectionId(args, ctx);
                                 if (collId == null || collId.isBlank()) {
@@ -188,7 +191,7 @@ public class AgentReActToolsFactory {
                                 }
                                 Integer topK = resolveLiteratureTopK(args, ctx);
                                 Double sim = resolveLiteratureSimilarity(args, ctx);
-                                KnowledgeContextBundle bundle =
+                                bundle =
                                         literatureRagService.retrieveContextForAgentTool(
                                                 collId, args.query().trim(), topK, sim);
 
@@ -209,7 +212,8 @@ public class AgentReActToolsFactory {
                                 return "【工具结果-异常】"
                                         + (ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName());
                             } finally {
-                                notifyToolProgress(ctx, TOOL_LITERATURE, "end", null);
+                                notifyToolProgress(
+                                        ctx, TOOL_LITERATURE, "end", summarizeRagEndDetail(bundle));
                             }
                         })
                 .description(
@@ -444,7 +448,7 @@ public class AgentReActToolsFactory {
                                 return "【图像识别-异常】"
                                         + (ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName());
                             } finally {
-                                notifyToolProgress(ctx, TOOL_HERB_IMAGE, "end", null);
+                                notifyToolProgress(ctx, TOOL_HERB_IMAGE, "end", "识图完成");
                             }
                         })
                 .description(
@@ -455,6 +459,19 @@ public class AgentReActToolsFactory {
                         """)
                 .inputType(HerbImageRecognitionToolArgs.class)
                 .build();
+    }
+
+    /** 问诊 SSE 终端提示：工具结束行摘要（片段数 + 最高分）。 */
+    private static String summarizeRagEndDetail(KnowledgeContextBundle bundle) {
+        if (bundle == null) {
+            return null;
+        }
+        List<KnowledgeRetrievedPassage> p = bundle.passages();
+        if (p == null || p.isEmpty()) {
+            return "未匹配到相关片段";
+        }
+        double max = p.stream().mapToDouble(KnowledgeRetrievedPassage::score).max().orElse(0.0);
+        return "匹配到 %d 个相关片段 (最高得分: %.2f)".formatted(p.size(), max);
     }
 
     private static void notifyToolProgress(

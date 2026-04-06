@@ -103,7 +103,16 @@ export type StreamActivityEntry = {
   step?: number
 }
 
+/** 右侧「生成物」面板：每条结构化辨证摘要的版本（含 SSE report 与历史回放）。 */
+export type ArtifactReportVersion = {
+  id: string
+  at: number
+  report: TcmDiagnosisReport
+  herbSafety: HerbSafetyCheckResult | null
+}
+
 const STREAM_ACTIVITY_MAX = 24
+const ARTIFACT_VERSIONS_MAX = 32
 
 /**
  * 中医问诊：会话列表、历史加载、SSE 流式发送、打字机状态与错误处理。
@@ -128,6 +137,10 @@ export function useChat() {
   const streamPhase = ref<StreamPhasePayload | null>(null)
   /** 本轮已收阶段事件时间线（供界面「编排追踪」展开） */
   const streamActivityLog = ref<StreamActivityEntry[]>([])
+  /** 本会话内历次「辨证摘要」版本（json-report / report 事件） */
+  const artifactReportVersions = ref<ArtifactReportVersion[]>([])
+  /** 同一轮流式中避免重复追加相同 report 的快照键 */
+  let lastStreamingArtifactKey = ''
   let abort: AbortController | null = null
 
   function appendStreamActivity(entry: Omit<StreamActivityEntry, 'ts'>) {
@@ -186,6 +199,7 @@ export function useChat() {
       })
     }
     messages.value = next
+    rebuildArtifactVersionsFromMessages()
   }
 
   async function openSession(id: number) {
@@ -198,6 +212,7 @@ export function useChat() {
     ragMeta.value = null
     streamPhase.value = null
     streamActivityLog.value = []
+    artifactReportVersions.value = []
     sessionId.value = id
     try {
       await loadHistory()
@@ -219,6 +234,8 @@ export function useChat() {
     ragMeta.value = null
     streamPhase.value = null
     streamActivityLog.value = []
+    artifactReportVersions.value = []
+    lastStreamingArtifactKey = ''
     error.value = null
     await ensureSession()
     if (sessionId.value != null) persistLastSession(sessionId.value)
@@ -242,8 +259,49 @@ export function useChat() {
   function scrollToBottom(el: HTMLElement | null) {
     if (!el) return
     nextTick(() => {
-      el.scrollTop = el.scrollHeight
+      try {
+        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+      } catch {
+        el.scrollTop = el.scrollHeight
+      }
     })
+  }
+
+  function appendArtifactVersion(report: TcmDiagnosisReport, safety: HerbSafetyCheckResult | null) {
+    const key = JSON.stringify(report)
+    if (key === lastStreamingArtifactKey) return
+    lastStreamingArtifactKey = key
+    const row: ArtifactReportVersion = {
+      id:
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `a-${Date.now()}`,
+      at: Date.now(),
+      report,
+      herbSafety: safety,
+    }
+    const next = [...artifactReportVersions.value, row]
+    artifactReportVersions.value =
+      next.length > ARTIFACT_VERSIONS_MAX
+        ? next.slice(-ARTIFACT_VERSIONS_MAX)
+        : next
+  }
+
+  function rebuildArtifactVersionsFromMessages() {
+    const next: ArtifactReportVersion[] = []
+    let i = 0
+    for (const m of messages.value) {
+      if (m.role === 'assistant' && m.diagnosisReport) {
+        next.push({
+          id: `hist-${i++}`,
+          at: i,
+          report: m.diagnosisReport,
+          herbSafety: m.herbSafety ?? null,
+        })
+      }
+    }
+    artifactReportVersions.value = next
+    lastStreamingArtifactKey = ''
   }
 
   async function send(userText: string, opts?: SendOptions) {
@@ -262,6 +320,7 @@ export function useChat() {
     ragMeta.value = null
     streamPhase.value = null
     streamActivityLog.value = []
+    lastStreamingArtifactKey = ''
     if (!opts?.skipAppendUser) {
       messages.value = [...messages.value, { role: 'user', content: bubble }]
     }
@@ -320,7 +379,6 @@ export function useChat() {
         (chunk) => {
           assistant += chunk
           streamingContent.value = assistant
-          scrollToBottom(opts?.scrollRoot ?? null)
         },
         {
           method: 'POST',
@@ -333,6 +391,7 @@ export function useChat() {
               if (parsed) {
                 streamingDiagnosisReport.value = parsed.report
                 streamingHerbSafety.value = parsed.safety
+                appendArtifactVersion(parsed.report, parsed.safety)
               }
               return
             }
@@ -381,7 +440,6 @@ export function useChat() {
                 ) {
                   assistant += o.text
                   streamingContent.value = assistant
-                  scrollToBottom(opts?.scrollRoot ?? null)
                 }
               } catch {
                 /* ignore */
@@ -479,6 +537,9 @@ export function useChat() {
       const diagnosisReport = fromEvent ?? fromMarkdown ?? undefined
       const herbSafetySnap = streamingHerbSafety.value
       const traceSnap = [...streamingRetrievalPassages.value]
+      if (diagnosisReport) {
+        appendArtifactVersion(diagnosisReport, herbSafetySnap ?? null)
+      }
       messages.value = [
         ...messages.value,
         {
@@ -507,6 +568,9 @@ export function useChat() {
           const diagnosisReport = fromEvent ?? fromMarkdown ?? undefined
           const herbSafetySnap = streamingHerbSafety.value
           const traceSnap = [...streamingRetrievalPassages.value]
+          if (diagnosisReport) {
+            appendArtifactVersion(diagnosisReport, herbSafetySnap ?? null)
+          }
           messages.value = [
             ...messages.value,
             {
@@ -574,6 +638,7 @@ export function useChat() {
     ragMeta.value = null
     streamPhase.value = null
     streamActivityLog.value = []
+    lastStreamingArtifactKey = ''
     const names = images.map((f) => f.name).join('、')
     const userLabel =
       images.length > 0 ? `${text}\n\n（附图${images.length}张：${names}）` : text
@@ -637,6 +702,9 @@ export function useChat() {
         }
       }
       const visionReport = tryParseDiagnosisReportFromMarkdown(answer)
+      if (visionReport) {
+        appendArtifactVersion(visionReport, null)
+      }
       messages.value = [
         ...messages.value,
         {
@@ -674,6 +742,7 @@ export function useChat() {
     ragMeta,
     streamPhase,
     streamActivityLog,
+    artifactReportVersions,
     fetchSessions,
     ensureSession,
     loadHistory,

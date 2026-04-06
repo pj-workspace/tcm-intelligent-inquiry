@@ -10,6 +10,7 @@ import type { HerbSafetyCheckResult, TcmDiagnosisReport } from '@/types/consulta
 import type { KnowledgeRetrievedPassage } from '@/types/knowledge'
 import ChatDocMessage from '@/components/business/ChatDocMessage.vue'
 import DsAlert from '@/components/common/DsAlert.vue'
+import ConsultationToolTerminal from '@/views/consultation/components/ConsultationToolTerminal.vue'
 import { useBrailleSpinner } from '@/composables/useBrailleSpinner'
 
 const props = defineProps<{
@@ -93,18 +94,49 @@ const streamingRagLog = computed(() => {
 })
 
 const threadScrollRoot = ref<HTMLElement | null>(null)
+/** 用户手动上滑时暂停自动粘底，靠近底部或新发送时恢复 */
+const userPinnedToBottom = ref(true)
+const SCROLL_PIN_THRESHOLD_PX = 120
 
-function scrollToBottom() {
+function onThreadScroll() {
+  const el = threadScrollRoot.value
+  if (!el) return
+  const dist = el.scrollHeight - el.scrollTop - el.clientHeight
+  userPinnedToBottom.value = dist < SCROLL_PIN_THRESHOLD_PX
+}
+
+function scrollToBottomIfPinned() {
   nextTick(() => {
     const el = threadScrollRoot.value
-    if (el) el.scrollTop = el.scrollHeight
+    if (!el) return
+    if (!userPinnedToBottom.value && !props.loading) return
+    const dist = el.scrollHeight - el.scrollTop - el.clientHeight
+    if (!props.loading && dist > SCROLL_PIN_THRESHOLD_PX * 1.5) return
+    try {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+    } catch {
+      el.scrollTop = el.scrollHeight
+    }
   })
 }
 
 watch(
-  () => [props.messages, props.streamingContent] as const,
-  () => scrollToBottom(),
-  { deep: true }
+  () => props.loading,
+  (loading) => {
+    if (loading) userPinnedToBottom.value = true
+  }
+)
+
+watch(
+  () =>
+    [
+      props.messages.length,
+      props.streamingContent,
+      props.loading,
+      props.streamingDiagnosisReport,
+    ] as const,
+  () => scrollToBottomIfPinned(),
+  { flush: 'post' }
 )
 
 defineExpose({
@@ -122,6 +154,10 @@ defineExpose({
     >
       {{ error }}
     </DsAlert>
+    <ConsultationToolTerminal
+      :entries="streamActivityLog"
+      :active="loading"
+    />
     <p
       v-if="loading && orchestrationLabel"
       class="consult-orchestration"
@@ -204,9 +240,10 @@ defineExpose({
 
     <div
       ref="threadScrollRoot"
-      class="ds-thread consult-thread"
+      class="ds-thread consult-thread consult-thread--grid"
       role="region"
       aria-label="对话内容"
+      @scroll.passive="onThreadScroll"
     >
       <div class="consult-doc-stream">
         <div
@@ -413,6 +450,23 @@ defineExpose({
 .consult-thread {
   flex: 1;
   min-height: 0;
+}
+
+.consult-thread--grid {
+  background-color: var(--color-surface);
+  background-image:
+    linear-gradient(to right, rgba(124, 58, 237, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(124, 58, 237, 0.045) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: 0 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+}
+
+html.dark .consult-thread--grid {
+  background-image:
+    linear-gradient(to right, rgba(167, 139, 250, 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(167, 139, 250, 0.08) 1px, transparent 1px);
 }
 
 .consult-doc-stream {

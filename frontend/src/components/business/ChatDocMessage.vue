@@ -2,6 +2,7 @@
 import { computed, onUnmounted, ref, watch } from 'vue'
 import MarkdownContent from '@/components/business/MarkdownContent.vue'
 import DiagnosisReportCard from '@/views/consultation/components/DiagnosisReportCard.vue'
+import ReasoningLogger from '@/views/consultation/components/ReasoningLogger.vue'
 import RetrievalTraceDrawer from '@/views/consultation/components/RetrievalTraceDrawer.vue'
 import type { HerbSafetyCheckResult, TcmDiagnosisReport } from '@/types/consultation'
 import type { KnowledgeRetrievedPassage } from '@/types/knowledge'
@@ -113,8 +114,6 @@ const showThinkPanel = computed(() => {
   return !!(p.think || p.thinkIncomplete || ragTrim.value)
 })
 
-const thinkPanelOpen = computed(() => parsed.value?.thinkIncomplete ?? false)
-
 const copyPlain = computed(
   () => (parsed.value?.rest ?? (props.role === 'assistant' ? props.content : '')).trim()
 )
@@ -148,6 +147,14 @@ const assistantBusy = computed(
     (showStreamingPlaceholder.value ||
       !!streamPending.value ||
       !!parsed.value?.thinkIncomplete)
+)
+
+/** 流式末尾打字光标：有已提交或可预览尾部时显示 */
+const showTypingCursor = computed(
+  () =>
+    props.role === 'assistant' &&
+    props.isStreaming &&
+    (!!streamCommitted.value.trim() || !!streamPending.value)
 )
 
 async function copyAnswer() {
@@ -225,50 +232,12 @@ onUnmounted(() => {
           />
         </svg>
       </span>
-      <details
+      <ReasoningLogger
         v-if="showThinkPanel && parsed"
-        class="chat-doc-think"
-        :open="thinkPanelOpen"
-      >
-        <summary
-          class="chat-doc-think__summary"
-          :class="{ 'chat-doc-think__summary--working': parsed?.thinkIncomplete }"
-        >
-          <svg
-            class="chat-doc-think__chev"
-            width="12"
-            height="12"
-            viewBox="0 0 12 12"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            aria-hidden="true"
-          >
-            <path
-              d="M2.5 4.5L6 8L9.5 4.5"
-              stroke="currentColor"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
-          <span class="chat-doc-think__label">{{
-            parsed.thinkIncomplete ? '推理中…' : '显示思路'
-          }}</span>
-        </summary>
-        <div class="chat-doc-think__body">
-          <pre
-            v-if="parsed.think"
-            class="chat-doc-think__pre"
-          >{{ parsed.think }}</pre>
-          <div
-            v-if="ragTrim"
-            class="chat-doc-think__rag"
-          >
-            <span class="chat-doc-think__rag-label">检索 / 上下文</span>
-            <pre class="chat-doc-think__pre chat-doc-think__pre--rag">{{ ragLog }}</pre>
-          </div>
-        </div>
-      </details>
+        :think="parsed.think"
+        :incomplete="!!parsed.thinkIncomplete"
+        :rag-log="ragLog"
+      />
     </div>
 
     <div class="chat-doc-assistant__body">
@@ -299,8 +268,13 @@ onUnmounted(() => {
           v-if="streamPending"
           class="chat-doc-stream-tail"
         >{{ streamPending }}</pre>
+        <span
+          v-if="showTypingCursor"
+          class="chat-doc-typing-cursor"
+          aria-hidden="true"
+        />
         <div
-          v-else-if="showStreamingPlaceholder"
+          v-if="showStreamingPlaceholder"
           class="chat-doc-pending"
           aria-live="polite"
           aria-busy="true"
@@ -326,8 +300,10 @@ onUnmounted(() => {
           </div>
         </div>
         <p
-          v-else-if="
-            parsed &&
+          v-if="
+            !showStreamingPlaceholder &&
+              !showTypingCursor &&
+              parsed &&
               !parsed.think &&
               !parsed.thinkIncomplete &&
               !parsed.rest.trim()
@@ -539,24 +515,6 @@ onUnmounted(() => {
   }
 }
 
-.chat-doc-think__summary--working {
-  color: var(--color-primary-hover);
-}
-
-.chat-doc-think__summary--working .chat-doc-think__label {
-  animation: chat-doc-label-soft 1.1s ease-in-out infinite;
-}
-
-@keyframes chat-doc-label-soft {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.62;
-  }
-}
-
 /** 闸门尚未交给 markdown-it 的尾部字符：等宽、略透明，提示仍在流入 */
 .chat-doc-stream-tail {
   margin: 0.35rem 0 0;
@@ -572,6 +530,23 @@ onUnmounted(() => {
   background: rgba(99, 102, 241, 0.06);
   border-radius: 0.35rem;
   border: 1px dashed rgba(99, 102, 241, 0.22);
+}
+
+.chat-doc-typing-cursor {
+  display: inline-block;
+  width: 0.5rem;
+  height: 1.15em;
+  margin-left: 0.06rem;
+  vertical-align: text-bottom;
+  background: var(--color-primary-hover);
+  border-radius: 2px;
+  animation: chat-doc-cursor-blink 1s step-end infinite;
+}
+
+@keyframes chat-doc-cursor-blink {
+  50% {
+    opacity: 0;
+  }
 }
 
 .chat-doc-pending {
@@ -674,117 +649,6 @@ onUnmounted(() => {
   }
 }
 
-.chat-doc-think {
-  flex: 1;
-  min-width: 10rem;
-  max-width: 100%;
-  margin: 0;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-}
-
-.chat-doc-think__summary {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.32rem;
-  cursor: pointer;
-  list-style: none;
-  padding: 0.2rem 0.35rem;
-  margin: 0;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--color-muted);
-  user-select: none;
-  touch-action: manipulation;
-  border-radius: var(--radius-sm);
-  transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
-}
-
-.chat-doc-think__summary::-webkit-details-marker {
-  display: none;
-}
-
-.chat-doc-think__summary:hover {
-  background: rgba(124, 58, 237, 0.08);
-  color: var(--color-text-secondary);
-}
-
-.chat-doc-think__summary:active {
-  transform: scale(0.97);
-}
-
-.chat-doc-think__summary:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-.chat-doc-think__chev {
-  flex-shrink: 0;
-  color: var(--color-muted);
-  transition: transform 0.2s ease;
-}
-
-.chat-doc-think[open] > .chat-doc-think__summary .chat-doc-think__chev {
-  transform: rotate(180deg);
-  color: var(--color-primary-hover);
-}
-
-.chat-doc-think__label {
-  line-height: 1.3;
-}
-
-.chat-doc-think__body {
-  margin-top: 0.4rem;
-  padding: 0.55rem 0.65rem 0.55rem 0.75rem;
-  max-height: 16rem;
-  overflow: auto;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
-  border-left: 3px solid rgba(99, 102, 241, 0.45);
-  background: rgba(248, 250, 252, 0.9);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-}
-
-.chat-doc-think__body::-webkit-scrollbar {
-  width: 6px;
-}
-
-.chat-doc-think__body::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.12);
-  border-radius: 100px;
-}
-
-.chat-doc-think__pre {
-  margin: 0 0 0.5rem;
-  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
-  font-size: 0.8125rem;
-  line-height: 1.55;
-  color: var(--color-muted);
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.chat-doc-think__pre:last-child {
-  margin-bottom: 0;
-}
-
-.chat-doc-think__rag {
-  margin-top: 0.35rem;
-  padding-top: 0.45rem;
-  border-top: 1px dashed var(--color-border-neutral);
-}
-
-.chat-doc-think__rag-label {
-  display: block;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--color-muted);
-  margin-bottom: 0.35rem;
-}
-
 .chat-doc-assistant__body :deep(.ds-markdown) {
   font-size: 0.9375rem;
   line-height: 1.75;
@@ -874,10 +738,14 @@ onUnmounted(() => {
 
 @media (prefers-reduced-motion: reduce) {
   .chat-doc-assistant__mark--busy .chat-doc-assistant__spark,
-  .chat-doc-think__summary--working .chat-doc-think__label,
+  .chat-doc-typing-cursor,
   .chat-doc-pending__dots > span,
   .chat-doc-pending__line {
     animation: none;
+  }
+
+  .chat-doc-typing-cursor {
+    opacity: 0.92;
   }
 
   .chat-doc-pending__line {
