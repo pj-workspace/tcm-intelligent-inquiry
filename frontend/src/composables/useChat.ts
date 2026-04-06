@@ -285,7 +285,42 @@ export function useChat() {
           onNamedEvent: (name, data) => {
             if (name === 'assistant') {
               try {
-                const o = JSON.parse(data) as { type?: string; text?: string }
+                const o = JSON.parse(data) as {
+                  type?: string
+                  text?: string
+                  name?: string
+                  phase?: string
+                  input_preview?: string
+                }
+                if (o.type === 'message_stop') {
+                  return
+                }
+                if (o.type === 'tool_use') {
+                  const toolName = typeof o.name === 'string' ? o.name : ''
+                  const phase = typeof o.phase === 'string' ? o.phase : ''
+                  const preview =
+                    typeof o.input_preview === 'string'
+                      ? o.input_preview.trim()
+                      : ''
+                  const toolLabel = (n: string) => {
+                    if (n === 'knowledge_retrieval_tool') return '知识库检索'
+                    if (n === 'literature_retrieval_tool') return '文献检索'
+                    if (n === 'herb_image_recognition_tool') return '药材识图'
+                    return n
+                  }
+                  const label =
+                    phase === 'start'
+                      ? `${toolLabel(toolName)} · 开始`
+                      : phase === 'end'
+                        ? `${toolLabel(toolName)} · 完成`
+                        : `${toolLabel(toolName)} · ${phase}`
+                  appendStreamActivity({
+                    phase: `tool:${toolName}:${phase}`,
+                    label,
+                    ...(preview !== '' ? { detail: preview } : {}),
+                  })
+                  return
+                }
                 if (
                   o.type === 'text_delta' &&
                   typeof o.text === 'string' &&

@@ -24,4 +24,35 @@ public final class SseAssistantEvents {
         payload.put("text", text);
         emitter.send(SseEmitter.event().name("assistant").data(payload));
     }
+
+    /** 与 claw-code {@code AssistantEvent::MessageStop} 对齐，在 {@code [DONE]} 之前发送。 */
+    public static void sendMessageStop(SseEmitter emitter) throws IOException {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("type", "message_stop");
+        emitter.send(SseEmitter.event().name("assistant").data(payload));
+    }
+
+    /**
+     * 工具生命周期（claw-code {@code AssistantEvent::ToolUse} 的简化 wire）：无独立 tool id，
+     * 用 {@code phase}=start|end 表示起止。
+     */
+    public static void sendToolUseLifecycle(
+            SseEmitter emitter, String toolName, String phase, String detail) throws IOException {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("type", "tool_use");
+        payload.put("name", toolName);
+        payload.put("phase", phase);
+        if (detail != null && !detail.isBlank()) {
+            payload.put("input_preview", truncate(detail, 240));
+        }
+        emitter.send(SseEmitter.event().name("assistant").data(payload));
+    }
+
+    private static String truncate(String s, int maxChars) {
+        String t = s.trim();
+        if (t.length() <= maxChars) {
+            return t;
+        }
+        return t.substring(0, maxChars) + "…";
+    }
 }

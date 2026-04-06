@@ -157,7 +157,8 @@ public class AgentService {
                         herbImageBase64,
                         herbImageMimeType,
                         temperature,
-                        topP);
+                        topP,
+                        null);
         String answer =
                 p.client()
                         .prompt()
@@ -179,6 +180,7 @@ public class AgentService {
      * 问诊 ReAct 的流式版本：在工具阶段结束后，将模型生成正文的 token 流式交给 {@code onToken}，
      * 避免「整段答文落盘后再假分块 SSE」导致的无流式观感。
      *
+     * @param toolContextOverlay 合并进 ReAct {@link org.springframework.ai.chat.model.ToolContext}（如问诊 SSE 工具进度回调）
      * @param onBeforeContentStream 首个正文 token 到达前调用一次，{@code assistant} 为空串，仅用于 meta 来源等
      */
     public void runConsultationReActStreaming(
@@ -194,6 +196,7 @@ public class AgentService {
             String herbImageMimeType,
             double temperature,
             double topP,
+            Map<String, Object> toolContextOverlay,
             Consumer<AgentRunResponse> onBeforeContentStream,
             Consumer<String> onToken,
             Consumer<AgentRunResponse> onSuccess,
@@ -218,7 +221,8 @@ public class AgentService {
                             herbImageBase64,
                             herbImageMimeType,
                             temperature,
-                            topP);
+                            topP,
+                            toolContextOverlay);
         } catch (RuntimeException ex) {
             onError.accept(ex);
             return;
@@ -284,7 +288,8 @@ public class AgentService {
             String herbImageBase64,
             String herbImageMimeType,
             double temperature,
-            double topP) {
+            double topP,
+            Map<String, Object> toolContextOverlay) {
 
         if (!StringUtils.hasText(userMessage)) {
             throw new IllegalArgumentException("message is required");
@@ -301,6 +306,13 @@ public class AgentService {
                         herbImageBase64,
                         herbImageMimeType);
 
+        Map<String, Object> ctxMap = new LinkedHashMap<>(bundle.toolCtx());
+        if (toolContextOverlay != null && !toolContextOverlay.isEmpty()) {
+            ctxMap.putAll(toolContextOverlay);
+        }
+        ReactToolBundle merged =
+                new ReactToolBundle(ctxMap, bundle.kbSourcesAcc(), bundle.litSourcesAcc());
+
         String reactSystem =
                 ConsultationPrompts.SYSTEM + "\n\n" + AgentPrompts.REACT_TOOLS_APPENDIX;
 
@@ -308,14 +320,14 @@ public class AgentService {
                 ChatClient.builder(textChatModel)
                         .defaultSystem(reactSystem)
                         .defaultToolCallbacks(agentReActToolsFactory.buildToolCallbacks())
-                        .defaultToolContext(bundle.toolCtx())
+                        .defaultToolContext(merged.toolCtx())
                         .build();
 
         OpenAiChatOptions opts =
                 OpenAiChatOptions.builder().temperature(temperature).topP(topP).build();
 
         List<Message> history = historyMessages == null ? List.of() : historyMessages;
-        return new PreparedConsultationReAct(client, opts, bundle, history, userMessage.trim());
+        return new PreparedConsultationReAct(client, opts, merged, history, userMessage.trim());
     }
 
     public boolean isReactToolsEnabled() {

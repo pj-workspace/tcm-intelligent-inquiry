@@ -716,6 +716,9 @@ function canSend() {
           v-for="(e, i) in streamActivityLog"
           :key="`${e.ts}-${i}`"
           class="consult-activity-trace__item"
+          :class="{
+            'consult-activity-trace__item--tool': e.phase.startsWith('tool:'),
+          }"
         >
           <span
             v-if="e.step != null"
@@ -998,6 +1001,11 @@ function canSend() {
   margin-bottom: 0.28rem;
   line-height: 1.4;
   word-break: break-word;
+}
+
+.consult-activity-trace__item--tool {
+  padding-left: 0.15rem;
+  border-left: 2px solid rgba(34, 197, 94, 0.55);
 }
 
 .consult-activity-trace__step {

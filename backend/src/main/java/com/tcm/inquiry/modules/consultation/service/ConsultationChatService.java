@@ -30,6 +30,8 @@ import com.tcm.inquiry.common.sse.SsePhaseEvents;
 import com.tcm.inquiry.config.TcmApiProperties;
 import com.tcm.inquiry.modules.agent.AgentRunResponse;
 import com.tcm.inquiry.modules.agent.service.AgentService;
+import com.tcm.inquiry.modules.agent.ConsultationToolProgressNotifier;
+import com.tcm.inquiry.modules.agent.tools.AgentReActToolsFactory;
 import com.tcm.inquiry.modules.consultation.ai.ConsultationPrompts;
 import com.tcm.inquiry.modules.consultation.dto.ConsultationChatRequest;
 import com.tcm.inquiry.modules.consultation.entity.ChatMessage;
@@ -179,6 +181,22 @@ public class ConsultationChatService {
                             ? req.getHerbImageMimeType().trim()
                             : null;
 
+            Map<String, Object> reactToolOverlay = new LinkedHashMap<>();
+            reactToolOverlay.put(
+                    AgentReActToolsFactory.CTX_CONSULTATION_TOOL_PROGRESS,
+                    (ConsultationToolProgressNotifier)
+                            (toolName, phase, detail) -> {
+                                try {
+                                    SseAssistantEvents.sendToolUseLifecycle(
+                                            emitter, toolName, phase, detail);
+                                } catch (IOException e) {
+                                    log.debug(
+                                            "tool progress sse sessionId={}: {}",
+                                            req.getSessionId(),
+                                            e.toString());
+                                }
+                            });
+
             agentService.runConsultationReActStreaming(
                     historyMessages,
                     userInput,
@@ -192,6 +210,7 @@ public class ConsultationChatService {
                     herbMime,
                     temperature,
                     topP,
+                    reactToolOverlay,
                     metaShell -> {
                         try {
                             sendReActMeta(
@@ -218,6 +237,7 @@ public class ConsultationChatService {
                     },
                     finalResp -> {
                         try {
+                            SseAssistantEvents.sendMessageStop(emitter);
                             emitter.send(SseEmitter.event().data("[DONE]"));
                             emitter.complete();
                         } catch (IOException e) {
@@ -412,6 +432,7 @@ public class ConsultationChatService {
                                 return;
                             }
                             try {
+                                SseAssistantEvents.sendMessageStop(emitter);
                                 emitter.send(SseEmitter.event().data("[DONE]"));
                             } catch (IOException e) {
                                 emitter.completeWithError(e);

@@ -24,6 +24,7 @@ import org.springframework.util.StringUtils;
 import com.tcm.inquiry.config.AiConfig;
 import com.tcm.inquiry.modules.agent.ai.AgentPrompts;
 import com.tcm.inquiry.modules.agent.service.AgentAppConfigService;
+import com.tcm.inquiry.modules.agent.ConsultationToolProgressNotifier;
 import com.tcm.inquiry.modules.knowledge.ai.KnowledgeContextBundle;
 import com.tcm.inquiry.modules.knowledge.ai.KnowledgeRagService;
 import com.tcm.inquiry.modules.literature.ai.LiteratureRagService;
@@ -57,6 +58,12 @@ public class AgentReActToolsFactory {
 
     public static final String CTX_INLINE_HERB_IMAGE_BASE64 = "inlineHerbImageBase64";
     public static final String CTX_INLINE_HERB_IMAGE_MIME = "inlineHerbImageMimeType";
+
+    /**
+     * 问诊 SSE 专用：{@link ConsultationToolProgressNotifier}，由 {@code ConsultationChatService} 注入，
+     * 在工具起止时发出 {@code assistant}/{@code tool_use} 事件（claw-code 式可观测性）。
+     */
+    public static final String CTX_CONSULTATION_TOOL_PROGRESS = "consultationToolProgressNotifier";
 
     private final KnowledgeRagService knowledgeRagService;
     private final LiteratureRagService literatureRagService;
@@ -92,6 +99,11 @@ public class AgentReActToolsFactory {
         return FunctionToolCallback.builder(
                         TOOL_KNOWLEDGE,
                         (KnowledgeRetrievalToolArgs args, ToolContext ctx) -> {
+                            notifyToolProgress(
+                                    ctx,
+                                    TOOL_KNOWLEDGE,
+                                    "start",
+                                    args.query() != null ? args.query().trim() : "");
                             try {
                                 Long kbId = resolveKnowledgeBaseId(args, ctx);
                                 if (kbId == null) {
@@ -125,6 +137,8 @@ public class AgentReActToolsFactory {
                                 log.warn("knowledge_retrieval_tool 执行失败", ex);
                                 return "【工具结果-异常】"
                                         + (ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName());
+                            } finally {
+                                notifyToolProgress(ctx, TOOL_KNOWLEDGE, "end", null);
                             }
                         })
                 .description(
@@ -140,6 +154,11 @@ public class AgentReActToolsFactory {
         return FunctionToolCallback.builder(
                         TOOL_LITERATURE,
                         (LiteratureRetrievalToolArgs args, ToolContext ctx) -> {
+                            notifyToolProgress(
+                                    ctx,
+                                    TOOL_LITERATURE,
+                                    "start",
+                                    args.query() != null ? args.query().trim() : "");
                             try {
                                 String collId = resolveLiteratureCollectionId(args, ctx);
                                 if (collId == null || collId.isBlank()) {
@@ -169,6 +188,8 @@ public class AgentReActToolsFactory {
                                 log.warn("literature_retrieval_tool 执行失败", ex);
                                 return "【工具结果-异常】"
                                         + (ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName());
+                            } finally {
+                                notifyToolProgress(ctx, TOOL_LITERATURE, "end", null);
                             }
                         })
                 .description(
@@ -300,6 +321,15 @@ public class AgentReActToolsFactory {
         return FunctionToolCallback.builder(
                         TOOL_HERB_IMAGE,
                         (HerbImageRecognitionToolArgs args, ToolContext ctx) -> {
+                            String descPreview =
+                                    args.textualDescription() != null
+                                            ? args.textualDescription().trim()
+                                            : "";
+                            notifyToolProgress(
+                                    ctx,
+                                    TOOL_HERB_IMAGE,
+                                    "start",
+                                    StringUtils.hasText(descPreview) ? descPreview : "药材图像识别");
                             try {
                                 String b64 = firstNonBlank(args.imageBase64(), ctxString(ctx, CTX_INLINE_HERB_IMAGE_BASE64));
                                 String mime =
@@ -376,6 +406,8 @@ public class AgentReActToolsFactory {
                                 log.warn("herb_image_recognition_tool 执行失败", ex);
                                 return "【图像识别-异常】"
                                         + (ex.getMessage() != null ? ex.getMessage() : ex.getClass().getSimpleName());
+                            } finally {
+                                notifyToolProgress(ctx, TOOL_HERB_IMAGE, "end", null);
                             }
                         })
                 .description(
@@ -386,6 +418,21 @@ public class AgentReActToolsFactory {
                         """)
                 .inputType(HerbImageRecognitionToolArgs.class)
                 .build();
+    }
+
+    private static void notifyToolProgress(
+            ToolContext ctx, String toolName, String phase, String detail) {
+        if (ctx == null || ctx.getContext() == null) {
+            return;
+        }
+        Object o = ctx.getContext().get(CTX_CONSULTATION_TOOL_PROGRESS);
+        if (o instanceof ConsultationToolProgressNotifier notifier) {
+            try {
+                notifier.onToolProgress(toolName, phase, detail);
+            } catch (Exception ignored) {
+                // SSE 或回调异常不影响工具观测落盘
+            }
+        }
     }
 
     private static String ctxString(ToolContext ctx, String key) {
