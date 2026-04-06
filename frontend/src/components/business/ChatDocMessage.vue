@@ -1,6 +1,10 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import MarkdownContent from '@/components/business/MarkdownContent.vue'
+import {
+  advanceMarkdownRestGate,
+  type MarkdownRestStreamGate,
+} from '@/utils/markdownStreamBoundary'
 import { splitThinkFromAssistant } from '@/utils/splitThink'
 
 const props = withDefaults(
@@ -27,9 +31,46 @@ const feedback = ref<'up' | 'down' | null>(null)
 const copyOk = ref(false)
 let copyTimer: ReturnType<typeof setTimeout> | null = null
 
+/**
+ * 流式正文闸门（claw-code MarkdownStreamState 的 Web 迁移）：仅将越过安全边界的前缀交给 markdown-it，
+ * 尾部半句以纯文本展示，减轻列表/标题半段渲染抖动。
+ */
+const restGate = ref<MarkdownRestStreamGate>({ committed: '', pending: '' })
+let prevRestLen = 0
+
 const parsed = computed(() =>
   props.role === 'assistant' ? splitThinkFromAssistant(props.content) : null
 )
+
+watch(
+  () => ({
+    role: props.role,
+    streaming: props.isStreaming,
+    rest: parsed.value?.rest ?? '',
+  }),
+  (cur) => {
+    if (cur.role !== 'assistant') {
+      restGate.value = { committed: '', pending: '' }
+      prevRestLen = 0
+      return
+    }
+    if (!cur.streaming) {
+      restGate.value = { committed: '', pending: '' }
+      prevRestLen = 0
+      return
+    }
+    const r = cur.rest
+    if (r.length < prevRestLen) {
+      restGate.value = { committed: '', pending: '' }
+    }
+    prevRestLen = r.length
+    restGate.value = advanceMarkdownRestGate(restGate.value, r)
+  },
+  { immediate: true }
+)
+
+const streamCommitted = computed(() => restGate.value.committed)
+const streamPending = computed(() => restGate.value.pending)
 
 const ragTrim = computed(() => (props.ragLog ?? '').trim())
 
@@ -58,6 +99,7 @@ const showStreamingPlaceholder = computed(() => {
   const p = parsed.value
   if (!p) return true
   if (p.thinkIncomplete) return false
+  if (streamCommitted.value.trim() || streamPending.value) return false
   if (p.rest.trim()) return false
   return true
 })
@@ -70,7 +112,9 @@ const assistantBusy = computed(
   () =>
     props.role === 'assistant' &&
     props.isStreaming &&
-    (showStreamingPlaceholder.value || !!parsed.value?.thinkIncomplete)
+    (showStreamingPlaceholder.value ||
+      !!streamPending.value ||
+      !!parsed.value?.thinkIncomplete)
 )
 
 async function copyAnswer() {
@@ -195,47 +239,71 @@ onUnmounted(() => {
     </div>
 
     <div class="chat-doc-assistant__body">
-      <MarkdownContent
-        v-if="parsed && parsed.rest.trim()"
-        :source="parsed.rest"
-      />
-      <div
-        v-else-if="showStreamingPlaceholder"
-        class="chat-doc-pending"
-        aria-live="polite"
-        aria-busy="true"
-      >
-        <p class="chat-doc-pending__label">
-          <span
-            class="chat-doc-pending__dots"
+      <template v-if="!isStreaming">
+        <MarkdownContent
+          v-if="parsed && parsed.rest.trim()"
+          :source="parsed.rest"
+        />
+        <p
+          v-else-if="
+            parsed &&
+              !parsed.think &&
+              !parsed.thinkIncomplete &&
+              !parsed.rest.trim()
+          "
+          class="chat-doc-assistant__empty"
+        >
+          （无内容）
+        </p>
+      </template>
+      <template v-else>
+        <MarkdownContent
+          v-if="streamCommitted.trim()"
+          :source="streamCommitted"
+          :streaming="false"
+        />
+        <pre
+          v-if="streamPending"
+          class="chat-doc-stream-tail"
+        >{{ streamPending }}</pre>
+        <div
+          v-else-if="showStreamingPlaceholder"
+          class="chat-doc-pending"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <p class="chat-doc-pending__label">
+            <span
+              class="chat-doc-pending__dots"
+              aria-hidden="true"
+            >
+              <span />
+              <span />
+              <span />
+            </span>
+            <span>{{ pendingLabel }}</span>
+          </p>
+          <div
+            class="chat-doc-pending__shimmer"
             aria-hidden="true"
           >
-            <span />
-            <span />
-            <span />
-          </span>
-          <span>{{ pendingLabel }}</span>
-        </p>
-        <div
-          class="chat-doc-pending__shimmer"
-          aria-hidden="true"
-        >
-          <span class="chat-doc-pending__line chat-doc-pending__line--w100" />
-          <span class="chat-doc-pending__line chat-doc-pending__line--w92" />
-          <span class="chat-doc-pending__line chat-doc-pending__line--w68" />
+            <span class="chat-doc-pending__line chat-doc-pending__line--w100" />
+            <span class="chat-doc-pending__line chat-doc-pending__line--w92" />
+            <span class="chat-doc-pending__line chat-doc-pending__line--w68" />
+          </div>
         </div>
-      </div>
-      <p
-        v-else-if="
-          parsed &&
-            !parsed.think &&
-            !parsed.thinkIncomplete &&
-            !parsed.rest.trim()
-        "
-        class="chat-doc-assistant__empty"
-      >
-        （无内容）
-      </p>
+        <p
+          v-else-if="
+            parsed &&
+              !parsed.think &&
+              !parsed.thinkIncomplete &&
+              !parsed.rest.trim()
+          "
+          class="chat-doc-assistant__empty"
+        >
+          （无内容）
+        </p>
+      </template>
     </div>
 
     <div
@@ -440,6 +508,23 @@ onUnmounted(() => {
   50% {
     opacity: 0.62;
   }
+}
+
+/** 闸门尚未交给 markdown-it 的尾部字符：等宽、略透明，提示仍在流入 */
+.chat-doc-stream-tail {
+  margin: 0.35rem 0 0;
+  padding: 0.4rem 0.55rem;
+  max-height: 11rem;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--color-muted);
+  background: rgba(99, 102, 241, 0.06);
+  border-radius: 0.35rem;
+  border: 1px dashed rgba(99, 102, 241, 0.22);
 }
 
 .chat-doc-pending {

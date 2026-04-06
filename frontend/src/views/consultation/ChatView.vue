@@ -23,6 +23,7 @@ import ChatDocMessage from '@/components/business/ChatDocMessage.vue'
 import DsAlert from '@/components/common/DsAlert.vue'
 import DsSelect from '@/components/common/DsSelect.vue'
 import type { DsSelectOption } from '@/components/common/DsSelect.vue'
+import { useBrailleSpinner } from '@/composables/useBrailleSpinner'
 import { useConsultChatPrefs } from '@/composables/useConsultChatPrefs'
 import { useOmniChatContext } from '@/composables/useOmniChatContext'
 import { formatHealthStatus, isHealthStatusErr } from '@/utils/formatHealthStatus'
@@ -60,6 +61,29 @@ const {
   removeImageAt,
   clearPendingImages,
 } = useOmniChatContext()
+
+/** 仿 claw-code CLI 分阶段进度文案 + Braille 帧，便于用户理解 RAG / 流式 / 智能体各自耗时 */
+const { spinChar } = useBrailleSpinner(loading)
+const orchestrationLabel = computed(() => {
+  if (!loading.value) return ''
+  const stream = streamingContent.value.trim()
+  if (mode.value === 'vision') {
+    if (!stream) return '智能体编排中（ReAct / 工具 / 视觉）'
+    return '智能体回复流出中…'
+  }
+  if (mode.value === 'knowledge') {
+    if (!ragMeta.value) return '企业知识库向量检索中…'
+    if (!stream) return '检索完成，等待首包…'
+    return '模型流式输出中…'
+  }
+  if (mode.value === 'literature') {
+    if (!ragMeta.value) return '临时文献库检索中…'
+    if (!stream) return '检索完成，等待首包…'
+    return '模型流式输出中…'
+  }
+  if (!stream) return '连接本地大模型…'
+  return '模型流式输出中…'
+})
 
 const health = ref<string>('')
 const settingsWrapRef = ref<HTMLElement | null>(null)
@@ -735,6 +759,18 @@ function canSend() {
       {{ error }}
     </DsAlert>
     <p
+      v-if="loading && orchestrationLabel"
+      class="consult-orchestration"
+      role="status"
+      aria-live="polite"
+    >
+      <span
+        class="consult-orchestration__spin"
+        aria-hidden="true"
+      >{{ spinChar }}</span>
+      <span>{{ orchestrationLabel }}</span>
+    </p>
+    <p
       v-if="ragMeta && !(loading && streamingContent)"
       class="ds-hint consult-rag-meta"
     >
@@ -907,6 +943,28 @@ function canSend() {
   min-height: 0;
   flex: 1;
   background: transparent;
+}
+
+.consult-orchestration {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.5rem;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-muted);
+  background: rgba(99, 102, 241, 0.07);
+  border-radius: 0.45rem;
+  border: 1px solid rgba(99, 102, 241, 0.15);
+}
+
+.consult-orchestration__spin {
+  display: inline-block;
+  width: 1rem;
+  text-align: center;
+  font-family: ui-monospace, monospace;
+  color: var(--color-primary-hover);
 }
 
 .consult-header {
