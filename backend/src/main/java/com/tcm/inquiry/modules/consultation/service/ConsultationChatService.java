@@ -52,7 +52,12 @@ public class ConsultationChatService {
     private final KnowledgeRagService knowledgeRagService;
     private final LiteratureRagService literatureRagService;
 
-    @Value("${spring.ai.ollama.chat.options.model:deepseek-r1:8b}")
+    /**
+     * 默认对话模型：与 {@code application.yml} 中 {@code spring.ai.ollama.chat.options.model} 对齐，
+     * 便于在代码侧组装 {@link OllamaOptions#builder()} 时使用与全局 Bean 一致的模型名；
+     * 实际部署前请在 Ollama 中执行 {@code ollama pull} 确保本地已存在该 Tag。
+     */
+    @Value("${spring.ai.ollama.chat.options.model:gemma4:e4b}")
     private String defaultChatModelName;
 
     public ConsultationChatService(

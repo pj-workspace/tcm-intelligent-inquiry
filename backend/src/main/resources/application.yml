@@ -42,7 +42,7 @@ spring:
       base-url: ${SPRING_AI_OLLAMA_BASE_URL:http://localhost:11434}
       chat:
         options:
-          model: deepseek-r1:8b
+          model: gemma4:e4b
       embedding:
         options:
           model: bge-m3:latest

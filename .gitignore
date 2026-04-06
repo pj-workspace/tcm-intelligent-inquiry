@@ -34,3 +34,9 @@ backend/target/tcm-ci-ollama-it.*
 .env
 .env.*
 !.env.example
+
+# IDE / 编辑器（避免误提交个人机配置）
+.idea/
+*.iml
+.vscode/
+*.code-workspace
