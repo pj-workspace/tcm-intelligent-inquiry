@@ -1,4 +1,4 @@
-import type { TcmDiagnosisReport } from '@/types/consultation'
+import type { HerbSafetyCheckResult, TcmDiagnosisReport } from '@/types/consultation'
 
 const JSON_REPORT_FENCE =
   /```json-report\s*\r?\n([\s\S]*?)```/g
@@ -21,6 +21,41 @@ export function tryParseDiagnosisReportFromMarkdown(
   try {
     const o = JSON.parse(m[1].trim()) as Record<string, unknown>
     return normalizeReportPayload(o)
+  } catch {
+    return null
+  }
+}
+
+export function normalizeSafetyPayload(o: unknown): HerbSafetyCheckResult | null {
+  if (o == null || typeof o !== 'object' || Array.isArray(o)) return null
+  const s = o as Record<string, unknown>
+  if (typeof s.safe !== 'boolean') return null
+  const warnings = Array.isArray(s.warnings)
+    ? s.warnings.filter((x): x is string => typeof x === 'string')
+    : []
+  return { safe: s.safe, warnings }
+}
+
+/**
+ * 解析 SSE {@code report}：新格式 {@code { report, safety }} 或兼容旧版「扁平」仅报告字段。
+ */
+export function parseConsultationReportSsePayload(data: string): {
+  report: TcmDiagnosisReport
+  safety: HerbSafetyCheckResult | null
+} | null {
+  try {
+    const o = JSON.parse(data) as Record<string, unknown>
+    const nested = o.report
+    if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+      return {
+        report: normalizeReportPayload(nested as Record<string, unknown>),
+        safety: normalizeSafetyPayload(o.safety),
+      }
+    }
+    return {
+      report: normalizeReportPayload(o),
+      safety: normalizeSafetyPayload(o.safety),
+    }
   } catch {
     return null
   }

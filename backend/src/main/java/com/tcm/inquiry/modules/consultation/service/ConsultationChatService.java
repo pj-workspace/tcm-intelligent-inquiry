@@ -35,6 +35,8 @@ import com.tcm.inquiry.modules.agent.ConsultationToolProgressNotifier;
 import com.tcm.inquiry.modules.agent.tools.AgentReActToolsFactory;
 import com.tcm.inquiry.modules.consultation.ai.ConsultationPrompts;
 import com.tcm.inquiry.modules.consultation.dto.ConsultationChatRequest;
+import com.tcm.inquiry.modules.consultation.dto.ConsultationReportSsePayload;
+import com.tcm.inquiry.modules.consultation.dto.TcmDiagnosisReport;
 import com.tcm.inquiry.modules.consultation.entity.ChatMessage;
 import com.tcm.inquiry.modules.consultation.repository.ChatMessageRepository;
 import com.tcm.inquiry.modules.consultation.repository.ChatSessionRepository;
@@ -60,6 +62,7 @@ public class ConsultationChatService {
     private final TcmApiProperties apiProperties;
     private final AgentService agentService;
     private final ObjectMapper objectMapper;
+    private final TcmSafetyGuardrailService safetyGuardrailService;
 
     /**
      * 默认对话模型名（落库展示用），与 {@code spring.ai.openai.chat.options.model} 一致。
@@ -75,7 +78,8 @@ public class ConsultationChatService {
             @Qualifier("sseAsyncExecutor") Executor sseAsyncExecutor,
             TcmApiProperties apiProperties,
             AgentService agentService,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            TcmSafetyGuardrailService safetyGuardrailService) {
         this.chatModel = chatModel;
         this.chatSessionRepository = chatSessionRepository;
         this.chatMessageRepository = chatMessageRepository;
@@ -84,6 +88,16 @@ public class ConsultationChatService {
         this.apiProperties = apiProperties;
         this.agentService = agentService;
         this.objectMapper = objectMapper;
+        this.safetyGuardrailService = safetyGuardrailService;
+    }
+
+    private void emitConsultationReport(SseEmitter sseEmitter, TcmDiagnosisReport report)
+            throws IOException {
+        var safety = safetyGuardrailService.checkHerbIncompatibility(report.herbs());
+        sseEmitter.send(
+                SseEmitter.event()
+                        .name("report")
+                        .data(new ConsultationReportSsePayload(report, safety)));
     }
 
     /**
@@ -241,8 +255,7 @@ public class ConsultationChatService {
                                 token,
                                 r -> {
                                     try {
-                                        emitter.send(
-                                                SseEmitter.event().name("report").data(r));
+                                        emitConsultationReport(emitter, r);
                                     } catch (IOException e) {
                                         throw new UncheckedIOException(e);
                                     }
@@ -429,8 +442,7 @@ public class ConsultationChatService {
                                     token,
                                     r -> {
                                         try {
-                                            emitter.send(
-                                                    SseEmitter.event().name("report").data(r));
+                                            emitConsultationReport(emitter, r);
                                         } catch (IOException e) {
                                             errorRef.compareAndSet(null, e);
                                             emitter.completeWithError(e);

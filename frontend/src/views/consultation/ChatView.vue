@@ -29,6 +29,7 @@ const {
   error,
   streamingContent,
   streamingDiagnosisReport,
+  streamingHerbSafety,
   ragMeta,
   streamPhase,
   streamActivityLog,
@@ -242,6 +243,7 @@ async function onRegenerateAssistant() {
       :loading="loading"
       :streaming-content="streamingContent"
       :streaming-diagnosis-report="streamingDiagnosisReport"
+      :streaming-herb-safety="streamingHerbSafety"
       :rag-meta="ragMeta"
       :stream-phase="streamPhase"
       :stream-activity-log="streamActivityLog"

@@ -15,6 +15,12 @@ export type TcmDiagnosisReport = {
   lifestyle: string[]
 }
 
+/** 与后端 {@code HerbSafetyCheckResult} 一致的配伍禁忌扫描结果。 */
+export type HerbSafetyCheckResult = {
+  safe: boolean
+  warnings: string[]
+}
+
 /** 与会话中单轮问答对应的只读结构（与后端 ChatMessageView 一致）。 */
 export type ChatMessageView = {
   id: number

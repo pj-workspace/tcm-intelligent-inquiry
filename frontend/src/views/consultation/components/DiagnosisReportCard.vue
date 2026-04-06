@@ -1,9 +1,18 @@
 <script setup lang="ts">
-import { ElCard, ElDescriptions, ElDescriptionsItem, ElTag } from 'element-plus'
-import type { TcmDiagnosisReport } from '@/types/consultation'
+import { computed } from 'vue'
+import { CircleCheckFilled, WarningFilled } from '@element-plus/icons-vue'
+import {
+  ElCard,
+  ElDescriptions,
+  ElDescriptionsItem,
+  ElIcon,
+  ElTag,
+} from 'element-plus'
+import type { HerbSafetyCheckResult, TcmDiagnosisReport } from '@/types/consultation'
 
-defineProps<{
+const props = defineProps<{
   report: TcmDiagnosisReport
+  herbSafety?: HerbSafetyCheckResult | null
 }>()
 
 function formulaLine(f: string | null): string {
@@ -11,6 +20,32 @@ function formulaLine(f: string | null): string {
   const t = f.trim()
   return t === '' ? '—' : t
 }
+
+const safetyBand = computed(() => {
+  const h = props.herbSafety
+  if (h == null) {
+    return {
+      kind: 'unknown' as const,
+      title: '临床安全',
+      lines: [
+        '暂无自动配伍审查数据（常见于历史会话或离线打开）。',
+        '用药与组方务必由执业医师或药师审定。',
+      ],
+    }
+  }
+  if (h.safe && (!h.warnings || h.warnings.length === 0)) {
+    return {
+      kind: 'safe' as const,
+      title: '安全审计',
+      lines: ['未发现明显配伍禁忌（内置「十八反」「十九畏」规则扫描）。'],
+    }
+  }
+  return {
+    kind: 'risk' as const,
+    title: '配伍禁忌提示',
+    lines: h.warnings?.length ? h.warnings : ['模型药材列表中可能存在不宜同用的药对。'],
+  }
+})
 </script>
 
 <template>
@@ -22,6 +57,41 @@ function formulaLine(f: string | null): string {
       <template #header>
         <span class="diagnosis-report__title">辨证摘要</span>
       </template>
+
+      <div
+        class="diagnosis-report__safety"
+        :class="{
+          'diagnosis-report__safety--safe': safetyBand.kind === 'safe',
+          'diagnosis-report__safety--risk': safetyBand.kind === 'risk',
+          'diagnosis-report__safety--unknown': safetyBand.kind === 'unknown',
+        }"
+      >
+        <div class="diagnosis-report__safety-top">
+          <ElIcon
+            v-if="safetyBand.kind === 'safe'"
+            class="diagnosis-report__safety-ico diagnosis-report__safety-ico--ok"
+          >
+            <CircleCheckFilled />
+          </ElIcon>
+          <ElIcon
+            v-else-if="safetyBand.kind === 'risk'"
+            class="diagnosis-report__safety-ico diagnosis-report__safety-ico--risk"
+          >
+            <WarningFilled />
+          </ElIcon>
+          <span class="diagnosis-report__safety-title">{{ safetyBand.title }}</span>
+        </div>
+        <p
+          v-for="(line, i) in safetyBand.lines"
+          :key="i"
+          class="diagnosis-report__safety-line"
+        >
+          {{ line }}
+        </p>
+        <p class="diagnosis-report__safety-disclaimer">
+          仅供参考，请遵医嘱；本结果不能替代执业审方与临床判断。
+        </p>
+      </div>
 
       <div class="diagnosis-report__pattern-block">
         <span class="diagnosis-report__pattern-label">证候</span>
@@ -106,6 +176,75 @@ function formulaLine(f: string | null): string {
   font-size: 0.95rem;
   font-weight: 600;
   letter-spacing: 0.02em;
+}
+
+.diagnosis-report__safety {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(100, 116, 139, 0.25);
+  background: rgba(100, 116, 139, 0.06);
+}
+
+.diagnosis-report__safety--safe {
+  border-color: rgba(34, 197, 94, 0.45);
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.diagnosis-report__safety--risk {
+  border-color: rgba(239, 68, 68, 0.55);
+  background: rgba(239, 68, 68, 0.07);
+}
+
+.diagnosis-report__safety--unknown {
+  border-color: rgba(100, 116, 139, 0.28);
+  background: rgba(148, 163, 184, 0.08);
+}
+
+.diagnosis-report__safety-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.diagnosis-report__safety-ico {
+  font-size: 1.25rem;
+}
+
+.diagnosis-report__safety-ico--ok {
+  color: var(--el-color-success);
+}
+
+.diagnosis-report__safety-ico--risk {
+  color: var(--el-color-danger);
+}
+
+.diagnosis-report__safety-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.diagnosis-report__safety-line {
+  margin: 0 0 6px;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--el-text-color-regular);
+}
+
+.diagnosis-report__safety--risk .diagnosis-report__safety-line {
+  color: var(--el-text-color-primary);
+  font-weight: 500;
+}
+
+.diagnosis-report__safety-disclaimer {
+  margin: 10px 0 0;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(100, 116, 139, 0.35);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--el-text-color-secondary);
 }
 
 .diagnosis-report__pattern-block {

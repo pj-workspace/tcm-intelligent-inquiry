@@ -2,7 +2,7 @@
 import { computed, onUnmounted, ref, watch } from 'vue'
 import MarkdownContent from '@/components/business/MarkdownContent.vue'
 import DiagnosisReportCard from '@/views/consultation/components/DiagnosisReportCard.vue'
-import type { TcmDiagnosisReport } from '@/types/consultation'
+import type { HerbSafetyCheckResult, TcmDiagnosisReport } from '@/types/consultation'
 import { stripJsonReportBlocks } from '@/utils/diagnosisReport'
 import {
   advanceMarkdownRestGate,
@@ -24,6 +24,7 @@ const props = withDefaults(
     streamVision?: boolean
     /** 结构化辨证摘要：存在时从 Markdown 中剥掉 json-report 代码块，避免与卡片重复 */
     diagnosisReport?: TcmDiagnosisReport | null
+    herbSafety?: HerbSafetyCheckResult | null
   }>(),
   {
     ragLog: null,
@@ -31,6 +32,7 @@ const props = withDefaults(
     isStreaming: false,
     streamVision: false,
     diagnosisReport: null,
+    herbSafety: null,
   }
 )
 
@@ -328,6 +330,7 @@ onUnmounted(() => {
     <DiagnosisReportCard
       v-if="diagnosisReport"
       :report="diagnosisReport"
+      :herb-safety="herbSafety ?? undefined"
     />
 
     <div

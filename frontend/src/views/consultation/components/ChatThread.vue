@@ -6,7 +6,7 @@ import type {
   StreamActivityEntry,
   StreamPhasePayload,
 } from '@/composables/useChat'
-import type { TcmDiagnosisReport } from '@/types/consultation'
+import type { HerbSafetyCheckResult, TcmDiagnosisReport } from '@/types/consultation'
 import ChatDocMessage from '@/components/business/ChatDocMessage.vue'
 import DsAlert from '@/components/common/DsAlert.vue'
 import { useBrailleSpinner } from '@/composables/useBrailleSpinner'
@@ -16,6 +16,7 @@ const props = defineProps<{
   loading: boolean
   streamingContent: string
   streamingDiagnosisReport: TcmDiagnosisReport | null
+  streamingHerbSafety: HerbSafetyCheckResult | null
   ragMeta: ConsultationRagMeta | null
   streamPhase: StreamPhasePayload | null
   streamActivityLog: StreamActivityEntry[]
@@ -213,6 +214,7 @@ defineExpose({
           :role="m.role"
           :content="m.content"
           :diagnosis-report="m.diagnosisReport"
+          :herb-safety="m.herbSafety"
           :allow-regenerate="
             m.role === 'assistant' &&
               i === messages.length - 1 &&
@@ -225,6 +227,7 @@ defineExpose({
           role="assistant"
           :content="streamingContent"
           :diagnosis-report="streamingDiagnosisReport ?? undefined"
+          :herb-safety="streamingHerbSafety ?? undefined"
           :rag-log="streamingRagLog"
           :is-streaming="true"
           :stream-vision="false"

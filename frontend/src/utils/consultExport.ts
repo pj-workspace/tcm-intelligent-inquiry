@@ -1,7 +1,146 @@
 import type { ChatTurn } from '@/composables/useChat'
+import type { HerbSafetyCheckResult, TcmDiagnosisReport } from '@/types/consultation'
+import { stripJsonReportBlocks } from '@/utils/diagnosisReport'
 
 /** 文件名中不允许的字符，避免下载失败或跨平台路径问题 */
 const FILENAME_UNSAFE = /[/\\?%*:|"<>]/g
+
+const REDACTED_THINKING_BLOCKS: RegExp[] = [
+  /<redacted_thinking>[\s\S]*?<\/redacted_thinking>/gi,
+  /<redacted_thinking>[\s\S]*?<\/think>/gi,
+]
+
+const THINK_FENCE =
+  /\u0060think\u0060[\s\S]*?\u0060\/think\u0060/g
+
+/**
+ * 导出前清洗：去掉 json-report、推理块等 machine-oriented 片段。
+ */
+export function scrubMessageTextForExport(raw: string | null | undefined): string {
+  try {
+    let t = typeof raw === 'string' ? raw : ''
+    for (const re of REDACTED_THINKING_BLOCKS) {
+      t = t.replace(re, '')
+    }
+    t = t.replace(THINK_FENCE, '')
+    t = stripJsonReportBlocks(t)
+    return t.replace(/\n{3,}/g, '\n\n').trimEnd()
+  } catch {
+    return typeof raw === 'string' ? raw.trim() : ''
+  }
+}
+
+function escapeMdCell(s: string): string {
+  return s.replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>')
+}
+
+/**
+ * 将结构化辨证摘要渲染为 Markdown 表格 + 配伍说明（供导出）。
+ */
+export function formatDiagnosisReportMarkdownAppendix(
+  r: TcmDiagnosisReport,
+  herbSafety?: HerbSafetyCheckResult | null
+): string {
+  const lines: string[] = [
+    '',
+    '### 辨证摘要（可读版）',
+    '',
+    '| 项目 | 内容 |',
+    '| --- | --- |',
+    `| 证候 | ${escapeMdCell(r.pattern || '—')} |`,
+    `| 病机分析 | ${escapeMdCell(r.reasoning || '—')} |`,
+    `| 参考方剂 | ${escapeMdCell(r.formula?.trim() ? r.formula.trim() : '—')} |`,
+    `| 组成药材 | ${escapeMdCell(r.herbs?.length ? r.herbs.join('、') : '—')} |`,
+    `| 调理建议 | ${escapeMdCell(r.lifestyle?.length ? r.lifestyle.join('；') : '—')} |`,
+    '',
+    '#### 配伍安全（系统自动扫描，仅供参考）',
+    '',
+  ]
+  if (herbSafety == null) {
+    lines.push(
+      '_本段历史消息未附带配伍扫描结果；用药请遵医嘱。_',
+      ''
+    )
+  } else if (herbSafety.safe && !herbSafety.warnings?.length) {
+    lines.push(
+      '> **结论**：根据内置「十八反」「十九畏」字面规则，**未发现**明显冲突药对。',
+      '> **提醒**：仅此辅助参考，**请遵医嘱**，不可替代执业审方。',
+      ''
+    )
+  } else {
+    lines.push(
+      '> **提醒**：**仅供参考，请遵医嘱**；以下为系统检出的字面禁忌提示：',
+      ''
+    )
+    for (const w of herbSafety.warnings ?? []) {
+      lines.push(`- ⚠ ${escapeMdCell(w)}`, '')
+    }
+  }
+  return lines.join('\n')
+}
+
+function appendDiagnosisPdfBlock(
+  host: HTMLElement,
+  r: TcmDiagnosisReport,
+  herbSafety?: HerbSafetyCheckResult | null
+) {
+  const wrap = document.createElement('div')
+  wrap.style.cssText = 'margin-top:16px;padding:12px 14px;border:1px solid #e5e5e5;border-radius:8px;background:#fafafa'
+
+  const h3 = document.createElement('h3')
+  h3.style.cssText = 'margin:0 0 10px;font-size:15px;font-weight:650'
+  h3.textContent = '辨证摘要（可读版）'
+  wrap.appendChild(h3)
+
+  const tbl = document.createElement('table')
+  tbl.style.cssText = 'width:100%;border-collapse:collapse;font-size:14px'
+  const addRow = (k: string, v: string) => {
+    const tr = document.createElement('tr')
+    const td1 = document.createElement('td')
+    td1.style.cssText =
+      'border:1px solid #ddd;padding:8px 10px;width:100px;font-weight:600;background:#f3f4f6'
+    td1.textContent = k
+    const td2 = document.createElement('td')
+    td2.style.cssText = 'border:1px solid #ddd;padding:8px 10px;word-break:break-word'
+    td2.textContent = v
+    tr.appendChild(td1)
+    tr.appendChild(td2)
+    tbl.appendChild(tr)
+  }
+  addRow('证候', r.pattern || '—')
+  addRow('病机分析', r.reasoning || '—')
+  addRow('参考方剂', r.formula?.trim() ? r.formula.trim() : '—')
+  addRow('组成药材', r.herbs?.length ? r.herbs.join('、') : '—')
+  addRow('调理建议', r.lifestyle?.length ? r.lifestyle.join('；') : '—')
+  wrap.appendChild(tbl)
+
+  const safeH = document.createElement('h4')
+  safeH.style.cssText = 'margin:14px 0 8px;font-size:14px;font-weight:650'
+  safeH.textContent = '配伍安全（仅供参考，请遵医嘱）'
+  wrap.appendChild(safeH)
+
+  const safeP = document.createElement('div')
+  safeP.style.cssText = 'font-size:13px;line-height:1.55;color:#333'
+  if (herbSafety == null) {
+    safeP.textContent =
+      '本段未附带配伍扫描结果。任何用药须由执业医师或药师审定。'
+  } else if (herbSafety.safe && !herbSafety.warnings?.length) {
+    safeP.textContent =
+      '根据内置「十八反」「十九畏」字面规则，未发现明显冲突药对。此结果不能替代执业审方。'
+  } else {
+    const ul = document.createElement('ul')
+    ul.style.cssText = 'margin:0;padding-left:1.2em;color:#b91c1c'
+    for (const w of herbSafety.warnings ?? ['存在潜在配伍风险']) {
+      const li = document.createElement('li')
+      li.textContent = w
+      ul.appendChild(li)
+    }
+    safeP.appendChild(ul)
+  }
+  wrap.appendChild(safeP)
+
+  host.appendChild(wrap)
+}
 
 /**
  * 将当前会话的多轮对话编排为 Markdown 文档（患者 / 助手交替）。
@@ -25,11 +164,29 @@ export function buildConsultationMarkdown(
 
   for (const m of turns) {
     const label = m.role === 'user' ? '患者' : '助手'
-    lines.push(`## ${label}`, '', m.content.trim(), '')
+    const body = scrubMessageTextForExport(m.content)
+    lines.push(`## ${label}`, '', body || '（空）', '')
+    if (m.role === 'assistant' && m.diagnosisReport) {
+      try {
+        lines.push(
+          formatDiagnosisReportMarkdownAppendix(
+            m.diagnosisReport,
+            m.herbSafety
+          )
+        )
+      } catch {
+        /* 结构化字段异常时仍导出正文 */
+      }
+    }
   }
 
   if (streamingPart != null && streamingPart.trim() !== '') {
-    lines.push('## 助手（生成中，导出快照）', '', streamingPart.trim(), '')
+    lines.push(
+      '## 助手（生成中，导出快照）',
+      '',
+      scrubMessageTextForExport(streamingPart) || '（空）',
+      ''
+    )
   }
 
   return lines.join('\n').trimEnd() + '\n'
@@ -127,11 +284,22 @@ export function buildConsultationExportHost(
 
   for (const m of turns) {
     const label = m.role === 'user' ? '患者' : '助手'
-    appendBlock(label, m.content.trim() || '（空）')
+    const text = scrubMessageTextForExport(m.content) || '（空）'
+    appendBlock(label, text)
+    if (m.role === 'assistant' && m.diagnosisReport) {
+      try {
+        appendDiagnosisPdfBlock(host, m.diagnosisReport, m.herbSafety)
+      } catch {
+        /* ignore */
+      }
+    }
   }
 
   if (streamingPart != null && streamingPart.trim() !== '') {
-    appendBlock('助手（生成中，导出快照）', streamingPart.trim())
+    appendBlock(
+      '助手（生成中，导出快照）',
+      scrubMessageTextForExport(streamingPart) || '（空）'
+    )
   }
 
   return host

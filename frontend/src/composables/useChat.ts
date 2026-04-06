@@ -10,9 +10,13 @@ import {
   listConsultationSessions,
 } from '@/api/modules/consultation'
 import { postAgentRunJson } from '@/api/modules/agent'
-import type { ChatSessionInfo, TcmDiagnosisReport } from '@/types/consultation'
+import type {
+  ChatSessionInfo,
+  HerbSafetyCheckResult,
+  TcmDiagnosisReport,
+} from '@/types/consultation'
 import {
-  normalizeReportPayload,
+  parseConsultationReportSsePayload,
   tryParseDiagnosisReportFromMarkdown,
 } from '@/utils/diagnosisReport'
 import { encodeImageFileToHerbPayload } from '@/utils/herbImagePayload'
@@ -22,6 +26,8 @@ export type ChatTurn = {
   content: string
   /** 结构化辨证摘要（SSE {@code report} 或从历史正文解析） */
   diagnosisReport?: TcmDiagnosisReport
+  /** 配伍禁忌扫描（仅 SSE 附带；历史记录多为空） */
+  herbSafety?: HerbSafetyCheckResult | null
 }
 
 /** 兼容旧路径：`import type { ChatSessionInfo } from '@/composables/useChat'` */
@@ -106,6 +112,8 @@ export function useChat() {
   const streamingContent = ref('')
   /** 当前流式回合结构化报告（后端 {@code event: report}）；可与正文并列更新 */
   const streamingDiagnosisReport = ref<TcmDiagnosisReport | null>(null)
+  /** 与 {@code report} 事件同发的配伍审查结果 */
+  const streamingHerbSafety = ref<HerbSafetyCheckResult | null>(null)
   /** 当前回合知识库检索摘要（仅当本轮请求携带 knowledgeBaseId 且收到 meta 时有效） */
   const ragMeta = ref<ConsultationRagMeta | null>(null)
   /** 本轮 SSE 编排阶段（由后端 {@code event: phase} 推送，优先于前端猜阶段文案） */
@@ -174,6 +182,7 @@ export function useChat() {
     error.value = null
     streamingContent.value = ''
     streamingDiagnosisReport.value = null
+    streamingHerbSafety.value = null
     ragMeta.value = null
     streamPhase.value = null
     streamActivityLog.value = []
@@ -193,6 +202,7 @@ export function useChat() {
     messages.value = []
     streamingContent.value = ''
     streamingDiagnosisReport.value = null
+    streamingHerbSafety.value = null
     ragMeta.value = null
     streamPhase.value = null
     streamActivityLog.value = []
@@ -244,6 +254,7 @@ export function useChat() {
     }
     streamingContent.value = ''
     streamingDiagnosisReport.value = null
+    streamingHerbSafety.value = null
     loading.value = true
     abort = new AbortController()
 
@@ -304,11 +315,10 @@ export function useChat() {
           signal: abort.signal,
           onNamedEvent: (name, data) => {
             if (name === 'report') {
-              try {
-                const o = JSON.parse(data) as Record<string, unknown>
-                streamingDiagnosisReport.value = normalizeReportPayload(o)
-              } catch {
-                /* 损坏则仅依赖正文 Markdown */
+              const parsed = parseConsultationReportSsePayload(data)
+              if (parsed) {
+                streamingDiagnosisReport.value = parsed.report
+                streamingHerbSafety.value = parsed.safety
               }
               return
             }
@@ -450,16 +460,19 @@ export function useChat() {
           ? tryParseDiagnosisReportFromMarkdown(assistant)
           : null
       const diagnosisReport = fromEvent ?? fromMarkdown ?? undefined
+      const herbSafetySnap = streamingHerbSafety.value
       messages.value = [
         ...messages.value,
         {
           role: 'assistant',
           content: assistant,
           ...(diagnosisReport ? { diagnosisReport } : {}),
+          ...(herbSafetySnap != null ? { herbSafety: herbSafetySnap } : {}),
         },
       ]
       streamingContent.value = ''
       streamingDiagnosisReport.value = null
+      streamingHerbSafety.value = null
       streamPhase.value = null
       await fetchSessions()
     } catch (e: unknown) {
@@ -472,12 +485,14 @@ export function useChat() {
               ? tryParseDiagnosisReportFromMarkdown(assistant)
               : null
           const diagnosisReport = fromEvent ?? fromMarkdown ?? undefined
+          const herbSafetySnap = streamingHerbSafety.value
           messages.value = [
             ...messages.value,
             {
               role: 'assistant',
               content: assistant + '\n…（已中断）',
               ...(diagnosisReport ? { diagnosisReport } : {}),
+              ...(herbSafetySnap != null ? { herbSafety: herbSafetySnap } : {}),
             },
           ]
         } else if (!opts?.skipAppendUser) {
@@ -491,6 +506,7 @@ export function useChat() {
       }
       streamingContent.value = ''
       streamingDiagnosisReport.value = null
+      streamingHerbSafety.value = null
       streamPhase.value = null
     } finally {
       loading.value = false
@@ -543,6 +559,7 @@ export function useChat() {
     }
     streamingContent.value = ''
     streamingDiagnosisReport.value = null
+    streamingHerbSafety.value = null
     loading.value = true
 
     try {
@@ -614,6 +631,7 @@ export function useChat() {
       loading.value = false
       streamPhase.value = null
       streamingDiagnosisReport.value = null
+      streamingHerbSafety.value = null
       scrollToBottom(opts?.scrollRoot ?? null)
     }
   }
@@ -626,6 +644,7 @@ export function useChat() {
     error,
     streamingContent,
     streamingDiagnosisReport,
+    streamingHerbSafety,
     ragMeta,
     streamPhase,
     streamActivityLog,
