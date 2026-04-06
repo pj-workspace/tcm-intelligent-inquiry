@@ -18,6 +18,9 @@ import {
 import { listLiteratureUploads } from '@/api/modules/literature'
 import type { KnowledgeBase } from '@/types/knowledge'
 import type { ConsultationRagMeta, SendOptions } from '@/composables/useChat'
+import ChatInputBox, {
+  type ChatInputSendPayload,
+} from '@/views/consultation/components/ChatInputBox.vue'
 import ChatDocMessage from '@/components/business/ChatDocMessage.vue'
 import DsAlert from '@/components/common/DsAlert.vue'
 import DsSelect from '@/components/common/DsSelect.vue'
@@ -53,14 +56,7 @@ const {
   stop,
 } = chat
 
-const {
-  knowledgeBaseId,
-  literatureCollectionId,
-  pendingImages,
-  addImagesFromInput,
-  removeImageAt,
-  clearPendingImages,
-} = useOmniChatContext()
+const { knowledgeBaseId, literatureCollectionId } = useOmniChatContext()
 
 /** 仿 claw-code CLI 分阶段进度：优先展示后端 {@code event: phase}，缺省时再用前端启发式文案 */
 const { spinChar } = useBrailleSpinner(loading)
@@ -89,7 +85,7 @@ const orchestrationStep = computed(() => {
 const health = ref<string>('')
 const settingsWrapRef = ref<HTMLElement | null>(null)
 const threadEl = ref<HTMLElement | null>(null)
-const input = ref('')
+const chatInputBoxRef = ref<InstanceType<typeof ChatInputBox> | null>(null)
 const knowledgeBases = ref<KnowledgeBase[]>([])
 
 /** 模型参数、RAG 数值与设置面板展开态：localStorage + sessionStorage，见 composable 内中文说明 */
@@ -106,7 +102,6 @@ const {
   onConsultAdvToggle,
 } = useConsultChatPrefs()
 const literatureCollections = ref<{ id: string; label: string }[]>([])
-const attachInput = ref<HTMLInputElement | null>(null)
 const exportBusy = ref(false)
 const exportHint = ref<string | null>(null)
 
@@ -320,16 +315,6 @@ onUnmounted(() => {
   if (exportHintTimer) clearTimeout(exportHintTimer)
 })
 
-function onAttachClick() {
-  attachInput.value?.click()
-}
-
-function onAttachChange(e: Event) {
-  const el = e.target as HTMLInputElement
-  addImagesFromInput(el.files)
-  el.value = ''
-}
-
 function buildSendOptions(skipAppendUser = false): SendOptions {
   const lit =
     literatureCollectionId.value.trim() === ''
@@ -355,13 +340,10 @@ function buildSendOptions(skipAppendUser = false): SendOptions {
   return opts
 }
 
-async function onSend() {
-  const text = input.value.trim()
-  if (!text || loading.value) return
+async function handleSendMessage({ text, images }: ChatInputSendPayload) {
+  if (!text.trim() || loading.value) return
 
-  input.value = ''
-
-  const files = [...pendingImages.value]
+  const files = [...images]
   let herbPayload: { herbImageBase64?: string; herbImageMimeType?: string } =
     {}
   if (files.length > 0) {
@@ -383,7 +365,7 @@ async function onSend() {
   }
 
   await send(text, opts)
-  if (!error.value) clearPendingImages()
+  if (!error.value) chatInputBoxRef.value?.clearPendingImages()
 }
 
 async function onRegenerateAssistant() {
@@ -403,10 +385,6 @@ async function onRegenerateAssistant() {
   await send(textForModel, { ...buildSendOptions(true), userBubbleText: bubble })
 }
 
-function canSend() {
-  if (!input.value.trim() || loading.value) return false
-  return true
-}
 </script>
 
 <template>
@@ -777,7 +755,7 @@ function canSend() {
             开始一次问诊
           </p>
           <p class="ds-thread-empty__hint">
-            Enter 发送。输入区旁可附药材 / 舌象图（走识图工具）；右上角可设置可选默认知识库与文献库。
+            Enter 发送，Shift+Enter 换行。输入区旁可附药材 / 舌象图（走识图工具）；右上角可设置可选默认知识库与文献库。
           </p>
         </div>
         <ChatDocMessage
@@ -804,103 +782,11 @@ function canSend() {
       </div>
     </div>
 
-    <form
-      class="consult-composer"
-      @submit.prevent="onSend"
-    >
-      <div
-        v-if="pendingImages.length > 0"
-        class="consult-attachments"
-      >
-        <span
-          v-for="(f, idx) in pendingImages"
-          :key="idx + f.name"
-          class="consult-attachments__chip"
-        >
-          {{ f.name }}
-          <button
-            type="button"
-            class="consult-attachments__x"
-            :disabled="loading"
-            @click="removeImageAt(idx)"
-          >
-            ×
-          </button>
-        </span>
-        <span
-          v-if="pendingImages.length > 1"
-          class="ds-hint"
-        >将使用第一张图调用接口</span>
-      </div>
-      <div class="consult-composer__shell">
-        <input
-          ref="attachInput"
-          type="file"
-          class="consult-composer__file"
-          accept="image/*"
-          multiple
-          :disabled="loading"
-          @change="onAttachChange"
-        >
-        <button
-          type="button"
-          class="ds-btn ds-btn--icon ds-btn--subtle consult-composer__attach"
-          :disabled="loading"
-          title="上传图片（可选，走药材识图工具）"
-          aria-label="上传附件或图片"
-          @click="onAttachClick"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke-width="1.8"
-            stroke="currentColor"
-            aria-hidden="true"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3A1.5 1.5 0 0 0 1.5 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008H12V8.25Z"
-            />
-          </svg>
-        </button>
-        <textarea
-          v-model="input"
-          class="consult-composer__input"
-          rows="3"
-          placeholder="描述症状、上传处方图说明、或基于文献提问…"
-          :disabled="loading"
-          @keydown.enter.exact.prevent="onSend"
-        />
-        <button
-          type="submit"
-          class="ds-btn ds-btn--primary ds-btn--icon consult-composer__send"
-          :disabled="!canSend()"
-          aria-label="发送"
-          title="发送"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke-width="2"
-            stroke="currentColor"
-            aria-hidden="true"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"
-            />
-          </svg>
-        </button>
-      </div>
-    </form>
+    <ChatInputBox
+      ref="chatInputBoxRef"
+      :loading="loading"
+      @send="handleSendMessage"
+    />
   </div>
 </template>
 
@@ -1404,135 +1290,6 @@ function canSend() {
   align-items: stretch;
   flex: 1;
   min-height: 0;
-}
-
-.consult-composer {
-  margin-top: 1.25rem;
-  padding-top: 0.25rem;
-  flex-shrink: 0;
-}
-
-.consult-attachments {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.4rem;
-  margin-bottom: 0.4rem;
-}
-
-.consult-attachments__chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.75rem;
-  padding: 0.2rem 0.45rem;
-  border-radius: var(--radius-sm);
-  background: rgba(124, 58, 237, 0.08);
-  border: 1px solid var(--color-border);
-}
-
-.consult-attachments__x {
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  padding: 0 0.15rem;
-  line-height: 1;
-  color: var(--color-muted);
-  touch-action: manipulation;
-  border-radius: var(--radius-sm);
-  transition: transform 0.1s ease, color 0.15s ease;
-}
-
-.consult-attachments__x:hover:not(:disabled) {
-  color: var(--color-danger);
-}
-
-.consult-attachments__x:active:not(:disabled) {
-  transform: scale(0.9);
-}
-
-.consult-attachments__x:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-.consult-composer__shell {
-  position: relative;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-  transition: var(--transition-fast);
-  overflow: hidden;
-}
-
-.consult-composer__shell:focus-within {
-  border-color: var(--color-secondary);
-  box-shadow: var(--focus-ring);
-}
-
-.consult-composer__file {
-  position: absolute;
-  width: 0;
-  height: 0;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.consult-composer__attach {
-  position: absolute;
-  bottom: 0.65rem;
-  left: 0.55rem;
-  z-index: 1;
-  width: var(--ds-control-height);
-  height: var(--ds-control-height);
-  min-width: var(--ds-control-height);
-  padding: 0;
-  border-radius: var(--radius-control);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.consult-composer__input {
-  display: block;
-  width: 100%;
-  margin: 0;
-  box-sizing: border-box;
-  padding: 12px 60px 12px 52px;
-  min-height: 5.25rem;
-  font-family: var(--font-body);
-  font-size: 0.9375rem;
-  line-height: 1.5;
-  color: var(--color-text);
-  background: var(--color-surface);
-  border: none;
-  border-radius: var(--radius-md);
-  outline: none;
-  resize: none !important;
-  overflow-y: auto;
-}
-
-.consult-composer__input::-webkit-resizer {
-  display: none;
-  appearance: none;
-}
-
-.consult-composer__input::placeholder {
-  color: var(--color-muted);
-}
-
-.consult-composer__input:focus {
-  outline: none;
-}
-
-.consult-composer__send {
-  position: absolute;
-  bottom: 0.65rem;
-  right: 0.65rem;
-  width: var(--ds-control-height);
-  height: var(--ds-control-height);
-  border-radius: var(--radius-control);
 }
 
 @media (max-width: 52rem) {

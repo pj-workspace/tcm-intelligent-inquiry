@@ -35,7 +35,8 @@ function savePersisted(p: Persisted) {
 }
 
 /**
- * 问诊侧偏好：可选默认知识库 / 文献库 ID、待发送附图（由 Agent 自行决定是否走识图工具）。
+ * 问诊侧偏好：可选默认知识库 / 文献库 ID（持久化至 localStorage）。
+ * 待发附图由问诊页的输入区组件（如 ChatInputBox）自行维护。
  */
 export function useOmniChatContext() {
   const saved = loadPersisted()
@@ -44,7 +45,6 @@ export function useOmniChatContext() {
   const literatureCollectionId = ref<string>(
     saved?.literatureCollectionId ?? ''
   )
-  const pendingImages = ref<File[]>([])
 
   function persistNow() {
     savePersisted({
@@ -58,30 +58,8 @@ export function useOmniChatContext() {
 
   watch([knowledgeBaseId, literatureCollectionId], persistNow, { deep: true })
 
-  function addImagesFromInput(fileList: FileList | null) {
-    if (!fileList?.length) return
-    const next: File[] = [...pendingImages.value]
-    for (let i = 0; i < fileList.length; i++) {
-      const f = fileList.item(i)
-      if (f && f.type.startsWith('image/')) next.push(f)
-    }
-    pendingImages.value = next
-  }
-
-  function removeImageAt(index: number) {
-    pendingImages.value = pendingImages.value.filter((_, i) => i !== index)
-  }
-
-  function clearPendingImages() {
-    pendingImages.value = []
-  }
-
   return {
     knowledgeBaseId,
     literatureCollectionId,
-    pendingImages,
-    addImagesFromInput,
-    removeImageAt,
-    clearPendingImages,
   }
 }
