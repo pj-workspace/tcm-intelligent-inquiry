@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
 import MarkdownContent from '@/components/business/MarkdownContent.vue'
+import DiagnosisReportCard from '@/views/consultation/components/DiagnosisReportCard.vue'
+import type { TcmDiagnosisReport } from '@/types/consultation'
+import { stripJsonReportBlocks } from '@/utils/diagnosisReport'
 import {
   advanceMarkdownRestGate,
   type MarkdownRestStreamGate,
@@ -19,8 +22,16 @@ const props = withDefaults(
     isStreaming?: boolean
     /** 视觉模式下的占位文案（isStreaming 时） */
     streamVision?: boolean
+    /** 结构化辨证摘要：存在时从 Markdown 中剥掉 json-report 代码块，避免与卡片重复 */
+    diagnosisReport?: TcmDiagnosisReport | null
   }>(),
-  { ragLog: null, allowRegenerate: false, isStreaming: false, streamVision: false }
+  {
+    ragLog: null,
+    allowRegenerate: false,
+    isStreaming: false,
+    streamVision: false,
+    diagnosisReport: null,
+  }
 )
 
 const emit = defineEmits<{
@@ -38,8 +49,16 @@ let copyTimer: ReturnType<typeof setTimeout> | null = null
 const restGate = ref<MarkdownRestStreamGate>({ committed: '', pending: '' })
 let prevRestLen = 0
 
+const assistantPipelineSource = computed(() => {
+  if (props.role !== 'assistant') return props.content
+  if (props.diagnosisReport == null) return props.content
+  return stripJsonReportBlocks(props.content)
+})
+
 const parsed = computed(() =>
-  props.role === 'assistant' ? splitThinkFromAssistant(props.content) : null
+  props.role === 'assistant'
+    ? splitThinkFromAssistant(assistantPipelineSource.value)
+    : null
 )
 
 watch(
@@ -305,6 +324,11 @@ onUnmounted(() => {
         </p>
       </template>
     </div>
+
+    <DiagnosisReportCard
+      v-if="diagnosisReport"
+      :report="diagnosisReport"
+    />
 
     <div
       v-if="showAssistantActions"

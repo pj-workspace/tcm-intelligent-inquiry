@@ -6,6 +6,15 @@ export type ChatSessionInfo = {
   updatedAt: string
 }
 
+/** 与后端 {@code TcmDiagnosisReport} 一致的结构化辨证摘要。 */
+export type TcmDiagnosisReport = {
+  pattern: string
+  reasoning: string
+  formula: string | null
+  herbs: string[]
+  lifestyle: string[]
+}
+
 /** 与会话中单轮问答对应的只读结构（与后端 ChatMessageView 一致）。 */
 export type ChatMessageView = {
   id: number

@@ -6,6 +6,7 @@ import type {
   StreamActivityEntry,
   StreamPhasePayload,
 } from '@/composables/useChat'
+import type { TcmDiagnosisReport } from '@/types/consultation'
 import ChatDocMessage from '@/components/business/ChatDocMessage.vue'
 import DsAlert from '@/components/common/DsAlert.vue'
 import { useBrailleSpinner } from '@/composables/useBrailleSpinner'
@@ -14,6 +15,7 @@ const props = defineProps<{
   messages: ChatTurn[]
   loading: boolean
   streamingContent: string
+  streamingDiagnosisReport: TcmDiagnosisReport | null
   ragMeta: ConsultationRagMeta | null
   streamPhase: StreamPhasePayload | null
   streamActivityLog: StreamActivityEntry[]
@@ -210,6 +212,7 @@ defineExpose({
           :key="i"
           :role="m.role"
           :content="m.content"
+          :diagnosis-report="m.diagnosisReport"
           :allow-regenerate="
             m.role === 'assistant' &&
               i === messages.length - 1 &&
@@ -221,6 +224,7 @@ defineExpose({
           v-if="loading"
           role="assistant"
           :content="streamingContent"
+          :diagnosis-report="streamingDiagnosisReport ?? undefined"
           :rag-log="streamingRagLog"
           :is-streaming="true"
           :stream-vision="false"

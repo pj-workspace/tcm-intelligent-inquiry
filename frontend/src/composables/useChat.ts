@@ -10,10 +10,19 @@ import {
   listConsultationSessions,
 } from '@/api/modules/consultation'
 import { postAgentRunJson } from '@/api/modules/agent'
-import type { ChatSessionInfo } from '@/types/consultation'
+import type { ChatSessionInfo, TcmDiagnosisReport } from '@/types/consultation'
+import {
+  normalizeReportPayload,
+  tryParseDiagnosisReportFromMarkdown,
+} from '@/utils/diagnosisReport'
 import { encodeImageFileToHerbPayload } from '@/utils/herbImagePayload'
 
-export type ChatTurn = { role: 'user' | 'assistant'; content: string }
+export type ChatTurn = {
+  role: 'user' | 'assistant'
+  content: string
+  /** 结构化辨证摘要（SSE {@code report} 或从历史正文解析） */
+  diagnosisReport?: TcmDiagnosisReport
+}
 
 /** 兼容旧路径：`import type { ChatSessionInfo } from '@/composables/useChat'` */
 export type { ChatSessionInfo }
@@ -95,6 +104,8 @@ export function useChat() {
   const error = ref<string | null>(null)
   /** 当前一轮助手流式累积（完成后会并入 messages） */
   const streamingContent = ref('')
+  /** 当前流式回合结构化报告（后端 {@code event: report}）；可与正文并列更新 */
+  const streamingDiagnosisReport = ref<TcmDiagnosisReport | null>(null)
   /** 当前回合知识库检索摘要（仅当本轮请求携带 knowledgeBaseId 且收到 meta 时有效） */
   const ragMeta = ref<ConsultationRagMeta | null>(null)
   /** 本轮 SSE 编排阶段（由后端 {@code event: phase} 推送，优先于前端猜阶段文案） */
@@ -147,7 +158,13 @@ export function useChat() {
     const next: ChatTurn[] = []
     for (const m of list) {
       next.push({ role: 'user', content: m.userMessage })
-      next.push({ role: 'assistant', content: m.assistantMessage })
+      const a = m.assistantMessage
+      const diagnosisReport = tryParseDiagnosisReportFromMarkdown(a)
+      next.push({
+        role: 'assistant',
+        content: a,
+        ...(diagnosisReport ? { diagnosisReport } : {}),
+      })
     }
     messages.value = next
   }
@@ -156,6 +173,7 @@ export function useChat() {
     stop()
     error.value = null
     streamingContent.value = ''
+    streamingDiagnosisReport.value = null
     ragMeta.value = null
     streamPhase.value = null
     streamActivityLog.value = []
@@ -174,6 +192,7 @@ export function useChat() {
     sessionId.value = null
     messages.value = []
     streamingContent.value = ''
+    streamingDiagnosisReport.value = null
     ragMeta.value = null
     streamPhase.value = null
     streamActivityLog.value = []
@@ -224,6 +243,7 @@ export function useChat() {
       messages.value = [...messages.value, { role: 'user', content: bubble }]
     }
     streamingContent.value = ''
+    streamingDiagnosisReport.value = null
     loading.value = true
     abort = new AbortController()
 
@@ -283,6 +303,15 @@ export function useChat() {
           body: JSON.stringify(body),
           signal: abort.signal,
           onNamedEvent: (name, data) => {
+            if (name === 'report') {
+              try {
+                const o = JSON.parse(data) as Record<string, unknown>
+                streamingDiagnosisReport.value = normalizeReportPayload(o)
+              } catch {
+                /* 损坏则仅依赖正文 Markdown */
+              }
+              return
+            }
             if (name === 'assistant') {
               try {
                 const o = JSON.parse(data) as {
@@ -415,20 +444,41 @@ export function useChat() {
           },
         }
       )
+      const fromEvent = streamingDiagnosisReport.value
+      const fromMarkdown =
+        fromEvent == null
+          ? tryParseDiagnosisReportFromMarkdown(assistant)
+          : null
+      const diagnosisReport = fromEvent ?? fromMarkdown ?? undefined
       messages.value = [
         ...messages.value,
-        { role: 'assistant', content: assistant },
+        {
+          role: 'assistant',
+          content: assistant,
+          ...(diagnosisReport ? { diagnosisReport } : {}),
+        },
       ]
       streamingContent.value = ''
+      streamingDiagnosisReport.value = null
       streamPhase.value = null
       await fetchSessions()
     } catch (e: unknown) {
       if ((e as Error)?.name === 'AbortError') {
         error.value = '已停止生成'
         if (assistant) {
+          const fromEvent = streamingDiagnosisReport.value
+          const fromMarkdown =
+            fromEvent == null
+              ? tryParseDiagnosisReportFromMarkdown(assistant)
+              : null
+          const diagnosisReport = fromEvent ?? fromMarkdown ?? undefined
           messages.value = [
             ...messages.value,
-            { role: 'assistant', content: assistant + '\n…（已中断）' },
+            {
+              role: 'assistant',
+              content: assistant + '\n…（已中断）',
+              ...(diagnosisReport ? { diagnosisReport } : {}),
+            },
           ]
         } else if (!opts?.skipAppendUser) {
           messages.value = messages.value.slice(0, -1)
@@ -440,6 +490,7 @@ export function useChat() {
         }
       }
       streamingContent.value = ''
+      streamingDiagnosisReport.value = null
       streamPhase.value = null
     } finally {
       loading.value = false
@@ -491,6 +542,7 @@ export function useChat() {
       messages.value = [...messages.value, { role: 'user', content: userLabel }]
     }
     streamingContent.value = ''
+    streamingDiagnosisReport.value = null
     loading.value = true
 
     try {
@@ -543,9 +595,14 @@ export function useChat() {
           agentMode: mode,
         }
       }
+      const visionReport = tryParseDiagnosisReportFromMarkdown(answer)
       messages.value = [
         ...messages.value,
-        { role: 'assistant', content: answer },
+        {
+          role: 'assistant',
+          content: answer,
+          ...(visionReport ? { diagnosisReport: visionReport } : {}),
+        },
       ]
       await fetchSessions()
     } catch (e: unknown) {
@@ -556,6 +613,7 @@ export function useChat() {
     } finally {
       loading.value = false
       streamPhase.value = null
+      streamingDiagnosisReport.value = null
       scrollToBottom(opts?.scrollRoot ?? null)
     }
   }
@@ -567,6 +625,7 @@ export function useChat() {
     loading,
     error,
     streamingContent,
+    streamingDiagnosisReport,
     ragMeta,
     streamPhase,
     streamActivityLog,
