@@ -1,6 +1,7 @@
 package com.tcm.inquiry.modules.consultation.service;
 
 import java.time.Instant;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.tcm.inquiry.modules.consultation.entity.ChatMessage;
 import com.tcm.inquiry.modules.consultation.entity.ChatSession;
+import com.tcm.inquiry.modules.knowledge.dto.resp.KnowledgeRetrievedPassage;
 import com.tcm.inquiry.modules.consultation.repository.ChatMessageRepository;
 import com.tcm.inquiry.modules.consultation.repository.ChatSessionRepository;
 
@@ -47,6 +49,18 @@ public class ConsultationMessageStore {
             String modelName,
             Double temperature,
             Double topP) {
+        saveTurn(sessionId, userText, assistantText, modelName, temperature, topP, null);
+    }
+
+    @Transactional
+    public void saveTurn(
+            Long sessionId,
+            String userText,
+            String assistantText,
+            String modelName,
+            Double temperature,
+            Double topP,
+            List<KnowledgeRetrievedPassage> retrievalPassages) {
         ChatSession session =
                 chatSessionRepository.findById(sessionId).orElseThrow();
 
@@ -69,6 +83,13 @@ public class ConsultationMessageStore {
                 row.setGenerationParamsJson(OBJECT_MAPPER.writeValueAsString(node));
             } catch (JsonProcessingException e) {
                 log.warn("序列化 generationParamsJson 失败 sessionId={}", sessionId, e);
+            }
+        }
+        if (retrievalPassages != null && !retrievalPassages.isEmpty()) {
+            try {
+                row.setRetrievalTraceJson(OBJECT_MAPPER.writeValueAsString(retrievalPassages));
+            } catch (JsonProcessingException e) {
+                log.warn("序列化 retrievalTraceJson 失败 sessionId={}", sessionId, e);
             }
         }
         row.setCreatedAt(Instant.now());

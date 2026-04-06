@@ -7,6 +7,7 @@ import type {
   StreamPhasePayload,
 } from '@/composables/useChat'
 import type { HerbSafetyCheckResult, TcmDiagnosisReport } from '@/types/consultation'
+import type { KnowledgeRetrievedPassage } from '@/types/knowledge'
 import ChatDocMessage from '@/components/business/ChatDocMessage.vue'
 import DsAlert from '@/components/common/DsAlert.vue'
 import { useBrailleSpinner } from '@/composables/useBrailleSpinner'
@@ -17,6 +18,7 @@ const props = defineProps<{
   streamingContent: string
   streamingDiagnosisReport: TcmDiagnosisReport | null
   streamingHerbSafety: HerbSafetyCheckResult | null
+  streamingRetrievalPassages: KnowledgeRetrievedPassage[]
   ragMeta: ConsultationRagMeta | null
   streamPhase: StreamPhasePayload | null
   streamActivityLog: StreamActivityEntry[]
@@ -72,8 +74,18 @@ function formatRagLog(meta: ConsultationRagMeta | null): string | null {
   if (meta.sources.length) {
     lines.push(`合并来源：${meta.sources.join('、')}`)
   }
+  if (meta.passages?.length) {
+    lines.push(`溯源摘录：${meta.passages.length} 条（与看板一致）`)
+  }
   return lines.join('\n')
 }
+
+const lastUserBubble = computed(() => {
+  for (let i = props.messages.length - 1; i >= 0; i--) {
+    if (props.messages[i].role === 'user') return props.messages[i].content
+  }
+  return ''
+})
 
 const streamingRagLog = computed(() => {
   if (!props.loading || !props.streamingContent) return null
@@ -215,6 +227,14 @@ defineExpose({
           :content="m.content"
           :diagnosis-report="m.diagnosisReport"
           :herb-safety="m.herbSafety"
+          :retrieval-passages="m.role === 'assistant' ? m.retrievalPassages : undefined"
+          :trace-user-query="
+            m.role === 'assistant' &&
+              i > 0 &&
+              messages[i - 1]?.role === 'user'
+              ? messages[i - 1].content
+              : undefined
+          "
           :allow-regenerate="
             m.role === 'assistant' &&
               i === messages.length - 1 &&
@@ -228,6 +248,10 @@ defineExpose({
           :content="streamingContent"
           :diagnosis-report="streamingDiagnosisReport ?? undefined"
           :herb-safety="streamingHerbSafety ?? undefined"
+          :retrieval-passages="
+            streamingRetrievalPassages.length ? streamingRetrievalPassages : undefined
+          "
+          :trace-user-query="lastUserBubble"
           :rag-log="streamingRagLog"
           :is-streaming="true"
           :stream-vision="false"

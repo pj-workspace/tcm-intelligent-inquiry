@@ -30,6 +30,7 @@ const {
   streamingContent,
   streamingDiagnosisReport,
   streamingHerbSafety,
+  streamingRetrievalPassages,
   ragMeta,
   streamPhase,
   streamActivityLog,
@@ -244,6 +245,7 @@ async function onRegenerateAssistant() {
       :streaming-content="streamingContent"
       :streaming-diagnosis-report="streamingDiagnosisReport"
       :streaming-herb-safety="streamingHerbSafety"
+      :streaming-retrieval-passages="streamingRetrievalPassages"
       :rag-meta="ragMeta"
       :stream-phase="streamPhase"
       :stream-activity-log="streamActivityLog"

@@ -369,13 +369,19 @@ public class KnowledgeRagService {
             if (!source.isBlank()) {
                 sources.add(source);
             }
+            String excerpt = t != null ? t : "";
+            if (excerpt.length() > 4000) {
+                excerpt = excerpt.substring(0, 4000) + "…";
+            }
             passages.add(
                     new KnowledgeRetrievedPassage(
                             idx,
                             d.getId() != null ? d.getId() : "",
                             source,
                             matchTypeFromWire(mt),
-                            sc));
+                            sc,
+                            excerpt,
+                            "knowledge"));
             idx++;
         }
 

@@ -15,10 +15,12 @@ import type {
   HerbSafetyCheckResult,
   TcmDiagnosisReport,
 } from '@/types/consultation'
+import type { KnowledgeRetrievedPassage } from '@/types/knowledge'
 import {
   parseConsultationReportSsePayload,
   tryParseDiagnosisReportFromMarkdown,
 } from '@/utils/diagnosisReport'
+import { normalizeMetaPassages } from '@/utils/retrievalTrace'
 import { encodeImageFileToHerbPayload } from '@/utils/herbImagePayload'
 
 export type ChatTurn = {
@@ -28,6 +30,8 @@ export type ChatTurn = {
   diagnosisReport?: TcmDiagnosisReport
   /** 配伍禁忌扫描（仅 SSE 附带；历史记录多为空） */
   herbSafety?: HerbSafetyCheckResult | null
+  /** RAG 溯源摘录（与 meta.passages / 落库一致） */
+  retrievalPassages?: KnowledgeRetrievedPassage[]
 }
 
 /** 兼容旧路径：`import type { ChatSessionInfo } from '@/composables/useChat'` */
@@ -74,6 +78,8 @@ export type ConsultationRagMeta = {
   literatureSources?: string[]
   /** 后端 Agent 模式，如 react+tools */
   agentMode?: string
+  /** 与后端 meta.passages 一致（Top 溯源） */
+  passages?: KnowledgeRetrievedPassage[]
 }
 
 /** 后端 {@code event: phase} 负载（与 claw-code 编排进度语义对齐，供顶栏状态条展示）。 */
@@ -114,6 +120,8 @@ export function useChat() {
   const streamingDiagnosisReport = ref<TcmDiagnosisReport | null>(null)
   /** 与 {@code report} 事件同发的配伍审查结果 */
   const streamingHerbSafety = ref<HerbSafetyCheckResult | null>(null)
+  /** 当前流式回合 RAG 溯源（meta.passages，与落库对齐） */
+  const streamingRetrievalPassages = ref<KnowledgeRetrievedPassage[]>([])
   /** 当前回合知识库检索摘要（仅当本轮请求携带 knowledgeBaseId 且收到 meta 时有效） */
   const ragMeta = ref<ConsultationRagMeta | null>(null)
   /** 本轮 SSE 编排阶段（由后端 {@code event: phase} 推送，优先于前端猜阶段文案） */
@@ -172,6 +180,9 @@ export function useChat() {
         role: 'assistant',
         content: a,
         ...(diagnosisReport ? { diagnosisReport } : {}),
+        ...(m.retrievalPassages?.length
+          ? { retrievalPassages: m.retrievalPassages }
+          : {}),
       })
     }
     messages.value = next
@@ -183,6 +194,7 @@ export function useChat() {
     streamingContent.value = ''
     streamingDiagnosisReport.value = null
     streamingHerbSafety.value = null
+    streamingRetrievalPassages.value = []
     ragMeta.value = null
     streamPhase.value = null
     streamActivityLog.value = []
@@ -203,6 +215,7 @@ export function useChat() {
     streamingContent.value = ''
     streamingDiagnosisReport.value = null
     streamingHerbSafety.value = null
+    streamingRetrievalPassages.value = []
     ragMeta.value = null
     streamPhase.value = null
     streamActivityLog.value = []
@@ -255,6 +268,7 @@ export function useChat() {
     streamingContent.value = ''
     streamingDiagnosisReport.value = null
     streamingHerbSafety.value = null
+    streamingRetrievalPassages.value = []
     loading.value = true
     abort = new AbortController()
 
@@ -439,6 +453,8 @@ export function useChat() {
                 : undefined
               const agentMode =
                 typeof o.mode === 'string' ? (o.mode as string) : undefined
+              const passages = normalizeMetaPassages(o.passages)
+              streamingRetrievalPassages.value = passages
               ragMeta.value = {
                 sources,
                 retrievedChunks,
@@ -447,6 +463,7 @@ export function useChat() {
                 knowledgeSources,
                 literatureSources,
                 agentMode,
+                passages,
               }
             } catch {
               /* ignore */
@@ -461,6 +478,7 @@ export function useChat() {
           : null
       const diagnosisReport = fromEvent ?? fromMarkdown ?? undefined
       const herbSafetySnap = streamingHerbSafety.value
+      const traceSnap = [...streamingRetrievalPassages.value]
       messages.value = [
         ...messages.value,
         {
@@ -468,11 +486,13 @@ export function useChat() {
           content: assistant,
           ...(diagnosisReport ? { diagnosisReport } : {}),
           ...(herbSafetySnap != null ? { herbSafety: herbSafetySnap } : {}),
+          ...(traceSnap.length ? { retrievalPassages: traceSnap } : {}),
         },
       ]
       streamingContent.value = ''
       streamingDiagnosisReport.value = null
       streamingHerbSafety.value = null
+      streamingRetrievalPassages.value = []
       streamPhase.value = null
       await fetchSessions()
     } catch (e: unknown) {
@@ -486,6 +506,7 @@ export function useChat() {
               : null
           const diagnosisReport = fromEvent ?? fromMarkdown ?? undefined
           const herbSafetySnap = streamingHerbSafety.value
+          const traceSnap = [...streamingRetrievalPassages.value]
           messages.value = [
             ...messages.value,
             {
@@ -493,6 +514,7 @@ export function useChat() {
               content: assistant + '\n…（已中断）',
               ...(diagnosisReport ? { diagnosisReport } : {}),
               ...(herbSafetySnap != null ? { herbSafety: herbSafetySnap } : {}),
+              ...(traceSnap.length ? { retrievalPassages: traceSnap } : {}),
             },
           ]
         } else if (!opts?.skipAppendUser) {
@@ -507,6 +529,7 @@ export function useChat() {
       streamingContent.value = ''
       streamingDiagnosisReport.value = null
       streamingHerbSafety.value = null
+      streamingRetrievalPassages.value = []
       streamPhase.value = null
     } finally {
       loading.value = false
@@ -560,6 +583,7 @@ export function useChat() {
     streamingContent.value = ''
     streamingDiagnosisReport.value = null
     streamingHerbSafety.value = null
+    streamingRetrievalPassages.value = []
     loading.value = true
 
     try {
@@ -632,6 +656,7 @@ export function useChat() {
       streamPhase.value = null
       streamingDiagnosisReport.value = null
       streamingHerbSafety.value = null
+      streamingRetrievalPassages.value = []
       scrollToBottom(opts?.scrollRoot ?? null)
     }
   }
@@ -645,6 +670,7 @@ export function useChat() {
     streamingContent,
     streamingDiagnosisReport,
     streamingHerbSafety,
+    streamingRetrievalPassages,
     ragMeta,
     streamPhase,
     streamActivityLog,

@@ -35,6 +35,8 @@ import com.tcm.inquiry.modules.agent.tools.AgentReActToolsFactory;
 import com.tcm.inquiry.modules.consultation.ai.ConsultationPrompts;
 import com.tcm.inquiry.modules.knowledge.ai.KnowledgeContextBundle;
 import com.tcm.inquiry.modules.knowledge.ai.KnowledgeRagService;
+import com.tcm.inquiry.modules.knowledge.ai.RetrievalTraceSupport;
+import com.tcm.inquiry.modules.knowledge.dto.resp.KnowledgeRetrievedPassage;
 
 @Service
 public class AgentService {
@@ -42,7 +44,10 @@ public class AgentService {
     private static final Logger log = LoggerFactory.getLogger(AgentService.class);
 
     private record ReactToolBundle(
-            Map<String, Object> toolCtx, List<String> kbSourcesAcc, List<String> litSourcesAcc) {}
+            Map<String, Object> toolCtx,
+            List<String> kbSourcesAcc,
+            List<String> litSourcesAcc,
+            List<KnowledgeRetrievedPassage> passagesAcc) {}
 
     /** 问诊 ReAct：ChatClient + 工具上下文已就绪，供阻塞调用或流式订阅共用。 */
     private record PreparedConsultationReAct(
@@ -173,7 +178,8 @@ public class AgentService {
                 List.copyOf(p.bundle().kbSourcesAcc()),
                 "react+tools",
                 List.of(),
-                List.copyOf(p.bundle().litSourcesAcc()));
+                List.copyOf(p.bundle().litSourcesAcc()),
+                RetrievalTraceSupport.finalizeTop(p.bundle().passagesAcc(), 3));
     }
 
     /**
@@ -239,7 +245,9 @@ public class AgentService {
                                         List.copyOf(p.bundle().kbSourcesAcc()),
                                         "react+tools",
                                         List.of(),
-                                        List.copyOf(p.bundle().litSourcesAcc())));
+                                        List.copyOf(p.bundle().litSourcesAcc()),
+                                        RetrievalTraceSupport.finalizeTop(
+                                                p.bundle().passagesAcc(), 3)));
                     }
                 };
 
@@ -267,7 +275,9 @@ public class AgentService {
                                                 List.copyOf(p.bundle().kbSourcesAcc()),
                                                 "react+tools",
                                                 List.of(),
-                                                List.copyOf(p.bundle().litSourcesAcc())));
+                                                List.copyOf(p.bundle().litSourcesAcc()),
+                                                RetrievalTraceSupport.finalizeTop(
+                                                        p.bundle().passagesAcc(), 3)));
                             })
                     .blockLast(Duration.ofMinutes(12));
         } catch (Throwable ex) {
@@ -311,7 +321,8 @@ public class AgentService {
             ctxMap.putAll(toolContextOverlay);
         }
         ReactToolBundle merged =
-                new ReactToolBundle(ctxMap, bundle.kbSourcesAcc(), bundle.litSourcesAcc());
+                new ReactToolBundle(
+                        ctxMap, bundle.kbSourcesAcc(), bundle.litSourcesAcc(), bundle.passagesAcc());
 
         String reactSystem =
                 ConsultationPrompts.SYSTEM + "\n\n" + AgentPrompts.REACT_TOOLS_APPENDIX;
@@ -407,9 +418,11 @@ public class AgentService {
 
         List<String> kbSourcesAcc = new ArrayList<>();
         List<String> litSourcesAcc = new ArrayList<>();
+        List<KnowledgeRetrievedPassage> passagesAcc = new ArrayList<>();
         Map<String, Object> toolCtx = new LinkedHashMap<>();
         toolCtx.put(AgentReActToolsFactory.CTX_KNOWLEDGE_SOURCES_COLLECTOR, kbSourcesAcc);
         toolCtx.put(AgentReActToolsFactory.CTX_LITERATURE_SOURCES_COLLECTOR, litSourcesAcc);
+        toolCtx.put(AgentReActToolsFactory.CTX_RAG_PASSAGES_COLLECTOR, passagesAcc);
 
         Long cfgKb = agentAppConfigService.getOrCreateEntity().getDefaultKnowledgeBaseId();
         Long effectiveKb = knowledgeBaseId != null ? knowledgeBaseId : cfgKb;
@@ -440,7 +453,7 @@ public class AgentService {
                     AgentReActToolsFactory.CTX_INLINE_HERB_IMAGE_MIME,
                     StringUtils.hasText(herbImageMimeType) ? herbImageMimeType.trim() : "image/jpeg");
         }
-        return new ReactToolBundle(toolCtx, kbSourcesAcc, litSourcesAcc);
+        return new ReactToolBundle(toolCtx, kbSourcesAcc, litSourcesAcc, passagesAcc);
     }
 
     /**
@@ -484,7 +497,8 @@ public class AgentService {
                 List.copyOf(bundle.kbSourcesAcc()),
                 "react+tools",
                 List.of(),
-                List.copyOf(bundle.litSourcesAcc()));
+                List.copyOf(bundle.litSourcesAcc()),
+                RetrievalTraceSupport.finalizeTop(bundle.passagesAcc(), 3));
     }
 
     /** 兼容旧版：在调用模型前由服务端完成一次知识库检索并拼入用户消息。 */
@@ -496,12 +510,14 @@ public class AgentService {
             String textSystem) {
 
         List<String> kbSources = new ArrayList<>();
+        List<KnowledgeRetrievedPassage> trace = List.of();
         String augmented = task;
 
         if (knowledgeBaseId != null) {
             KnowledgeContextBundle ctx =
                     knowledgeRagService.retrieveContext(knowledgeBaseId, task, ragTopK, ragSimilarityThreshold);
             kbSources.addAll(ctx.sources());
+            trace = RetrievalTraceSupport.finalizeTop(ctx.passages(), 3);
             augmented =
                     "【知识库检索摘录】\n"
                             + ctx.contextText()
@@ -513,7 +529,8 @@ public class AgentService {
                 ChatClient.builder(textChatModel).defaultSystem(textSystem).build();
         String answer = textClient.prompt().user(augmented).call().content();
         String mode = knowledgeBaseId != null ? "chat+kb" : "chat";
-        return new AgentRunResponse(answer, List.copyOf(kbSources), mode, List.of());
+        return new AgentRunResponse(
+                answer, List.copyOf(kbSources), mode, List.of(), List.of(), trace);
     }
 
     private AgentRunResponse runVisionPath(
@@ -526,12 +543,14 @@ public class AgentService {
             String visionModel) {
 
         List<String> kbSources = new ArrayList<>();
+        List<KnowledgeRetrievedPassage> trace = List.of();
         String augmented = task;
 
         if (knowledgeBaseId != null) {
             KnowledgeContextBundle ctx =
                     knowledgeRagService.retrieveContext(knowledgeBaseId, task, ragTopK, ragSimilarityThreshold);
             kbSources.addAll(ctx.sources());
+            trace = RetrievalTraceSupport.finalizeTop(ctx.passages(), 3);
             augmented =
                     "【知识库检索摘录】\n"
                             + ctx.contextText()
@@ -559,6 +578,7 @@ public class AgentService {
         OpenAiChatOptions visionOpts = OpenAiChatOptions.builder().model(visionModel).build();
         String answer = client.prompt().options(visionOpts).messages(message).call().content();
         String mode = knowledgeBaseId != null ? "vision+kb" : "vision";
-        return new AgentRunResponse(answer, List.copyOf(kbSources), mode, List.of());
+        return new AgentRunResponse(
+                answer, List.copyOf(kbSources), mode, List.of(), List.of(), trace);
     }
 }

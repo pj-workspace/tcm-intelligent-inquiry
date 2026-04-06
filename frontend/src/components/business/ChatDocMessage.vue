@@ -2,7 +2,9 @@
 import { computed, onUnmounted, ref, watch } from 'vue'
 import MarkdownContent from '@/components/business/MarkdownContent.vue'
 import DiagnosisReportCard from '@/views/consultation/components/DiagnosisReportCard.vue'
+import RetrievalTraceDrawer from '@/views/consultation/components/RetrievalTraceDrawer.vue'
 import type { HerbSafetyCheckResult, TcmDiagnosisReport } from '@/types/consultation'
+import type { KnowledgeRetrievedPassage } from '@/types/knowledge'
 import { stripJsonReportBlocks } from '@/utils/diagnosisReport'
 import {
   advanceMarkdownRestGate,
@@ -25,6 +27,10 @@ const props = withDefaults(
     /** 结构化辨证摘要：存在时从 Markdown 中剥掉 json-report 代码块，避免与卡片重复 */
     diagnosisReport?: TcmDiagnosisReport | null
     herbSafety?: HerbSafetyCheckResult | null
+    /** RAG 溯源摘录（与 meta / 落库一致） */
+    retrievalPassages?: KnowledgeRetrievedPassage[] | null
+    /** 用于溯源高亮：本轮用户问句 */
+    traceUserQuery?: string | null
   }>(),
   {
     ragLog: null,
@@ -33,8 +39,14 @@ const props = withDefaults(
     streamVision: false,
     diagnosisReport: null,
     herbSafety: null,
+    retrievalPassages: null,
+    traceUserQuery: null,
   }
 )
+
+const traceDrawerOpen = ref(false)
+const tracePassages = computed(() => props.retrievalPassages ?? [])
+const traceEnabled = computed(() => tracePassages.value.length > 0)
 
 const emit = defineEmits<{
   regenerate: []
@@ -331,6 +343,14 @@ onUnmounted(() => {
       v-if="diagnosisReport"
       :report="diagnosisReport"
       :herb-safety="herbSafety ?? undefined"
+      :trace-enabled="traceEnabled"
+      @open-trace="traceDrawerOpen = true"
+    />
+
+    <RetrievalTraceDrawer
+      v-model="traceDrawerOpen"
+      :passages="tracePassages"
+      :user-query="traceUserQuery ?? undefined"
     />
 
     <div

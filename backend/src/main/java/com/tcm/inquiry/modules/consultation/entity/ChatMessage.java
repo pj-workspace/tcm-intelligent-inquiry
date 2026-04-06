@@ -43,6 +43,13 @@ public class ChatMessage {
     @Lob
     private String generationParamsJson;
 
+    /**
+     * 可选：本轮 RAG 溯源摘录（与 SSE meta.passages 对齐，通常为 Top 3 的 JSON 数组）。
+     * 单独列避免膨胀 assistant 正文，且利于历史加载时按需解析。
+     */
+    @Lob
+    private String retrievalTraceJson;
+
     @Column(nullable = false)
     private Instant createdAt;
 
@@ -107,6 +114,14 @@ public class ChatMessage {
 
     public void setGenerationParamsJson(String generationParamsJson) {
         this.generationParamsJson = generationParamsJson;
+    }
+
+    public String getRetrievalTraceJson() {
+        return retrievalTraceJson;
+    }
+
+    public void setRetrievalTraceJson(String retrievalTraceJson) {
+        this.retrievalTraceJson = retrievalTraceJson;
     }
 
     public Instant getCreatedAt() {

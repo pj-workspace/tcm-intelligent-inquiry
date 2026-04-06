@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { CircleCheckFilled, WarningFilled } from '@element-plus/icons-vue'
+import { CircleCheckFilled, Connection, WarningFilled } from '@element-plus/icons-vue'
 import {
   ElCard,
   ElDescriptions,
@@ -13,6 +13,12 @@ import type { HerbSafetyCheckResult, TcmDiagnosisReport } from '@/types/consulta
 const props = defineProps<{
   report: TcmDiagnosisReport
   herbSafety?: HerbSafetyCheckResult | null
+  /** 是否有检索摘录可打开溯源抽屉 */
+  traceEnabled?: boolean
+}>()
+
+const emit = defineEmits<{
+  openTrace: []
 }>()
 
 function formulaLine(f: string | null): string {
@@ -55,7 +61,21 @@ const safetyBand = computed(() => {
       class="diagnosis-report__card"
     >
       <template #header>
-        <span class="diagnosis-report__title">辨证摘要</span>
+        <div class="diagnosis-report__head">
+          <span class="diagnosis-report__title">辨证摘要</span>
+          <button
+            v-if="traceEnabled"
+            type="button"
+            class="diagnosis-report__trace-btn"
+            title="查看 RAG 溯源看板"
+            aria-label="查看 RAG 溯源看板"
+            @click="emit('openTrace')"
+          >
+            <ElIcon :size="18">
+              <Connection />
+            </ElIcon>
+          </button>
+        </div>
       </template>
 
       <div
@@ -172,10 +192,35 @@ const safetyBand = computed(() => {
   --el-card-padding: 16px 18px;
 }
 
+.diagnosis-report__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+}
+
 .diagnosis-report__title {
   font-size: 0.95rem;
   font-weight: 600;
   letter-spacing: 0.02em;
+}
+
+.diagnosis-report__trace-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--el-color-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.diagnosis-report__trace-btn:hover {
+  background: rgba(99, 102, 241, 0.22);
 }
 
 .diagnosis-report__safety {

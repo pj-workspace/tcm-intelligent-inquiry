@@ -284,7 +284,8 @@ public class ConsultationChatService {
                                                 finalResp.assistant(),
                                                 defaultChatModelName,
                                                 temperature,
-                                                topP);
+                                                topP,
+                                                finalResp.retrievalPassages());
                                     } catch (Exception ex) {
                                         log.error(
                                                 "Failed to persist consultation turn sessionId={}",
@@ -348,6 +349,14 @@ public class ConsultationChatService {
         metaPayload.put("pipeline", "react_tools");
         metaPayload.put("kbSourceCount", kb.size());
         metaPayload.put("litSourceCount", lit.size());
+        List<?> passages =
+                react.retrievalPassages() == null ? List.of() : react.retrievalPassages();
+        metaPayload.put("passages", passages);
+        int chunkHint = kb.size() + lit.size();
+        if (!passages.isEmpty()) {
+            chunkHint = Math.max(chunkHint, passages.size());
+        }
+        metaPayload.put("retrievedChunks", chunkHint);
         emitter.send(SseEmitter.event().name("meta").data(metaPayload));
     }
 

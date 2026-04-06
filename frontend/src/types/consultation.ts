@@ -1,3 +1,5 @@
+import type { KnowledgeRetrievedPassage } from '@/types/knowledge'
+
 /** 问诊会话列表项（与后端 ChatSessionResponse 一致）。 */
 export type ChatSessionInfo = {
   id: number
@@ -29,4 +31,6 @@ export type ChatMessageView = {
   modelName: string | null
   temperature: number | null
   createdAt: string
+  /** RAG 溯源摘录（与 SSE meta.passages 对齐） */
+  retrievalPassages?: KnowledgeRetrievedPassage[]
 }

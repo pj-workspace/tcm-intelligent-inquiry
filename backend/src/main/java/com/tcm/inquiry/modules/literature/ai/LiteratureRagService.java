@@ -22,6 +22,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import com.tcm.inquiry.common.sse.SsePhaseEvents;
 import com.tcm.inquiry.config.TcmApiProperties;
 import com.tcm.inquiry.modules.knowledge.ai.KnowledgeContextBundle;
+import com.tcm.inquiry.modules.knowledge.ai.retrieval.KnowledgeRetrievalMatchType;
+import com.tcm.inquiry.modules.knowledge.dto.resp.KnowledgeRetrievedPassage;
 import com.tcm.inquiry.modules.knowledge.config.KnowledgeProperties;
 import com.tcm.inquiry.modules.literature.dto.req.LiteratureQueryRequest;
 import com.tcm.inquiry.modules.literature.dto.resp.LiteratureQueryResponse;
@@ -218,15 +220,33 @@ public class LiteratureRagService {
 
         StringBuilder context = new StringBuilder();
         Set<String> sources = new LinkedHashSet<>();
+        List<KnowledgeRetrievedPassage> passages = new ArrayList<>();
+        int idx = 1;
         for (Document d : hits) {
             String t = d.getText();
             if (t != null && !t.isBlank()) {
                 context.append(t).append("\n---\n");
             }
             Object src = d.getMetadata().get("source");
-            if (src != null) {
-                sources.add(src.toString());
+            String source = src != null ? src.toString() : "";
+            if (!source.isBlank()) {
+                sources.add(source);
             }
+            String excerpt = t != null ? t : "";
+            if (excerpt.length() > 4000) {
+                excerpt = excerpt.substring(0, 4000) + "…";
+            }
+            double sc = d.getScore() != null ? d.getScore() : 0.0;
+            passages.add(
+                    new KnowledgeRetrievedPassage(
+                            idx,
+                            d.getId() != null ? d.getId() : "",
+                            source,
+                            KnowledgeRetrievalMatchType.SEMANTIC,
+                            sc,
+                            excerpt,
+                            "literature"));
+            idx++;
         }
 
         String ctxText = context.toString();
@@ -234,7 +254,7 @@ public class LiteratureRagService {
             ctxText = "（当前文献中暂无与问题相关的检索片段。）\n";
         }
 
-        return new KnowledgeContextBundle(ctxText, new ArrayList<>(sources), hits.size());
+        return new KnowledgeContextBundle(ctxText, new ArrayList<>(sources), hits.size(), passages);
     }
 
     private static String buildUserPrompt(KnowledgeContextBundle bundle, String rawMessage) {

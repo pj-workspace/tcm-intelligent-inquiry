@@ -26,6 +26,7 @@ import com.tcm.inquiry.modules.agent.ai.AgentPrompts;
 import com.tcm.inquiry.modules.agent.service.AgentAppConfigService;
 import com.tcm.inquiry.modules.agent.ConsultationToolProgressNotifier;
 import com.tcm.inquiry.modules.knowledge.ai.KnowledgeContextBundle;
+import com.tcm.inquiry.modules.knowledge.dto.resp.KnowledgeRetrievedPassage;
 import com.tcm.inquiry.modules.knowledge.ai.KnowledgeRagService;
 import com.tcm.inquiry.modules.literature.ai.LiteratureRagService;
 
@@ -47,6 +48,9 @@ public class AgentReActToolsFactory {
 
     /** 放入 ToolContext：累积临时文献库来源文件名 */
     public static final String CTX_LITERATURE_SOURCES_COLLECTOR = "literatureSourcesCollector";
+
+    /** 放入 ToolContext：累积各工具返回的 {@link KnowledgeRetrievedPassage}（问诊溯源合并用） */
+    public static final String CTX_RAG_PASSAGES_COLLECTOR = "ragPassagesCollector";
 
     public static final String CTX_DEFAULT_KNOWLEDGE_BASE_ID = "defaultKnowledgeBaseId";
     public static final String CTX_DEFAULT_RAG_TOP_K = "defaultRagTopK";
@@ -95,6 +99,20 @@ public class AgentReActToolsFactory {
         return List.of(knowledgeRetrievalTool, literatureRetrievalTool, herbImageRecognitionTool);
     }
 
+    @SuppressWarnings("unchecked")
+    private static void appendRagPassages(ToolContext ctx, KnowledgeContextBundle bundle) {
+        if (ctx.getContext() == null
+                || bundle.passages() == null
+                || bundle.passages().isEmpty()) {
+            return;
+        }
+        List<KnowledgeRetrievedPassage> acc =
+                (List<KnowledgeRetrievedPassage>) ctx.getContext().get(CTX_RAG_PASSAGES_COLLECTOR);
+        if (acc != null) {
+            acc.addAll(bundle.passages());
+        }
+    }
+
     private ToolCallback buildKnowledgeRetrievalTool() {
         return FunctionToolCallback.builder(
                         TOOL_KNOWLEDGE,
@@ -130,6 +148,7 @@ public class AgentReActToolsFactory {
                                 if (collector != null) {
                                     collector.addAll(bundle.sources());
                                 }
+                                appendRagPassages(ctx, bundle);
 
                                 // 将检索结果格式化为模型易于消费的「观察」文本（Observation）
                                 return formatKnowledgeToolObservation(bundle);
@@ -183,6 +202,7 @@ public class AgentReActToolsFactory {
                                 if (litCollector != null) {
                                     litCollector.addAll(bundle.sources());
                                 }
+                                appendRagPassages(ctx, bundle);
                                 return formatLiteratureToolObservation(bundle);
                             } catch (Exception ex) {
                                 log.warn("literature_retrieval_tool 执行失败", ex);

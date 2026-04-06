@@ -11,4 +11,14 @@ public record KnowledgeRetrievedPassage(
         String source,
         KnowledgeRetrievalMatchType matchType,
         /** 归一化后的综合相关分，约 ∈ [0,1]，越大越靠前 */
-        double score) {}
+        double score,
+        /** 摘录正文（截断后），供溯源高亮 */
+        String excerpt,
+        /** 知识库 {@code knowledge} | 临时文献库 {@code literature} */
+        String channel) {
+
+    public KnowledgeRetrievedPassage {
+        excerpt = excerpt != null ? excerpt : "";
+        channel = channel != null && !channel.isBlank() ? channel : "knowledge";
+    }
+}

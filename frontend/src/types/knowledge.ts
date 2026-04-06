@@ -46,6 +46,10 @@ export type KnowledgeRetrievedPassage = {
   source: string
   matchType: KnowledgeRetrievalMatchTypeWire
   score: number
+  /** 摘录正文（与后端 meta / 落库一致） */
+  excerpt?: string
+  /** knowledge | literature */
+  channel?: string
 }
 
 export type KnowledgeQueryResponse = {
