@@ -1,11 +1,14 @@
 package com.tcm.inquiry.modules.agent.service;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,6 +24,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.MimeTypeUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
+
+import reactor.core.scheduler.Schedulers;
 
 import com.tcm.inquiry.config.AiConfig;
 import com.tcm.inquiry.modules.agent.AgentRunRequest;
@@ -38,6 +43,14 @@ public class AgentService {
 
     private record ReactToolBundle(
             Map<String, Object> toolCtx, List<String> kbSourcesAcc, List<String> litSourcesAcc) {}
+
+    /** 问诊 ReAct：ChatClient + 工具上下文已就绪，供阻塞调用或流式订阅共用。 */
+    private record PreparedConsultationReAct(
+            ChatClient client,
+            OpenAiChatOptions opts,
+            ReactToolBundle bundle,
+            List<Message> history,
+            String userTrimmed) {}
 
     private final ChatModel textChatModel;
     private final ChatModel visionChatModel;
@@ -128,11 +141,153 @@ public class AgentService {
             double temperature,
             double topP) {
 
-        if (!StringUtils.hasText(userMessage)) {
-            throw new IllegalArgumentException("message is required");
-        }
         if (!enableReactTools) {
             throw new IllegalStateException("ReAct tools are disabled");
+        }
+        PreparedConsultationReAct p =
+                prepareConsultationReAct(
+                        historyMessages,
+                        userMessage,
+                        knowledgeBaseId,
+                        ragTopK,
+                        ragSimilarityThreshold,
+                        literatureCollectionId,
+                        literatureRagTopK,
+                        literatureSimilarityThreshold,
+                        herbImageBase64,
+                        herbImageMimeType,
+                        temperature,
+                        topP);
+        String answer =
+                p.client()
+                        .prompt()
+                        .options(p.opts())
+                        .messages(p.history())
+                        .user(p.userTrimmed())
+                        .call()
+                        .content();
+
+        return new AgentRunResponse(
+                answer,
+                List.copyOf(p.bundle().kbSourcesAcc()),
+                "react+tools",
+                List.of(),
+                List.copyOf(p.bundle().litSourcesAcc()));
+    }
+
+    /**
+     * 问诊 ReAct 的流式版本：在工具阶段结束后，将模型生成正文的 token 流式交给 {@code onToken}，
+     * 避免「整段答文落盘后再假分块 SSE」导致的无流式观感。
+     *
+     * @param onBeforeContentStream 首个正文 token 到达前调用一次，{@code assistant} 为空串，仅用于 meta 来源等
+     */
+    public void runConsultationReActStreaming(
+            List<Message> historyMessages,
+            String userMessage,
+            Long knowledgeBaseId,
+            Integer ragTopK,
+            Double ragSimilarityThreshold,
+            String literatureCollectionId,
+            Integer literatureRagTopK,
+            Double literatureSimilarityThreshold,
+            String herbImageBase64,
+            String herbImageMimeType,
+            double temperature,
+            double topP,
+            Consumer<AgentRunResponse> onBeforeContentStream,
+            Consumer<String> onToken,
+            Consumer<AgentRunResponse> onSuccess,
+            Consumer<Throwable> onError) {
+
+        if (!enableReactTools) {
+            onError.accept(new IllegalStateException("ReAct tools are disabled"));
+            return;
+        }
+        final PreparedConsultationReAct p;
+        try {
+            p =
+                    prepareConsultationReAct(
+                            historyMessages,
+                            userMessage,
+                            knowledgeBaseId,
+                            ragTopK,
+                            ragSimilarityThreshold,
+                            literatureCollectionId,
+                            literatureRagTopK,
+                            literatureSimilarityThreshold,
+                            herbImageBase64,
+                            herbImageMimeType,
+                            temperature,
+                            topP);
+        } catch (RuntimeException ex) {
+            onError.accept(ex);
+            return;
+        }
+
+        StringBuilder assistantAcc = new StringBuilder();
+        AtomicBoolean beforeStreamEmitted = new AtomicBoolean(false);
+        Runnable emitMetaShell =
+                () -> {
+                    if (beforeStreamEmitted.compareAndSet(false, true)) {
+                        onBeforeContentStream.accept(
+                                new AgentRunResponse(
+                                        "",
+                                        List.copyOf(p.bundle().kbSourcesAcc()),
+                                        "react+tools",
+                                        List.of(),
+                                        List.copyOf(p.bundle().litSourcesAcc())));
+                    }
+                };
+
+        try {
+            p.client()
+                    .prompt()
+                    .options(p.opts())
+                    .messages(p.history())
+                    .user(p.userTrimmed())
+                    .stream()
+                    .content()
+                    .subscribeOn(Schedulers.boundedElastic())
+                    .doOnNext(
+                            token -> {
+                                emitMetaShell.run();
+                                assistantAcc.append(token);
+                                onToken.accept(token);
+                            })
+                    .doOnComplete(
+                            () -> {
+                                emitMetaShell.run();
+                                onSuccess.accept(
+                                        new AgentRunResponse(
+                                                assistantAcc.toString(),
+                                                List.copyOf(p.bundle().kbSourcesAcc()),
+                                                "react+tools",
+                                                List.of(),
+                                                List.copyOf(p.bundle().litSourcesAcc())));
+                            })
+                    .blockLast(Duration.ofMinutes(12));
+        } catch (Throwable ex) {
+            log.warn("问诊 ReAct 流式失败（可检查模型/兼容接口是否支持 tools+stream）: {}", ex.toString());
+            onError.accept(ex);
+        }
+    }
+
+    private PreparedConsultationReAct prepareConsultationReAct(
+            List<Message> historyMessages,
+            String userMessage,
+            Long knowledgeBaseId,
+            Integer ragTopK,
+            Double ragSimilarityThreshold,
+            String literatureCollectionId,
+            Integer literatureRagTopK,
+            Double literatureSimilarityThreshold,
+            String herbImageBase64,
+            String herbImageMimeType,
+            double temperature,
+            double topP) {
+
+        if (!StringUtils.hasText(userMessage)) {
+            throw new IllegalArgumentException("message is required");
         }
 
         ReactToolBundle bundle =
@@ -160,20 +315,7 @@ public class AgentService {
                 OpenAiChatOptions.builder().temperature(temperature).topP(topP).build();
 
         List<Message> history = historyMessages == null ? List.of() : historyMessages;
-        String answer =
-                client.prompt()
-                        .options(opts)
-                        .messages(history)
-                        .user(userMessage.trim())
-                        .call()
-                        .content();
-
-        return new AgentRunResponse(
-                answer,
-                List.copyOf(bundle.kbSourcesAcc()),
-                "react+tools",
-                List.of(),
-                List.copyOf(bundle.litSourcesAcc()));
+        return new PreparedConsultationReAct(client, opts, bundle, history, userMessage.trim());
     }
 
     public boolean isReactToolsEnabled() {

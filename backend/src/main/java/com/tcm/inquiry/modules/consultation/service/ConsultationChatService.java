@@ -1,6 +1,7 @@
 package com.tcm.inquiry.modules.consultation.service;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -45,7 +46,6 @@ public class ConsultationChatService {
     /** 常用默认 top_p；客户端未传时使用。 */
     private static final double DEFAULT_TOP_P = 0.9;
     private static final int DEFAULT_MAX_HISTORY_TURNS = 10;
-    private static final int SSE_TEXT_CHUNK_CHARS = 56;
 
     private final ChatModel chatModel;
     private final ChatSessionRepository chatSessionRepository;
@@ -81,9 +81,9 @@ public class ConsultationChatService {
     /**
      * 建立 SSE 流水线（对齐 claw-code「事件化编排」思路）：
      * <ul>
-     *   <li>启用 ReAct 时：{@code phase: agent_orchestration} → Agent 工具编排（一次性完成）→ {@code event: meta}
-     *       → {@code phase: model_stream} → 将完整答文分块写出 → {@code [DONE]}；</li>
-     *   <li>未启用 ReAct 时：沿用直连 {@link ChatModel} 的流式路径。</li>
+     *   <li>启用 ReAct 时：{@code phase} 报告上下文与工具阶段 → 工具与模型由 Spring AI 编排；
+     *       正文到达后以 token 流写入 SSE（工具执行期间无正文流属预期）；</li>
+     *   <li>未启用 ReAct 时：直连 {@link ChatModel} 的流式路径。</li>
      * </ul>
      */
     public SseEmitter streamChat(ConsultationChatRequest req) {
@@ -178,50 +178,83 @@ public class ConsultationChatService {
                             ? req.getHerbImageMimeType().trim()
                             : null;
 
-            AgentRunResponse react =
-                    agentService.runConsultationReAct(
-                            historyMessages,
-                            userInput,
-                            req.getKnowledgeBaseId(),
-                            req.getRagTopK(),
-                            req.getRagSimilarityThreshold(),
-                            literatureCollectionId,
-                            req.getLiteratureRagTopK(),
-                            req.getLiteratureSimilarityThreshold(),
-                            herbB64,
-                            herbMime,
-                            temperature,
-                            topP);
-
-            sendReActMeta(emitter, react, req.getKnowledgeBaseId(), literatureCollectionId);
-
-            SsePhaseEvents.sendPhase(
-                    emitter,
-                    "content_stream",
-                    "流式输出完整答复",
-                    "按片段推送正文（非 token 级流，避免半句撕裂）",
-                    3);
-            streamUtf16ChunkedText(emitter, react.assistant());
-
-            emitter.send(SseEmitter.event().data("[DONE]"));
-            emitter.complete();
-
-            sseAsyncExecutor.execute(
-                    () -> {
+            agentService.runConsultationReActStreaming(
+                    historyMessages,
+                    userInput,
+                    req.getKnowledgeBaseId(),
+                    req.getRagTopK(),
+                    req.getRagSimilarityThreshold(),
+                    literatureCollectionId,
+                    req.getLiteratureRagTopK(),
+                    req.getLiteratureSimilarityThreshold(),
+                    herbB64,
+                    herbMime,
+                    temperature,
+                    topP,
+                    metaShell -> {
                         try {
-                            consultationMessageStore.saveTurn(
-                                    req.getSessionId(),
-                                    userInput,
-                                    react.assistant(),
-                                    defaultChatModelName,
-                                    temperature,
-                                    topP);
-                        } catch (Exception ex) {
-                            log.error(
-                                    "Failed to persist consultation turn sessionId={}",
-                                    req.getSessionId(),
-                                    ex);
+                            sendReActMeta(
+                                    emitter,
+                                    metaShell,
+                                    req.getKnowledgeBaseId(),
+                                    literatureCollectionId);
+                            SsePhaseEvents.sendPhase(
+                                    emitter,
+                                    "content_stream",
+                                    "模型流式生成答复",
+                                    "工具阶段已完成，正在推送正文",
+                                    3);
+                        } catch (IOException e) {
+                            throw new UncheckedIOException(e);
                         }
+                    },
+                    token -> {
+                        try {
+                            emitter.send(SseEmitter.event().data(token));
+                        } catch (IOException e) {
+                            throw new UncheckedIOException(e);
+                        }
+                    },
+                    finalResp -> {
+                        try {
+                            emitter.send(SseEmitter.event().data("[DONE]"));
+                            emitter.complete();
+                        } catch (IOException e) {
+                            emitter.completeWithError(e);
+                            return;
+                        }
+                        sseAsyncExecutor.execute(
+                                () -> {
+                                    try {
+                                        consultationMessageStore.saveTurn(
+                                                req.getSessionId(),
+                                                userInput,
+                                                finalResp.assistant(),
+                                                defaultChatModelName,
+                                                temperature,
+                                                topP);
+                                    } catch (Exception ex) {
+                                        log.error(
+                                                "Failed to persist consultation turn sessionId={}",
+                                                req.getSessionId(),
+                                                ex);
+                                    }
+                                });
+                    },
+                    ex -> {
+                        log.warn(
+                                "consultation ReAct stream error sessionId={}",
+                                req.getSessionId(),
+                                ex);
+                        try {
+                            emitter.send(
+                                    SseEmitter.event()
+                                            .name("error")
+                                            .data(streamErrorMessage(ex)));
+                        } catch (IOException ignored) {
+                            // 客户端已断开
+                        }
+                        emitter.completeWithError(ex);
                     });
         } catch (Exception ex) {
             log.warn(
@@ -235,28 +268,6 @@ public class ConsultationChatService {
                 // 客户端已断开时忽略
             }
             emitter.completeWithError(ex);
-        }
-    }
-
-    /**
-     * ChatClient 非 token 级流式：将已生成的正文按固定字符步长切片推送，以保留 SSE 渐进体验。
-     */
-    private void streamUtf16ChunkedText(SseEmitter emitter, String text) throws IOException {
-        if (text == null || text.isEmpty()) {
-            return;
-        }
-        int i = 0;
-        final int n = text.length();
-        while (i < n) {
-            int end = Math.min(n, i + SSE_TEXT_CHUNK_CHARS);
-            if (end < n && Character.isHighSurrogate(text.charAt(end - 1))) {
-                end--;
-            }
-            if (end <= i) {
-                end = Math.min(n, i + 1);
-            }
-            emitter.send(SseEmitter.event().data(text.substring(i, end)));
-            i = end;
         }
     }
 
