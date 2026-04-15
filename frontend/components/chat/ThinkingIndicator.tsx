@@ -25,15 +25,7 @@ export function ThinkingIndicator({
   const [isOpen, setIsOpen] = useState(isThinking);
 
   useEffect(() => {
-    if (isThinking) {
-      setIsOpen(true);
-    } else {
-      // 延迟关闭，避免与下方消息气泡出现的动画冲突导致页面闪烁跳动
-      const timer = setTimeout(() => {
-        setIsOpen(false);
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
+    setIsOpen(isThinking);
   }, [isThinking]);
 
   return (
@@ -46,7 +38,7 @@ export function ThinkingIndicator({
         >
           <motion.div
             animate={{ rotate: isOpen ? 0 : -90 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
           >
             <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
           </motion.div>
@@ -75,7 +67,7 @@ export function ThinkingIndicator({
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+              transition={{ duration: 0.4, ease: "easeInOut" }}
               className="overflow-hidden"
             >
               <div className="pl-4 border-l-2 border-[#e5e5e5] py-2 my-1 ml-1.5">

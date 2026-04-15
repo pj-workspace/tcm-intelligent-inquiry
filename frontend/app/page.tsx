@@ -712,7 +712,7 @@ export default function Home() {
                       <motion.div 
                         initial={{ opacity: 0, height: 0, scale: 0.5 }}
                         animate={{ opacity: 1, height: "auto", scale: 1 }}
-                        exit={{ opacity: 0, height: 0, scale: 0.5 }}
+                        exit={{ opacity: 0, height: 0, scale: 0.5, transition: { duration: 0 } }}
                         transition={{ duration: 0.15, ease: "easeOut" }}
                         className="w-full max-w-3xl mx-auto px-4 md:px-0 flex justify-start overflow-hidden"
                         style={{ transformOrigin: "left center" }}

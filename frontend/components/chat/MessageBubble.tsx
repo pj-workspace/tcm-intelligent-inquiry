@@ -6,6 +6,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
   Copy,
+  Check,
   MoreVertical,
   Pencil,
   RefreshCw,
@@ -81,12 +82,15 @@ export function MessageBubble({
   const menuRef = useRef<HTMLDivElement>(null);
   const [ttsPlaying, setTtsPlaying] = useState(false);
   const ttsPlayingRef = useRef(false);
+  const [copied, setCopied] = useState(false);
 
   const plain = markdownToPlainText(content);
 
   const handleCopy = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(isUser ? content : plain);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     } catch {
       /* ignore */
     }
@@ -170,10 +174,14 @@ export function MessageBubble({
               type="button"
               onClick={() => void handleCopy()}
               className="p-1.5 rounded-lg text-gray-500 hover:text-gray-800 hover:bg-black/5 transition-colors"
-              title="复制"
-              aria-label="复制"
+              title={copied ? "已复制" : "复制"}
+              aria-label={copied ? "已复制" : "复制"}
             >
-              <Copy className="w-4 h-4" strokeWidth={1.75} />
+              {copied ? (
+                <Check className="w-4 h-4 text-green-600" strokeWidth={1.75} />
+              ) : (
+                <Copy className="w-4 h-4" strokeWidth={1.75} />
+              )}
             </button>
             <button
               type="button"
@@ -212,10 +220,14 @@ export function MessageBubble({
             type="button"
             onClick={() => void handleCopy()}
             className="p-1.5 rounded-lg text-gray-500 hover:text-gray-800 hover:bg-black/5 transition-colors"
-            title="复制"
-            aria-label="复制"
+            title={copied ? "已复制" : "复制"}
+            aria-label={copied ? "已复制" : "复制"}
           >
-            <Copy className="w-4 h-4" strokeWidth={1.75} />
+            {copied ? (
+              <Check className="w-4 h-4 text-green-600" strokeWidth={1.75} />
+            ) : (
+              <Copy className="w-4 h-4" strokeWidth={1.75} />
+            )}
           </button>
           <button
             type="button"
