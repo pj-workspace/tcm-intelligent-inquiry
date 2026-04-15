@@ -94,7 +94,15 @@ pip install -r requirements.txt
 alembic upgrade head
 ```
 
-若此前用 `init_db` 建表，可用 `alembic stamp <revision>` 对齐迁移状态（见 `.env.example` 注释）。
+**Alembic 与 `init_db` 的关系**（任选一种方式建表，勿混用未对齐的 revision）：
+
+| 情况 | 操作 |
+|------|------|
+| 空库，只用迁移建表 | `alembic upgrade head` |
+| 表已由 API 的 `init_db`（`create_all`）建好，且结构与当前迁移一致 | 在 `backend` 下执行 **`alembic stamp head`**，把 `alembic_version` 标到最新，之后日常用 `alembic upgrade head` 即可 |
+| 仅有初始迁移的表、尚未有 `mcp_servers` 等后续迁移 | `alembic stamp fe4256aec939` 后执行 `alembic upgrade head` |
+
+可用 `alembic current` 查看当前版本；若 `alembic_version` 为空但表已存在，优先 **`alembic stamp head`**（在确认库结构已包含全部迁移对象时）。
 
 ### 4. 启动 API
 
