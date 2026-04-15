@@ -6,6 +6,7 @@
 import uuid
 
 from app.agent.schemas import AgentCreateRequest, AgentListResponse, AgentResponse
+from app.agent.tools.loader import ensure_tools_loaded
 from app.agent.tools.registry import tool_registry
 from app.core.exceptions import NotFoundError
 from app.core.logging import get_logger
@@ -26,6 +27,7 @@ class AgentService:
         return _store[agent_id]
 
     def create_agent(self, req: AgentCreateRequest) -> AgentResponse:
+        ensure_tools_loaded()
         available = tool_registry.names()
         unknown = [t for t in req.tool_names if t not in available]
         if unknown:
@@ -51,4 +53,5 @@ class AgentService:
         logger.info("删除 Agent id=%s", agent_id)
 
     def list_available_tools(self) -> list[str]:
+        ensure_tools_loaded()
         return tool_registry.names()

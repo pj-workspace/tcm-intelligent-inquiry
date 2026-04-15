@@ -4,12 +4,13 @@
 动态组装工具集与系统提示。
 """
 
-import importlib
 from functools import lru_cache
 
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import create_react_agent
 
+from app.agent.tools.loader import ensure_tools_loaded
+from app.agent.tools.registry import tool_registry
 from app.core.logging import get_logger
 from app.llm.registry import get_chat_model
 
@@ -22,18 +23,9 @@ _DEFAULT_SYSTEM_PROMPT = """\
 - 在工具结果的基础上综合推理，再给出最终答案。\
 """
 
-# 确保所有工具模块被导入、完成注册
-_TOOL_MODULES = [
-    "app.agent.tools.tcm_search",
-    "app.agent.tools.formula_lookup",
-]
-
 
 def _load_tools():
-    for mod in _TOOL_MODULES:
-        importlib.import_module(mod)
-    from app.agent.tools.registry import tool_registry
-
+    ensure_tools_loaded()
     return tool_registry.all()
 
 
