@@ -1,6 +1,7 @@
 """MCP 服务管理：注册、发现工具、动态挂载到 Agent 工具集（持久化 PostgreSQL）。"""
 
 import uuid
+from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,6 +23,7 @@ logger = get_logger(__name__)
 
 def _to_response(row: McpServerRecord) -> McpServerResponse:
     names = row.tool_names if isinstance(row.tool_names, list) else []
+    probe_at = row.last_probe_at.isoformat() if row.last_probe_at else None
     return McpServerResponse(
         id=row.id,
         name=row.name,
@@ -29,6 +31,8 @@ def _to_response(row: McpServerRecord) -> McpServerResponse:
         description=row.description or "",
         enabled=row.enabled,
         tool_names=[str(x) for x in names],
+        last_probe_at=probe_at,
+        last_probe_error=row.last_probe_error,
     )
 
 
@@ -53,6 +57,7 @@ class McpService:
         """注册 MCP 服务并自动发现其工具列表；启用时挂入 LangChain 工具注册表。"""
         safe_url = assert_mcp_url_allowed(req.url)
         tool_names = await discover_tools(safe_url)
+        now = datetime.now(timezone.utc)
         server_id = str(uuid.uuid4())
         row = McpServerRecord(
             id=server_id,
@@ -64,6 +69,8 @@ class McpService:
         )
         self._session.add(row)
         await self._session.flush()
+        row.last_probe_at = now
+        row.last_probe_error = None if tool_names else None
         if req.enabled and tool_names:
             register_mcp_tools_for_server(
                 server_id,
@@ -97,6 +104,8 @@ class McpService:
         row.url = safe_url
         tool_names = await discover_tools(safe_url)
         row.tool_names = tool_names
+        row.last_probe_at = datetime.now(timezone.utc)
+        row.last_probe_error = None if tool_names else None
         await self._session.flush()
         register_mcp_tools_for_server(
             server_id,
@@ -106,6 +115,34 @@ class McpService:
         )
         logger.info("刷新 MCP 工具 id=%s tools=%s", server_id, tool_names)
         return _to_response(row)
+
+
+async def probe_enabled_mcp_servers(session: AsyncSession) -> None:
+    """对已启用的 MCP 重新发现工具并更新 LangChain 挂载（供周期健康任务调用）。"""
+    r = await session.execute(
+        select(McpServerRecord).where(McpServerRecord.enabled.is_(True))
+    )
+    rows = r.scalars().all()
+    now = datetime.now(timezone.utc)
+    for row in rows:
+        try:
+            safe_url = assert_mcp_url_allowed(row.url)
+            row.url = safe_url
+            tool_names = await discover_tools(safe_url)
+            row.tool_names = tool_names
+            row.last_probe_at = now
+            row.last_probe_error = None
+            register_mcp_tools_for_server(
+                row.id,
+                row.name,
+                safe_url,
+                tool_names,
+            )
+            logger.info("MCP 周期探测 id=%s tools=%s", row.id, tool_names)
+        except Exception as exc:
+            row.last_probe_at = now
+            row.last_probe_error = str(exc)[:2000]
+            logger.warning("MCP 周期探测失败 id=%s: %s", row.id, exc)
 
 
 async def restore_mcp_tool_registrations(session: AsyncSession) -> None:

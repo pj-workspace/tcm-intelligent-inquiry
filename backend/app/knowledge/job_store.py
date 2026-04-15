@@ -1,5 +1,6 @@
 """异步入库任务状态（Redis）与执行管线。"""
 
+import asyncio
 import base64
 import json
 import uuid
@@ -34,10 +35,13 @@ def _blob_key(job_id: str) -> str:
     return f"{_BLOB_PREFIX}{job_id}"
 
 
-async def job_create() -> str:
+async def job_create(owner_id: str | None = None) -> str:
     jid = str(uuid.uuid4())
     r = get_redis()
-    await r.set(_key(jid), json.dumps({"status": "pending", "job_id": jid}), ex=_TTL_SEC)
+    payload: dict = {"status": "pending", "job_id": jid}
+    if owner_id:
+        payload["owner_id"] = owner_id
+    await r.set(_key(jid), json.dumps(payload), ex=_TTL_SEC)
     return jid
 
 
@@ -49,12 +53,17 @@ async def job_update(job_id: str, **fields) -> None:
     await r.set(_key(job_id), json.dumps(base), ex=_TTL_SEC)
 
 
-async def job_get(job_id: str) -> dict | None:
+async def job_get(job_id: str, owner_id: str | None = None) -> dict | None:
     r = get_redis()
     raw = await r.get(_key(job_id))
     if not raw:
         return None
-    return json.loads(raw)
+    data = json.loads(raw)
+    if owner_id is not None:
+        job_owner = data.get("owner_id")
+        if job_owner is not None and job_owner != owner_id:
+            return None
+    return data
 
 
 async def stash_ingest_blob(job_id: str, content: bytes) -> None:
@@ -103,27 +112,58 @@ async def _load_ingest_bytes(job_id: str) -> bytes | None:
     return await pop_ingest_blob(job_id)
 
 
+async def _assert_kb_matches_job_owner(
+    kb_id: str,
+    owner_id: str | None,
+) -> bool:
+    """Celery 侧校验任务归属与知识库一致；owner 缺失的旧任务仅校验 kb 存在。"""
+    from app.core.database import async_session_factory
+    from app.knowledge.models import KnowledgeBaseRecord
+
+    async with async_session_factory() as session:
+        row = await session.get(KnowledgeBaseRecord, kb_id)
+        if row is None:
+            return False
+        if owner_id is None:
+            return True
+        return row.owner_id == owner_id
+
+
+async def _execute_ingest_core(
+    job_id: str,
+    kb_id: str,
+    filename: str,
+    content: bytes,
+    owner_id: str | None,
+) -> None:
+    """执行入库（失败时抛异常，由调用方决定是否重试）。"""
+    from app.core.database import async_session_factory
+    from app.knowledge.service import KnowledgeService
+
+    await job_update(job_id, status="running")
+    async with async_session_factory() as session:
+        svc = KnowledgeService(session)
+        if owner_id is None:
+            raise ValueError("异步入库任务缺少 owner_id，请重新上传")
+        result = await svc.ingest_file(kb_id, filename, content, owner_id)
+        await session.commit()
+    await job_update(
+        job_id,
+        status="completed",
+        result=result.model_dump(),
+    )
+
+
 async def run_ingest_pipeline(
     job_id: str,
     kb_id: str,
     filename: str,
     content: bytes,
+    owner_id: str | None,
 ) -> None:
-    """执行入库：更新任务状态并写入数据库 / 向量库。"""
-    from app.core.database import async_session_factory
-    from app.knowledge.service import KnowledgeService
-
+    """执行入库：更新任务状态并写入数据库 / 向量库（失败时写入 Redis 任务状态）。"""
     try:
-        await job_update(job_id, status="running")
-        async with async_session_factory() as session:
-            svc = KnowledgeService(session)
-            result = await svc.ingest_file(kb_id, filename, content)
-            await session.commit()
-        await job_update(
-            job_id,
-            status="completed",
-            result=result.model_dump(),
-        )
+        await _execute_ingest_core(job_id, kb_id, filename, content, owner_id)
     except Exception as exc:
         logger.exception("ingest job %s failed", job_id)
         await job_update(job_id, status="failed", error=str(exc))
@@ -134,13 +174,17 @@ async def run_ingest_background(
     kb_id: str,
     filename: str,
     content: bytes,
+    owner_id: str,
 ) -> None:
     """FastAPI BackgroundTasks 使用的进程内异步入库。"""
-    await run_ingest_pipeline(job_id, kb_id, filename, content)
+    await run_ingest_pipeline(job_id, kb_id, filename, content, owner_id)
 
 
 async def run_ingest_from_stash(job_id: str, kb_id: str, filename: str) -> None:
     """Celery worker：从磁盘临时文件或 Redis 取出上传内容后执行入库。"""
+    meta = await job_get(job_id)
+    owner_id = meta.get("owner_id") if meta else None
+
     content = await _load_ingest_bytes(job_id)
     if content is None:
         await job_update(
@@ -149,4 +193,40 @@ async def run_ingest_from_stash(job_id: str, kb_id: str, filename: str) -> None:
             error="上传内容已过期或未找到（请重试上传）",
         )
         return
-    await run_ingest_pipeline(job_id, kb_id, filename, content)
+
+    if not await _assert_kb_matches_job_owner(kb_id, owner_id):
+        await job_update(
+            job_id,
+            status="failed",
+            error="知识库不存在或无权访问该入库任务",
+        )
+        return
+
+    await _execute_ingest_core(job_id, kb_id, filename, content, owner_id)
+
+
+def run_ingest_from_stash_with_retries(job_id: str, kb_id: str, filename: str) -> None:
+    """Celery 同步入口：带有限次重试（指数退避），最后一次失败写入任务状态。"""
+    delays_sec = (15, 45, 90)
+    last_exc: Exception | None = None
+    for attempt in range(4):
+        try:
+            asyncio.run(run_ingest_from_stash(job_id, kb_id, filename))
+            return
+        except Exception as exc:
+            last_exc = exc
+            logger.warning(
+                "ingest Celery 尝试 %s/4 失败 job=%s: %s",
+                attempt + 1,
+                job_id,
+                exc,
+            )
+            if attempt < 3:
+                import time
+
+                time.sleep(delays_sec[attempt])
+            else:
+                asyncio.run(
+                    job_update(job_id, status="failed", error=str(last_exc))
+                )
+                raise

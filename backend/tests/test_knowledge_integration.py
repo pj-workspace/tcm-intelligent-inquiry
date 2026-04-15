@@ -17,6 +17,7 @@ def test_create_list_get_kb(client, auth_headers):
     data = r.json()
     kb_id = data["id"]
     assert data["name"] == name
+    assert "owner_id" in data
 
     listed = client.get("/api/knowledge", headers=auth_headers)
     assert listed.status_code == 200
@@ -52,6 +53,40 @@ def test_ingest_rejects_oversized_file(client, auth_headers, monkeypatch):
         headers=auth_headers,
     )
     assert r.status_code == 413
+
+
+@pytest.mark.integration
+def test_kb_not_accessible_to_other_user(client, unique_username):
+    """知识库按 owner 隔离：其他用户无法访问详情。"""
+    pw = "secret123456"
+    u1 = f"{unique_username}_a"
+    u2 = f"{unique_username}_b"
+    for u in (u1, u2):
+        assert client.post(
+            "/api/auth/register",
+            json={"username": u, "password": pw},
+        ).status_code == 200
+    t1 = client.post(
+        "/api/auth/login",
+        json={"username": u1, "password": pw},
+    ).json()["access_token"]
+    t2 = client.post(
+        "/api/auth/login",
+        json={"username": u2, "password": pw},
+    ).json()["access_token"]
+    kb = client.post(
+        "/api/knowledge",
+        json={"name": f"kb_iso_{uuid.uuid4().hex[:6]}", "description": ""},
+        headers={"Authorization": f"Bearer {t1}"},
+    )
+    assert kb.status_code == 200
+    kid = kb.json()["id"]
+
+    other = client.get(
+        f"/api/knowledge/{kid}",
+        headers={"Authorization": f"Bearer {t2}"},
+    )
+    assert other.status_code == 404
 
 
 @pytest.mark.integration

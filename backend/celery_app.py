@@ -20,7 +20,14 @@ def make_celery() -> Celery:
         enable_utc=True,
         task_track_started=True,
         task_time_limit=60 * 60,
+        task_soft_time_limit=55 * 60,
         task_default_queue="tcm",
+        task_annotations={
+            "knowledge.ingest_document": {
+                "time_limit": 60 * 60,
+                "soft_time_limit": 55 * 60,
+            },
+        },
     )
     return app
 

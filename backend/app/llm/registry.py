@@ -3,8 +3,8 @@
 新增厂商：在 `app/llm/chat_factory.py` 的 `build_chat_model` 中增加分支，
 并在 `Settings` / `.env` 中增加对应 API Key 与模型名。
 
-向量嵌入与 `llm_provider` 对齐：`qwen` 使用 DashScope，`openai` 使用 OpenAI Embeddings；
-其他对话厂商若未单独配置嵌入，请在知识库场景下改用 `qwen` 或 `openai`。
+向量嵌入由 `embedding_provider` 决定；留空时与 `llm_provider` 一致。
+仅支持 `qwen`（DashScope）与 `openai`（OpenAI Embeddings）。
 """
 
 from langchain_core.embeddings import Embeddings
@@ -21,9 +21,10 @@ def get_chat_model() -> BaseChatModel:
 
 
 def get_embeddings() -> Embeddings:
-    """按当前 `llm_provider` 构造向量嵌入客户端。"""
+    """按 `embedding_provider`（空则同 `llm_provider`）构造向量嵌入客户端。"""
     s = get_settings()
-    p = (s.llm_provider or "qwen").strip().lower()
+    raw = (s.embedding_provider or "").strip().lower()
+    p = raw if raw else (s.llm_provider or "qwen").strip().lower()
 
     if p == "qwen":
         from app.llm.providers.qwen import get_embeddings as _qwen_emb
@@ -44,5 +45,5 @@ def get_embeddings() -> Embeddings:
         )
 
     raise ValueError(
-        f"当前 llm_provider={p!r} 未配置向量嵌入实现，知识库请使用 llm_provider=qwen 或 openai"
+        f"当前 embedding 厂商={p!r} 未实现向量嵌入，请在 EMBEDDING_PROVIDER 或 LLM_PROVIDER 中使用 qwen 或 openai"
     )

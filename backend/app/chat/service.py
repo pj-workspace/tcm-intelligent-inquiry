@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.chat.models import ConversationRecord, MessageRecord
 from app.chat.schemas import ChatMessage
+from app.core.chat_context import chat_user_id
 from app.core.database import async_session_factory
 from app.core.logging import get_logger
 from app.core.safety import STREAM_SAFETY_NOTICE
@@ -84,6 +85,7 @@ async def stream_chat(
         yield "data: [DONE]\n\n"
         return
 
+    ctx_token = chat_user_id.set(user_id)
     conv_id: str | None = conversation_id
     effective_agent_id = agent_id
 
@@ -198,3 +200,5 @@ async def stream_chat(
                 logger.exception("写入中断占位消息失败")
         yield _sse({"type": "error", "message": str(exc)})
         yield "data: [DONE]\n\n"
+    finally:
+        chat_user_id.reset(ctx_token)

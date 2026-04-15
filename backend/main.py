@@ -24,6 +24,8 @@ logger = get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    import asyncio
+
     await init_db()
     from app.core.database import async_session_factory
     from app.mcp.service import restore_mcp_tool_registrations
@@ -39,12 +41,28 @@ async def lifespan(_: FastAPI):
         logger.warning(
             "JWT_SECRET 过短或为开发默认值，生产环境请替换为至少 32 字节的高强度随机串",
         )
-    logger.info(
-        "TCM Intelligent Inquiry API 启动 | 对话模型: %s | 向量模型: %s | PG/Redis/Qdrant 见 /health/deps",
-        s.qwen_chat_model,
-        s.qwen_embedding_model,
+    emb_p = (s.embedding_provider or s.llm_provider or "qwen").strip().lower()
+    emb_model = (
+        s.openai_embedding_model if emb_p == "openai" else s.qwen_embedding_model
     )
+    logger.info(
+        "TCM Intelligent Inquiry API 启动 | LLM_PROVIDER=%s | 嵌入厂商=%s 模型=%s | PG/Redis/Qdrant 见 /health/deps",
+        s.llm_provider,
+        emb_p,
+        emb_model,
+    )
+    probe_task: asyncio.Task | None = None
+    if s.mcp_probe_interval_seconds > 0:
+        from app.mcp.health import run_mcp_probe_loop
+
+        probe_task = asyncio.create_task(run_mcp_probe_loop())
     yield
+    if probe_task:
+        probe_task.cancel()
+        try:
+            await probe_task
+        except asyncio.CancelledError:
+            pass
     logger.info("API 服务关闭")
 
 

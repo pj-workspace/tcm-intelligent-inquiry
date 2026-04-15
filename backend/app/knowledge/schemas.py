@@ -12,6 +12,7 @@ class DocumentMetadata(BaseModel):
 
 class KnowledgeBaseResponse(BaseModel):
     id: str
+    owner_id: str = Field(..., description="所属用户 ID")
     name: str
     description: str
     document_count: int

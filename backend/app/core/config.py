@@ -20,6 +20,11 @@ class Settings(BaseSettings):
         default="qwen",
         description="qwen | openai | anthropic | glm | deepseek",
     )
+    # 向量嵌入可独立指定；空字符串表示与 llm_provider 一致（向后兼容）
+    embedding_provider: str = Field(
+        default="",
+        description="qwen | openai；留空则与 LLM_PROVIDER 一致",
+    )
 
     # ── 阿里云 DashScope（通义千问对话 + 默认向量嵌入）──────────────────────────
     dashscope_api_key: str = Field(
@@ -142,6 +147,31 @@ class Settings(BaseSettings):
     ingest_temp_dir: str = Field(
         default="",
         description="异步入库临时文件目录，空则使用 backend/data/ingest_tmp；Celery 任务优先写磁盘而非 Redis",
+    )
+
+    # ── 知识库分块 ────────────────────────────────────────────────────────────
+    knowledge_chunk_size: int = Field(
+        default=512,
+        ge=200,
+        le=4096,
+        description="向量分块目标长度（字符量级）",
+    )
+    knowledge_chunk_overlap: int = Field(
+        default=64,
+        ge=0,
+        le=1024,
+        description="分块重叠长度",
+    )
+    knowledge_chunk_presplit_sections: bool = Field(
+        default=True,
+        description="入库前按 Markdown ## / 章节标题粗分，再递归细切（利于条文类文献）",
+    )
+
+    # ── MCP 周期探测（应用进程内 asyncio 任务，0 表示关闭）────────────────────
+    mcp_probe_interval_seconds: int = Field(
+        default=300,
+        ge=0,
+        description="已启用 MCP 的周期发现/健康探测间隔（秒），0 关闭",
     )
 
     # ── 服务 ──────────────────────────────────────────────────────────────────

@@ -17,6 +17,12 @@ class McpServerResponse(BaseModel):
     description: str
     enabled: bool
     tool_names: list[str] = Field(default_factory=list, description="已发现的工具列表")
+    last_probe_at: str | None = Field(
+        default=None, description="最近一次周期探测时间（ISO8601），无探测则为空"
+    )
+    last_probe_error: str | None = Field(
+        default=None, description="最近一次探测错误摘要，成功则为空"
+    )
 
 
 class McpServerListResponse(BaseModel):

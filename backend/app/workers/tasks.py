@@ -1,7 +1,5 @@
 """Celery 任务定义。"""
 
-import asyncio
-
 from celery_app import celery_app
 
 
@@ -12,7 +10,7 @@ def ingest_document_task(
     kb_id: str,
     filename: str,
 ) -> None:
-    """从 Redis 读取暂存文件并执行知识库入库。"""
-    from app.knowledge.job_store import run_ingest_from_stash
+    """从 Redis/磁盘暂存读取文件并执行知识库入库；内置有限次重试与超时（见 celery_app 配置）。"""
+    from app.knowledge.job_store import run_ingest_from_stash_with_retries
 
-    asyncio.run(run_ingest_from_stash(job_id, kb_id, filename))
+    run_ingest_from_stash_with_retries(job_id, kb_id, filename)

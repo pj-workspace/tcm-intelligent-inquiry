@@ -6,6 +6,12 @@ import pytest
 from starlette.testclient import TestClient
 
 
+@pytest.fixture(autouse=True)
+def _disable_mcp_background_probe(monkeypatch):
+    """避免测试会话中启动 MCP 周期探测后台任务。"""
+    monkeypatch.setenv("MCP_PROBE_INTERVAL_SECONDS", "0")
+
+
 @pytest.fixture(scope="session")
 def client():
     """整个测试会话共用一个 TestClient，避免多次 lifespan / 异步引擎绑定到不同事件循环。"""

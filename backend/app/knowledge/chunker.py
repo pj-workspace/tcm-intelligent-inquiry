@@ -1,40 +1,71 @@
 """中医文档智能分块策略。
 
-中医文献（如《伤寒论》《本草纲目》）有独特结构，不宜按固定字数切割：
-- 条文型文献：按条文编号/段落分割
-- 本草类文献：按药材条目分割
-- 现代医书：按章节/标题分割
-
-当前为递归字符分块兜底，后续可按文献类型扩展。
+默认先按 Markdown `##` 粗分章节，再对每段做递归字符分块（中医常用分隔符优先）。
 """
+
+from __future__ import annotations
 
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+from app.core.config import get_settings
+
 # 中医文献常见分隔符优先级（从粗到细）
 _TCM_SEPARATORS = [
-    "\n## ",    # 二级标题
-    "\n# ",     # 一级标题
-    "\n【",     # 条目起始（如【主治】）
-    "\n第",     # 章节（如第一章）
-    "。\n",     # 句末换行
-    "。",       # 句号
+    "\n## ",
+    "\n# ",
+    "\n【",
+    "\n第",
+    "。\n",
+    "。",
     "\n",
     " ",
     "",
 ]
 
 
+def _expand_documents_for_presplit(docs: list[Document]) -> list[Document]:
+    """长文先按 \\n## 切成多段，减少单向量跨章节。"""
+    expanded: list[Document] = []
+    for doc in docs:
+        text = doc.page_content
+        if "\n## " not in text:
+            expanded.append(doc)
+            continue
+        parts = text.split("\n## ")
+        if parts[0].strip():
+            expanded.append(
+                Document(
+                    page_content=parts[0].strip(),
+                    metadata=dict(doc.metadata),
+                )
+            )
+        for p in parts[1:]:
+            block = ("## " + p).strip()
+            if block:
+                expanded.append(Document(page_content=block, metadata=dict(doc.metadata)))
+    return expanded
+
+
 def chunk_documents(
     docs: list[Document],
-    chunk_size: int = 512,
-    chunk_overlap: int = 64,
+    chunk_size: int | None = None,
+    chunk_overlap: int | None = None,
 ) -> list[Document]:
     """将文档列表切分为适合向量索引的小块。"""
+    s = get_settings()
+    cs = chunk_size if chunk_size is not None else s.knowledge_chunk_size
+    co = chunk_overlap if chunk_overlap is not None else s.knowledge_chunk_overlap
+    work = docs
+    if s.knowledge_chunk_presplit_sections:
+        work = _expand_documents_for_presplit(docs)
+    if not work:
+        work = docs
+
     splitter = RecursiveCharacterTextSplitter(
         separators=_TCM_SEPARATORS,
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap,
+        chunk_size=cs,
+        chunk_overlap=co,
         length_function=len,
     )
-    return splitter.split_documents(docs)
+    return splitter.split_documents(work)
