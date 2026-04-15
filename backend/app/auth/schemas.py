@@ -1,11 +1,21 @@
-"""认证 API 的请求/响应模型（骨架）。"""
+"""认证 API 的请求/响应模型。"""
 
 from pydantic import BaseModel, Field
 
 
 class LoginRequest(BaseModel):
-    username: str = Field(..., min_length=1)
-    password: str = Field(..., min_length=1)
+    username: str = Field(..., min_length=1, max_length=64)
+    password: str = Field(..., min_length=1, max_length=128)
+
+
+class RegisterRequest(BaseModel):
+    username: str = Field(..., min_length=2, max_length=64)
+    password: str = Field(..., min_length=6, max_length=128)
+
+
+class UserPublic(BaseModel):
+    id: str
+    username: str
 
 
 class TokenResponse(BaseModel):

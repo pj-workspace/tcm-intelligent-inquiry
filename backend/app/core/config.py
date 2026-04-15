@@ -48,6 +48,13 @@ class Settings(BaseSettings):
         description="默认知识库 UUID（可选）",
     )
 
+    # ── JWT（登录鉴权）────────────────────────────────────────────────────────
+    jwt_secret: str = Field(
+        default="dev-only-change-me-use-long-random-string",
+        description="HS256 密钥，生产环境务必修改",
+    )
+    jwt_expire_minutes: int = Field(default=10080, description="Token 有效期（分钟），默认 7 天")
+
     # ── 服务 ──────────────────────────────────────────────────────────────────
     cors_origins: str = Field(
         default="http://localhost:3000", description="逗号分隔的允许跨域来源"

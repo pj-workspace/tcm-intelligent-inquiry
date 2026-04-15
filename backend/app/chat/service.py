@@ -1,11 +1,21 @@
-"""对话服务：将 HTTP 请求转换为 LangGraph 输入，并产出 SSE 事件流。"""
+"""对话服务：LangGraph 流式输出 + 会话/消息持久化。"""
 
 import json
+import uuid
 from collections.abc import AsyncIterator
+from typing import TYPE_CHECKING
 
 from langchain_core.messages import AIMessage, HumanMessage
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.chat.models import ConversationRecord, MessageRecord
+from app.chat.schemas import ChatMessage
+from app.core.database import async_session_factory
 from app.core.logging import get_logger
+
+if TYPE_CHECKING:
+    from app.auth.models import UserRecord
 
 logger = get_logger(__name__)
 
@@ -29,33 +39,108 @@ def _extract_text(chunk) -> str:
     return ""
 
 
-async def stream_chat(
-    message: str,
-    history: list,
-    agent_id: str | None = None,
-) -> AsyncIterator[str]:
-    """驱动 LangGraph ReAct Agent，以 SSE 格式流式产出事件。
-
-    事件类型：
-      - text-delta: 模型输出文本增量
-      - tool-call:  Agent 正在调用工具（含工具名）
-      - tool-result: 工具调用完成
-      - error:      运行异常
-    """
-    from app.agent.executor import build_agent_graph
-
-    graph = await build_agent_graph(agent_id)
-
-    messages: list[HumanMessage | AIMessage] = []
+def _history_to_lc(history: list[ChatMessage]) -> list[HumanMessage | AIMessage]:
+    out: list[HumanMessage | AIMessage] = []
     for m in history:
         if m.role == "user":
-            messages.append(HumanMessage(content=m.content))
+            out.append(HumanMessage(content=m.content))
         else:
-            messages.append(AIMessage(content=m.content))
-    messages.append(HumanMessage(content=message))
+            out.append(AIMessage(content=m.content))
+    return out
+
+
+async def _messages_to_lc(session: AsyncSession, conversation_id: str) -> list[HumanMessage | AIMessage]:
+    r = await session.execute(
+        select(MessageRecord)
+        .where(MessageRecord.conversation_id == conversation_id)
+        .order_by(MessageRecord.created_at)
+    )
+    rows = r.scalars().all()
+    out: list[HumanMessage | AIMessage] = []
+    for m in rows:
+        if m.role == "user":
+            out.append(HumanMessage(content=m.content))
+        else:
+            out.append(AIMessage(content=m.content))
+    return out
+
+
+async def stream_chat(
+    message: str,
+    history: list[ChatMessage],
+    agent_id: str | None,
+    conversation_id: str | None,
+    user: "UserRecord | None",
+) -> AsyncIterator[str]:
+    from app.agent.executor import build_agent_graph
+
+    user_id = user.id if user else None
+    msg_in = message.strip()
+    if not msg_in:
+        yield _sse({"type": "error", "message": "消息不能为空"})
+        yield "data: [DONE]\n\n"
+        return
+
+    conv_id: str | None = conversation_id
+    effective_agent_id = agent_id
 
     try:
-        async for event in graph.astream_events({"messages": messages}, version="v2"):
+        if conv_id:
+            async with async_session_factory() as session:
+                conv_row = await session.get(ConversationRecord, conv_id)
+                if effective_agent_id is None and conv_row is not None:
+                    effective_agent_id = conv_row.agent_id
+
+                session.add(
+                    MessageRecord(
+                        id=str(uuid.uuid4()),
+                        conversation_id=conv_id,
+                        role="user",
+                        content=msg_in,
+                    )
+                )
+                await session.commit()
+
+            async with async_session_factory() as session:
+                lc_messages = await _messages_to_lc(session, conv_id)
+        else:
+            conv_id = str(uuid.uuid4())
+            title = msg_in[:200] if len(msg_in) > 200 else msg_in
+            async with async_session_factory() as session:
+                session.add(
+                    ConversationRecord(
+                        id=conv_id,
+                        user_id=user_id,
+                        title=title,
+                        agent_id=agent_id,
+                    )
+                )
+                session.add(
+                    MessageRecord(
+                        id=str(uuid.uuid4()),
+                        conversation_id=conv_id,
+                        role="user",
+                        content=msg_in,
+                    )
+                )
+                await session.commit()
+
+            yield _sse(
+                {
+                    "type": "meta",
+                    "conversationId": conv_id,
+                    "agentId": agent_id,
+                }
+            )
+
+            prior = _history_to_lc(history)
+            lc_messages = prior + [HumanMessage(content=msg_in)]
+
+        graph = await build_agent_graph(effective_agent_id)
+
+        assistant_parts: list[str] = []
+
+        async for event in graph.astream_events({"messages": lc_messages}, version="v2"):
             etype = event.get("event")
 
             if etype == "on_chat_model_stream":
@@ -63,6 +148,7 @@ async def stream_chat(
                 if chunk:
                     delta = _extract_text(chunk)
                     if delta:
+                        assistant_parts.append(delta)
                         yield _sse({"type": "text-delta", "textDelta": delta})
 
             elif etype == "on_tool_start":
@@ -70,6 +156,18 @@ async def stream_chat(
 
             elif etype == "on_tool_end":
                 yield _sse({"type": "tool-result", "name": event.get("name", "")})
+
+        assistant_text = "".join(assistant_parts)
+        async with async_session_factory() as session:
+            session.add(
+                MessageRecord(
+                    id=str(uuid.uuid4()),
+                    conversation_id=conv_id,
+                    role="assistant",
+                    content=assistant_text,
+                )
+            )
+            await session.commit()
 
         yield "data: [DONE]\n\n"
 
