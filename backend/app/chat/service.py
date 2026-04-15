@@ -42,9 +42,9 @@ async def stream_chat(
       - tool-result: 工具调用完成
       - error:      运行异常
     """
-    from app.agent.executor import get_agent
+    from app.agent.executor import build_agent_graph
 
-    graph = get_agent(agent_id)
+    graph = await build_agent_graph(agent_id)
 
     messages: list[HumanMessage | AIMessage] = []
     for m in history:

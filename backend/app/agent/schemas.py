@@ -15,6 +15,7 @@ class AgentResponse(BaseModel):
     name: str
     description: str
     tool_names: list[str]
+    system_prompt: str = ""
 
 
 class AgentListResponse(BaseModel):

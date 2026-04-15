@@ -46,6 +46,7 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
 async def init_db() -> None:
     """创建缺失的表。"""
     # 确保模型已注册到 metadata
+    from app.agent import models as _agent_models  # noqa: F401
     from app.knowledge import models as _knowledge_models  # noqa: F401
 
     async with engine.begin() as conn:

@@ -42,6 +42,11 @@ class Settings(BaseSettings):
         default="http://127.0.0.1:6333",
         description="Qdrant HTTP 地址",
     )
+    # 未在工具参数中指定 kb_id 时使用；为空则自动选用数据库中第一个知识库
+    default_knowledge_base_id: str = Field(
+        default="",
+        description="默认知识库 UUID（可选）",
+    )
 
     # ── 服务 ──────────────────────────────────────────────────────────────────
     cors_origins: str = Field(
