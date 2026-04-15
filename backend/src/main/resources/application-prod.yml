@@ -1,6 +1,0 @@
-# 生产示例：spring.profiles.active=prod
-tcm:
-  api:
-    expose-error-details: false
-    cors-allowed-origin-patterns:
-      - "https://REPLACE_WITH_YOUR_ORIGIN"
