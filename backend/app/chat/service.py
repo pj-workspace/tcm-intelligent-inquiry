@@ -3,10 +3,10 @@
 import json
 import secrets
 import uuid
-from collections.abc import AsyncIterator
-from typing import TYPE_CHECKING
+from collections.abc import AsyncIterator, Iterator
+from typing import TYPE_CHECKING, Any
 
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,12 +22,67 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
+_TOOL_IO_MAX = 8000
+_THINKING_MAX = 16000
+
 
 def _sse(payload: dict) -> str:
     return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
 
+def _truncate(s: str, max_len: int) -> str:
+    if len(s) <= max_len:
+        return s
+    return s[: max_len - 1] + "…"
+
+
+def _json_safe_for_sse(obj: Any, max_str: int = _TOOL_IO_MAX, depth: int = 0) -> Any:
+    """将工具入参等转为可 JSON 序列化结构，并限制深度与字符串长度。"""
+    if depth > 12:
+        return "…"
+    if obj is None or isinstance(obj, (bool, int, float)):
+        return obj
+    if isinstance(obj, str):
+        return _truncate(obj, max_str)
+    if isinstance(obj, dict):
+        out: dict[str, Any] = {}
+        for i, (k, v) in enumerate(obj.items()):
+            if i >= 40:
+                out["…"] = f"共 {len(obj)} 项，已省略"
+                break
+            out[str(k)[:200]] = _json_safe_for_sse(v, max_str, depth + 1)
+        return out
+    if isinstance(obj, (list, tuple)):
+        return [_json_safe_for_sse(x, max_str, depth + 1) for x in obj[:40]]
+    return _truncate(str(obj), max_str)
+
+
+def _serialize_tool_output(out: Any) -> str:
+    """工具结束时的 output 预览（供前端展示，非全量日志）。"""
+    if out is None:
+        return ""
+    if isinstance(out, ToolMessage):
+        c = out.content
+        if isinstance(c, str):
+            return _truncate(c, _TOOL_IO_MAX)
+        if isinstance(c, list):
+            parts: list[str] = []
+            for b in c:
+                if isinstance(b, dict) and b.get("type") == "text":
+                    parts.append(str(b.get("text", "")))
+                elif isinstance(b, str):
+                    parts.append(b)
+            return _truncate("".join(parts), _TOOL_IO_MAX)
+        return _truncate(json.dumps(c, ensure_ascii=False), _TOOL_IO_MAX)
+    if isinstance(out, AIMessage):
+        return _truncate(str(out.content), _TOOL_IO_MAX)
+    if hasattr(out, "content"):
+        return _serialize_tool_output(getattr(out, "content"))
+    return _truncate(str(out), _TOOL_IO_MAX)
+
+
 def _extract_text(chunk) -> str:
+    """仅提取可见回复正文（兼容旧逻辑）。"""
     content = getattr(chunk, "content", None)
     if isinstance(content, str):
         return content
@@ -40,6 +95,39 @@ def _extract_text(chunk) -> str:
                 parts.append(block)
         return "".join(parts)
     return ""
+
+
+def _iter_model_stream_parts(chunk) -> Iterator[tuple[str, str]]:
+    """从 chat_model_stream chunk 拆出 (kind, delta)，kind 为 text 或 thinking。"""
+    content = getattr(chunk, "content", None)
+    if isinstance(content, str):
+        if content:
+            yield "text", content
+        return
+    if not isinstance(content, list):
+        return
+    for block in content:
+        if isinstance(block, dict):
+            bt = str(block.get("type") or "")
+            if bt == "text":
+                t = str(block.get("text", ""))
+                if t:
+                    yield "text", t
+            elif bt in (
+                "thinking",
+                "reasoning",
+                "redacted_reasoning",
+            ):
+                raw = (
+                    block.get("thinking")
+                    or block.get("reasoning")
+                    or block.get("text")
+                    or ""
+                )
+                if raw:
+                    yield "thinking", _truncate(str(raw), _THINKING_MAX)
+        elif isinstance(block, str) and block:
+            yield "text", block
 
 
 def _history_to_lc(history: list[ChatMessage]) -> list[HumanMessage | AIMessage]:
@@ -153,20 +241,56 @@ async def stream_chat(
 
         async for event in graph.astream_events({"messages": lc_messages}, version="v2"):
             etype = event.get("event")
+            data = event.get("data") if isinstance(event.get("data"), dict) else {}
+            run_id = event.get("run_id")
 
             if etype == "on_chat_model_stream":
-                chunk = event.get("data", {}).get("chunk")
+                chunk = data.get("chunk")
                 if chunk:
-                    delta = _extract_text(chunk)
-                    if delta:
-                        assistant_parts.append(delta)
-                        yield _sse({"type": "text-delta", "textDelta": delta})
+                    streamed = False
+                    for kind, delta in _iter_model_stream_parts(chunk):
+                        if not delta:
+                            continue
+                        streamed = True
+                        if kind == "text":
+                            assistant_parts.append(delta)
+                            yield _sse({"type": "text-delta", "textDelta": delta})
+                        else:
+                            yield _sse({"type": "thinking-delta", "textDelta": delta})
+                    if not streamed:
+                        delta = _extract_text(chunk)
+                        if delta:
+                            assistant_parts.append(delta)
+                            yield _sse({"type": "text-delta", "textDelta": delta})
 
             elif etype == "on_tool_start":
-                yield _sse({"type": "tool-call", "name": event.get("name", "")})
+                name = event.get("name") or ""
+                raw_in = data.get("input")
+                if raw_in is None:
+                    raw_in = data.get("tool_input")
+                payload: dict[str, Any] = {
+                    "type": "tool-call",
+                    "name": name,
+                }
+                if run_id is not None:
+                    payload["runId"] = run_id
+                if raw_in is not None:
+                    payload["input"] = _json_safe_for_sse(raw_in)
+                yield _sse(payload)
 
             elif etype == "on_tool_end":
-                yield _sse({"type": "tool-result", "name": event.get("name", "")})
+                name = event.get("name") or ""
+                out = data.get("output")
+                preview = _serialize_tool_output(out)
+                tr: dict[str, Any] = {
+                    "type": "tool-result",
+                    "name": name,
+                }
+                if run_id is not None:
+                    tr["runId"] = run_id
+                if preview:
+                    tr["outputPreview"] = preview
+                yield _sse(tr)
 
         assistant_text = "".join(assistant_parts)
         async with async_session_factory() as session:
