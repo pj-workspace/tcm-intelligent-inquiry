@@ -38,6 +38,10 @@ class IngestResponse(BaseModel):
 class IngestJobCreateResponse(BaseModel):
     job_id: str
     status: str = "pending"
+    celery_task_id: str | None = Field(
+        default=None,
+        description="Celery 任务 ID（仅 celery_ingest_enabled=true 时有值）",
+    )
 
 
 class IngestJobStatusResponse(BaseModel):

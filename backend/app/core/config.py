@@ -38,6 +38,11 @@ class Settings(BaseSettings):
         default="redis://127.0.0.1:6379/0",
         description="Redis 连接串",
     )
+    # 异步入库：True 时走 Celery worker；False 时用 FastAPI BackgroundTasks（无需单独 worker）
+    celery_ingest_enabled: bool = Field(
+        default=True,
+        description="是否用 Celery 执行 ingest-async 任务",
+    )
     qdrant_url: str = Field(
         default="http://127.0.0.1:6333",
         description="Qdrant HTTP 地址",

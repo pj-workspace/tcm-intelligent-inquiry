@@ -3,9 +3,10 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.database import get_session
 from app.core.exceptions import NotFoundError
-from app.knowledge.job_store import job_create, job_get, run_ingest_background
+from app.knowledge.job_store import job_create, job_get, job_update, run_ingest_background, stash_ingest_blob
 from app.knowledge.schemas import (
     IngestJobCreateResponse,
     IngestJobStatusResponse,
@@ -87,11 +88,22 @@ async def ingest_async(
     await svc.get_kb(kb_id)
     content = await file.read()
     job_id = await job_create()
+    filename = file.filename or "unknown"
+    settings = get_settings()
+    if settings.celery_ingest_enabled:
+        await stash_ingest_blob(job_id, content)
+        from app.workers.tasks import ingest_document_task
+
+        async_result = ingest_document_task.delay(job_id, kb_id, filename)
+        await job_update(job_id, celery_task_id=async_result.id)
+        return IngestJobCreateResponse(
+            job_id=job_id, status="pending", celery_task_id=async_result.id
+        )
     background_tasks.add_task(
         run_ingest_background,
         job_id,
         kb_id,
-        file.filename or "unknown",
+        filename,
         content,
     )
     return IngestJobCreateResponse(job_id=job_id, status="pending")

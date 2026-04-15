@@ -47,6 +47,32 @@ services:
     environment:
       QDRANT__SERVICE__GRPC_PORT: 6334
 
+  # Celery worker：异步入库（与 backend/.env 中 CELERY_INGEST_ENABLED=true 配合）
+  # 容器内需使用服务名连接 PG/Redis/Qdrant，勿用 127.0.0.1
+  worker:
+    image: python:3.11-slim
+    container_name: tcm-celery-worker
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+    command: >
+      sh -c "pip install --no-cache-dir -q -r requirements.txt
+      && celery -A celery_app worker -l info -Q tcm"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://tcm:tcm_secret@postgres:5432/tcm
+      REDIS_URL: redis://redis:6379/0
+      QDRANT_URL: http://qdrant:6333
+      CELERY_INGEST_ENABLED: "true"
+    env_file:
+      - ./backend/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    profiles:
+      - worker
+
 volumes:
   tcm_pg_data:
   tcm_redis_data:
