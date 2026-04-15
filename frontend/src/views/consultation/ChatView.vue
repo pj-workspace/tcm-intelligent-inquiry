@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, onMounted, ref, watch } from 'vue'
+import { computed, inject, onMounted, ref } from 'vue'
 import { silentAxiosConfig } from '@/api/core/client'
 import { getErrorMessage } from '@/api/core/errors'
 import { getConsultationHealth } from '@/api/modules/consultation'
@@ -9,7 +9,6 @@ import ChatInputBox, {
 } from '@/views/consultation/components/ChatInputBox.vue'
 import ChatSettingsDrawer from '@/views/consultation/components/ChatSettingsDrawer.vue'
 import ChatThread from '@/views/consultation/components/ChatThread.vue'
-import ChatArtifactsSidebar from '@/views/consultation/components/ChatArtifactsSidebar.vue'
 import { useChatExport } from '@/views/consultation/composables/useChatExport'
 import { useConsultChatPrefs } from '@/composables/useConsultChatPrefs'
 import { useOmniChatContext } from '@/composables/useOmniChatContext'
@@ -29,10 +28,7 @@ const {
   loading,
   error,
   streamingContent,
-  streamingDiagnosisReport,
-  streamingHerbSafety,
   streamingRetrievalPassages,
-  artifactReportVersions,
   ragMeta,
   streamPhase,
   streamActivityLog,
@@ -46,22 +42,6 @@ const { knowledgeBaseId, literatureCollectionId } = useOmniChatContext()
 const health = ref<string>('')
 const chatThreadRef = ref<InstanceType<typeof ChatThread> | null>(null)
 const chatInputBoxRef = ref<InstanceType<typeof ChatInputBox> | null>(null)
-/** 小屏：辨证摘要底部抽屉 */
-const artifactsMobileOpen = ref(false)
-
-function openArtifactsMobile() {
-  artifactsMobileOpen.value = true
-}
-
-const mqMobile = ref(
-  typeof window !== 'undefined' && window.matchMedia('(max-width: 52rem)').matches
-)
-
-watch(streamingDiagnosisReport, (r) => {
-  if (r && mqMobile.value) {
-    artifactsMobileOpen.value = true
-  }
-})
 
 /** 模型参数、RAG 数值：与 ChatSettingsDrawer 共享单例 composable，见 useConsultChatPrefs */
 const {
@@ -89,14 +69,6 @@ const { exportMd, exportPdf, exportHint, exportBusy } = useChatExport({
 })
 
 onMounted(async () => {
-  if (typeof window !== 'undefined') {
-    const mq = window.matchMedia('(max-width: 52rem)')
-    mqMobile.value = mq.matches
-    mq.addEventListener('change', (e: MediaQueryListEvent) => {
-      mqMobile.value = e.matches
-      if (!e.matches) artifactsMobileOpen.value = false
-    })
-  }
   try {
     const { data } = await getConsultationHealth(silentAxiosConfig)
     const line = formatHealthStatus(data.code, data.message ?? '')
@@ -178,7 +150,7 @@ async function onRegenerateAssistant() {
 </script>
 
 <template>
-  <div class="consult-chat consult-chat--split ds-main__grow">
+  <div class="consult-chat ds-main__grow">
     <div class="consult-chat__main">
     <header class="consult-header">
       <div class="consult-header__top">
@@ -226,15 +198,6 @@ async function onRegenerateAssistant() {
           </button>
           <button
             type="button"
-            class="ds-btn ds-btn--ghost consult-header__artifacts-mobile"
-            aria-label="打开辨证摘要面板"
-            title="辨证摘要"
-            @click="openArtifactsMobile"
-          >
-            摘要
-          </button>
-          <button
-            type="button"
             class="ds-btn ds-btn--icon ds-btn--subtle consult-settings__trigger"
             :aria-expanded="settingsOpen"
             aria-label="问诊设置：默认挂载与模型参数"
@@ -279,8 +242,6 @@ async function onRegenerateAssistant() {
       :messages="messages"
       :loading="loading"
       :streaming-content="streamingContent"
-      :streaming-diagnosis-report="streamingDiagnosisReport"
-      :streaming-herb-safety="streamingHerbSafety"
       :streaming-retrieval-passages="streamingRetrievalPassages"
       :rag-meta="ragMeta"
       :stream-phase="streamPhase"
@@ -300,20 +261,6 @@ async function onRegenerateAssistant() {
       :loading="loading"
     />
     </div>
-
-    <ChatArtifactsSidebar
-      v-model:mobile-open="artifactsMobileOpen"
-      :versions="artifactReportVersions"
-      :streaming-report="streamingDiagnosisReport"
-      :streaming-safety="streamingHerbSafety"
-      :loading="loading"
-      :retrieval-passages="streamingRetrievalPassages.length ? streamingRetrievalPassages : null"
-      :trace-user-query="
-        messages.length && messages[messages.length - 1]?.role === 'user'
-          ? messages[messages.length - 1]!.content
-          : null
-      "
-    />
   </div>
 </template>
 
@@ -326,36 +273,12 @@ async function onRegenerateAssistant() {
   background: transparent;
 }
 
-.consult-chat--split {
-  flex-direction: row;
-  align-items: stretch;
-  gap: 0;
-  min-height: 0;
-}
-
 .consult-chat__main {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   min-height: 0;
-}
-
-.consult-header__artifacts-mobile {
-  display: none;
-  font-size: 0.78rem;
-  padding: 0.3rem 0.55rem;
-  font-weight: 600;
-}
-
-@media (max-width: 52rem) {
-  .consult-chat--split {
-    flex-direction: column;
-  }
-
-  .consult-header__artifacts-mobile {
-    display: inline-flex;
-  }
 }
 
 .consult-header {

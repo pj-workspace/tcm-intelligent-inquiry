@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
+import { Connection } from '@element-plus/icons-vue'
+import { ElIcon } from 'element-plus'
 import MarkdownContent from '@/components/business/MarkdownContent.vue'
-import DiagnosisReportCard from '@/views/consultation/components/DiagnosisReportCard.vue'
 import ReasoningLogger from '@/views/consultation/components/ReasoningLogger.vue'
 import RetrievalTraceDrawer from '@/views/consultation/components/RetrievalTraceDrawer.vue'
-import type { HerbSafetyCheckResult, TcmDiagnosisReport } from '@/types/consultation'
 import type { KnowledgeRetrievedPassage } from '@/types/knowledge'
-import { stripJsonReportBlocks } from '@/utils/diagnosisReport'
+import { stripJsonReportBlocks } from '@/utils/consultMarkdownCleanup'
 import {
   advanceMarkdownRestGate,
   type MarkdownRestStreamGate,
@@ -25,9 +25,6 @@ const props = withDefaults(
     isStreaming?: boolean
     /** 视觉模式下的占位文案（isStreaming 时） */
     streamVision?: boolean
-    /** 结构化辨证摘要：存在时从 Markdown 中剥掉 json-report 代码块，避免与卡片重复 */
-    diagnosisReport?: TcmDiagnosisReport | null
-    herbSafety?: HerbSafetyCheckResult | null
     /** RAG 溯源摘录（与 meta / 落库一致） */
     retrievalPassages?: KnowledgeRetrievedPassage[] | null
     /** 用于溯源高亮：本轮用户问句 */
@@ -38,8 +35,6 @@ const props = withDefaults(
     allowRegenerate: false,
     isStreaming: false,
     streamVision: false,
-    diagnosisReport: null,
-    herbSafety: null,
     retrievalPassages: null,
     traceUserQuery: null,
   }
@@ -66,7 +61,6 @@ let prevRestLen = 0
 
 const assistantPipelineSource = computed(() => {
   if (props.role !== 'assistant') return props.content
-  if (props.diagnosisReport == null) return props.content
   return stripJsonReportBlocks(props.content)
 })
 
@@ -122,7 +116,9 @@ const showAssistantActions = computed(
   () =>
     props.role === 'assistant' &&
     !props.isStreaming &&
-    (!!copyPlain.value || props.allowRegenerate)
+    (!!copyPlain.value ||
+      props.allowRegenerate ||
+      tracePassages.value.length > 0)
 )
 
 /** 尚无正文输出时，在文档流内展示「思考」占位（首包等待或仅推理阶段之后） */
@@ -315,14 +311,6 @@ onUnmounted(() => {
       </template>
     </div>
 
-    <DiagnosisReportCard
-      v-if="diagnosisReport"
-      :report="diagnosisReport"
-      :herb-safety="herbSafety ?? undefined"
-      :trace-enabled="traceEnabled"
-      @open-trace="traceDrawerOpen = true"
-    />
-
     <RetrievalTraceDrawer
       v-model="traceDrawerOpen"
       :passages="tracePassages"
@@ -334,6 +322,18 @@ onUnmounted(() => {
       class="chat-doc-assistant__actions"
       aria-label="本条回复操作"
     >
+      <button
+        v-if="traceEnabled"
+        type="button"
+        class="chat-doc-act"
+        title="查看 RAG 溯源"
+        aria-label="查看 RAG 溯源看板"
+        @click="traceDrawerOpen = true"
+      >
+        <ElIcon :size="18">
+          <Connection />
+        </ElIcon>
+      </button>
       <button
         type="button"
         class="chat-doc-act"

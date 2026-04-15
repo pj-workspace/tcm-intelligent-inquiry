@@ -6,7 +6,6 @@ import type {
   StreamActivityEntry,
   StreamPhasePayload,
 } from '@/composables/useChat'
-import type { HerbSafetyCheckResult, TcmDiagnosisReport } from '@/types/consultation'
 import type { KnowledgeRetrievedPassage } from '@/types/knowledge'
 import ChatDocMessage from '@/components/business/ChatDocMessage.vue'
 import DsAlert from '@/components/common/DsAlert.vue'
@@ -17,8 +16,6 @@ const props = defineProps<{
   messages: ChatTurn[]
   loading: boolean
   streamingContent: string
-  streamingDiagnosisReport: TcmDiagnosisReport | null
-  streamingHerbSafety: HerbSafetyCheckResult | null
   streamingRetrievalPassages: KnowledgeRetrievedPassage[]
   ragMeta: ConsultationRagMeta | null
   streamPhase: StreamPhasePayload | null
@@ -76,7 +73,7 @@ function formatRagLog(meta: ConsultationRagMeta | null): string | null {
     lines.push(`合并来源：${meta.sources.join('、')}`)
   }
   if (meta.passages?.length) {
-    lines.push(`溯源摘录：${meta.passages.length} 条（与看板一致）`)
+    lines.push(`溯源摘录：${meta.passages.length} 条`)
   }
   return lines.join('\n')
 }
@@ -133,7 +130,6 @@ watch(
       props.messages.length,
       props.streamingContent,
       props.loading,
-      props.streamingDiagnosisReport,
     ] as const,
   () => scrollToBottomIfPinned(),
   { flush: 'post' }
@@ -262,8 +258,6 @@ defineExpose({
           :key="i"
           :role="m.role"
           :content="m.content"
-          :diagnosis-report="m.diagnosisReport"
-          :herb-safety="m.herbSafety"
           :retrieval-passages="m.role === 'assistant' ? m.retrievalPassages : undefined"
           :trace-user-query="
             m.role === 'assistant' &&
@@ -283,8 +277,6 @@ defineExpose({
           v-if="loading"
           role="assistant"
           :content="streamingContent"
-          :diagnosis-report="streamingDiagnosisReport ?? undefined"
-          :herb-safety="streamingHerbSafety ?? undefined"
           :retrieval-passages="
             streamingRetrievalPassages.length ? streamingRetrievalPassages : undefined
           "

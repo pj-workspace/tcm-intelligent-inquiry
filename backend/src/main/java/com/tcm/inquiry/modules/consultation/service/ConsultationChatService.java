@@ -25,7 +25,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tcm.inquiry.common.sse.SseAssistantEvents;
 import com.tcm.inquiry.common.sse.SsePhaseEvents;
 import com.tcm.inquiry.config.TcmApiProperties;
@@ -35,12 +34,9 @@ import com.tcm.inquiry.modules.agent.ConsultationToolProgressNotifier;
 import com.tcm.inquiry.modules.agent.tools.AgentReActToolsFactory;
 import com.tcm.inquiry.modules.consultation.ai.ConsultationPrompts;
 import com.tcm.inquiry.modules.consultation.dto.ConsultationChatRequest;
-import com.tcm.inquiry.modules.consultation.dto.ConsultationReportSsePayload;
-import com.tcm.inquiry.modules.consultation.dto.TcmDiagnosisReport;
 import com.tcm.inquiry.modules.consultation.entity.ChatMessage;
 import com.tcm.inquiry.modules.consultation.repository.ChatMessageRepository;
 import com.tcm.inquiry.modules.consultation.repository.ChatSessionRepository;
-import com.tcm.inquiry.modules.consultation.sse.ConsultationJsonReportStreamSniffer;
 
 import reactor.core.scheduler.Schedulers;
 
@@ -61,8 +57,6 @@ public class ConsultationChatService {
     private final Executor sseAsyncExecutor;
     private final TcmApiProperties apiProperties;
     private final AgentService agentService;
-    private final ObjectMapper objectMapper;
-    private final TcmSafetyGuardrailService safetyGuardrailService;
 
     /**
      * 默认对话模型名（落库展示用），与 {@code spring.ai.openai.chat.options.model} 一致。
@@ -77,9 +71,7 @@ public class ConsultationChatService {
             ConsultationMessageStore consultationMessageStore,
             @Qualifier("sseAsyncExecutor") Executor sseAsyncExecutor,
             TcmApiProperties apiProperties,
-            AgentService agentService,
-            ObjectMapper objectMapper,
-            TcmSafetyGuardrailService safetyGuardrailService) {
+            AgentService agentService) {
         this.chatModel = chatModel;
         this.chatSessionRepository = chatSessionRepository;
         this.chatMessageRepository = chatMessageRepository;
@@ -87,17 +79,6 @@ public class ConsultationChatService {
         this.sseAsyncExecutor = sseAsyncExecutor;
         this.apiProperties = apiProperties;
         this.agentService = agentService;
-        this.objectMapper = objectMapper;
-        this.safetyGuardrailService = safetyGuardrailService;
-    }
-
-    private void emitConsultationReport(SseEmitter sseEmitter, TcmDiagnosisReport report)
-            throws IOException {
-        var safety = safetyGuardrailService.checkHerbIncompatibility(report.herbs());
-        sseEmitter.send(
-                SseEmitter.event()
-                        .name("report")
-                        .data(new ConsultationReportSsePayload(report, safety)));
     }
 
     /**
@@ -216,9 +197,6 @@ public class ConsultationChatService {
                                 }
                             });
 
-            ConsultationJsonReportStreamSniffer reportSniffer =
-                    new ConsultationJsonReportStreamSniffer(objectMapper);
-
             agentService.runConsultationReActStreaming(
                     historyMessages,
                     userInput,
@@ -251,15 +229,6 @@ public class ConsultationChatService {
                         }
                     },
                     token -> {
-                        reportSniffer.append(
-                                token,
-                                r -> {
-                                    try {
-                                        emitConsultationReport(emitter, r);
-                                    } catch (IOException e) {
-                                        throw new UncheckedIOException(e);
-                                    }
-                                });
                         try {
                             SseAssistantEvents.sendTextDelta(emitter, token);
                         } catch (IOException e) {
@@ -426,8 +395,6 @@ public class ConsultationChatService {
         StringBuilder assistantAcc = new StringBuilder();
         AtomicReference<Throwable> errorRef = new AtomicReference<>();
         AtomicBoolean firstToken = new AtomicBoolean(true);
-        ConsultationJsonReportStreamSniffer reportSniffer =
-                new ConsultationJsonReportStreamSniffer(objectMapper);
 
         streamSpec
                 .content()
@@ -447,19 +414,6 @@ public class ConsultationChatService {
                                 }
                             }
                             assistantAcc.append(token);
-                            reportSniffer.append(
-                                    token,
-                                    r -> {
-                                        try {
-                                            emitConsultationReport(emitter, r);
-                                        } catch (IOException e) {
-                                            errorRef.compareAndSet(null, e);
-                                            emitter.completeWithError(e);
-                                        }
-                                    });
-                            if (errorRef.get() != null) {
-                                return;
-                            }
                             try {
                                 SseAssistantEvents.sendTextDelta(emitter, token);
                             } catch (IOException e) {

@@ -10,26 +10,14 @@ import {
   listConsultationSessions,
 } from '@/api/modules/consultation'
 import { postAgentRunJson } from '@/api/modules/agent'
-import type {
-  ChatSessionInfo,
-  HerbSafetyCheckResult,
-  TcmDiagnosisReport,
-} from '@/types/consultation'
+import type { ChatSessionInfo } from '@/types/consultation'
 import type { KnowledgeRetrievedPassage } from '@/types/knowledge'
-import {
-  parseConsultationReportSsePayload,
-  tryParseDiagnosisReportFromMarkdown,
-} from '@/utils/diagnosisReport'
 import { normalizeMetaPassages } from '@/utils/retrievalTrace'
 import { encodeImageFileToHerbPayload } from '@/utils/herbImagePayload'
 
 export type ChatTurn = {
   role: 'user' | 'assistant'
   content: string
-  /** 结构化辨证摘要（SSE {@code report} 或从历史正文解析） */
-  diagnosisReport?: TcmDiagnosisReport
-  /** 配伍禁忌扫描（仅 SSE 附带；历史记录多为空） */
-  herbSafety?: HerbSafetyCheckResult | null
   /** RAG 溯源摘录（与 meta.passages / 落库一致） */
   retrievalPassages?: KnowledgeRetrievedPassage[]
 }
@@ -103,16 +91,7 @@ export type StreamActivityEntry = {
   step?: number
 }
 
-/** 右侧「生成物」面板：每条结构化辨证摘要的版本（含 SSE report 与历史回放）。 */
-export type ArtifactReportVersion = {
-  id: string
-  at: number
-  report: TcmDiagnosisReport
-  herbSafety: HerbSafetyCheckResult | null
-}
-
 const STREAM_ACTIVITY_MAX = 24
-const ARTIFACT_VERSIONS_MAX = 32
 
 /**
  * 中医问诊：会话列表、历史加载、SSE 流式发送、打字机状态与错误处理。
@@ -125,10 +104,6 @@ export function useChat() {
   const error = ref<string | null>(null)
   /** 当前一轮助手流式累积（完成后会并入 messages） */
   const streamingContent = ref('')
-  /** 当前流式回合结构化报告（后端 {@code event: report}）；可与正文并列更新 */
-  const streamingDiagnosisReport = ref<TcmDiagnosisReport | null>(null)
-  /** 与 {@code report} 事件同发的配伍审查结果 */
-  const streamingHerbSafety = ref<HerbSafetyCheckResult | null>(null)
   /** 当前流式回合 RAG 溯源（meta.passages，与落库对齐） */
   const streamingRetrievalPassages = ref<KnowledgeRetrievedPassage[]>([])
   /** 当前回合知识库检索摘要（仅当本轮请求携带 knowledgeBaseId 且收到 meta 时有效） */
@@ -137,10 +112,6 @@ export function useChat() {
   const streamPhase = ref<StreamPhasePayload | null>(null)
   /** 本轮已收阶段事件时间线（供界面「编排追踪」展开） */
   const streamActivityLog = ref<StreamActivityEntry[]>([])
-  /** 本会话内历次「辨证摘要」版本（json-report / report 事件） */
-  const artifactReportVersions = ref<ArtifactReportVersion[]>([])
-  /** 同一轮流式中避免重复追加相同 report 的快照键 */
-  let lastStreamingArtifactKey = ''
   let abort: AbortController | null = null
 
   function appendStreamActivity(entry: Omit<StreamActivityEntry, 'ts'>) {
@@ -188,31 +159,25 @@ export function useChat() {
     for (const m of list) {
       next.push({ role: 'user', content: m.userMessage })
       const a = m.assistantMessage
-      const diagnosisReport = tryParseDiagnosisReportFromMarkdown(a)
       next.push({
         role: 'assistant',
         content: a,
-        ...(diagnosisReport ? { diagnosisReport } : {}),
         ...(m.retrievalPassages?.length
           ? { retrievalPassages: m.retrievalPassages }
           : {}),
       })
     }
     messages.value = next
-    rebuildArtifactVersionsFromMessages()
   }
 
   async function openSession(id: number) {
     stop()
     error.value = null
     streamingContent.value = ''
-    streamingDiagnosisReport.value = null
-    streamingHerbSafety.value = null
     streamingRetrievalPassages.value = []
     ragMeta.value = null
     streamPhase.value = null
     streamActivityLog.value = []
-    artifactReportVersions.value = []
     sessionId.value = id
     try {
       await loadHistory()
@@ -228,14 +193,10 @@ export function useChat() {
     sessionId.value = null
     messages.value = []
     streamingContent.value = ''
-    streamingDiagnosisReport.value = null
-    streamingHerbSafety.value = null
     streamingRetrievalPassages.value = []
     ragMeta.value = null
     streamPhase.value = null
     streamActivityLog.value = []
-    artifactReportVersions.value = []
-    lastStreamingArtifactKey = ''
     error.value = null
     await ensureSession()
     if (sessionId.value != null) persistLastSession(sessionId.value)
@@ -267,43 +228,6 @@ export function useChat() {
     })
   }
 
-  function appendArtifactVersion(report: TcmDiagnosisReport, safety: HerbSafetyCheckResult | null) {
-    const key = JSON.stringify(report)
-    if (key === lastStreamingArtifactKey) return
-    lastStreamingArtifactKey = key
-    const row: ArtifactReportVersion = {
-      id:
-        typeof crypto !== 'undefined' && crypto.randomUUID
-          ? crypto.randomUUID()
-          : `a-${Date.now()}`,
-      at: Date.now(),
-      report,
-      herbSafety: safety,
-    }
-    const next = [...artifactReportVersions.value, row]
-    artifactReportVersions.value =
-      next.length > ARTIFACT_VERSIONS_MAX
-        ? next.slice(-ARTIFACT_VERSIONS_MAX)
-        : next
-  }
-
-  function rebuildArtifactVersionsFromMessages() {
-    const next: ArtifactReportVersion[] = []
-    let i = 0
-    for (const m of messages.value) {
-      if (m.role === 'assistant' && m.diagnosisReport) {
-        next.push({
-          id: `hist-${i++}`,
-          at: i,
-          report: m.diagnosisReport,
-          herbSafety: m.herbSafety ?? null,
-        })
-      }
-    }
-    artifactReportVersions.value = next
-    lastStreamingArtifactKey = ''
-  }
-
   async function send(userText: string, opts?: SendOptions) {
     const text = userText.trim()
     if (!text || loading.value) return
@@ -320,13 +244,10 @@ export function useChat() {
     ragMeta.value = null
     streamPhase.value = null
     streamActivityLog.value = []
-    lastStreamingArtifactKey = ''
     if (!opts?.skipAppendUser) {
       messages.value = [...messages.value, { role: 'user', content: bubble }]
     }
     streamingContent.value = ''
-    streamingDiagnosisReport.value = null
-    streamingHerbSafety.value = null
     streamingRetrievalPassages.value = []
     loading.value = true
     abort = new AbortController()
@@ -386,15 +307,6 @@ export function useChat() {
           body: JSON.stringify(body),
           signal: abort.signal,
           onNamedEvent: (name, data) => {
-            if (name === 'report') {
-              const parsed = parseConsultationReportSsePayload(data)
-              if (parsed) {
-                streamingDiagnosisReport.value = parsed.report
-                streamingHerbSafety.value = parsed.safety
-                appendArtifactVersion(parsed.report, parsed.safety)
-              }
-              return
-            }
             if (name === 'assistant') {
               try {
                 const o = JSON.parse(data) as {
@@ -529,30 +441,16 @@ export function useChat() {
           },
         }
       )
-      const fromEvent = streamingDiagnosisReport.value
-      const fromMarkdown =
-        fromEvent == null
-          ? tryParseDiagnosisReportFromMarkdown(assistant)
-          : null
-      const diagnosisReport = fromEvent ?? fromMarkdown ?? undefined
-      const herbSafetySnap = streamingHerbSafety.value
       const traceSnap = [...streamingRetrievalPassages.value]
-      if (diagnosisReport) {
-        appendArtifactVersion(diagnosisReport, herbSafetySnap ?? null)
-      }
       messages.value = [
         ...messages.value,
         {
           role: 'assistant',
           content: assistant,
-          ...(diagnosisReport ? { diagnosisReport } : {}),
-          ...(herbSafetySnap != null ? { herbSafety: herbSafetySnap } : {}),
           ...(traceSnap.length ? { retrievalPassages: traceSnap } : {}),
         },
       ]
       streamingContent.value = ''
-      streamingDiagnosisReport.value = null
-      streamingHerbSafety.value = null
       streamingRetrievalPassages.value = []
       streamPhase.value = null
       await fetchSessions()
@@ -560,24 +458,12 @@ export function useChat() {
       if ((e as Error)?.name === 'AbortError') {
         error.value = '已停止生成'
         if (assistant) {
-          const fromEvent = streamingDiagnosisReport.value
-          const fromMarkdown =
-            fromEvent == null
-              ? tryParseDiagnosisReportFromMarkdown(assistant)
-              : null
-          const diagnosisReport = fromEvent ?? fromMarkdown ?? undefined
-          const herbSafetySnap = streamingHerbSafety.value
           const traceSnap = [...streamingRetrievalPassages.value]
-          if (diagnosisReport) {
-            appendArtifactVersion(diagnosisReport, herbSafetySnap ?? null)
-          }
           messages.value = [
             ...messages.value,
             {
               role: 'assistant',
               content: assistant + '\n…（已中断）',
-              ...(diagnosisReport ? { diagnosisReport } : {}),
-              ...(herbSafetySnap != null ? { herbSafety: herbSafetySnap } : {}),
               ...(traceSnap.length ? { retrievalPassages: traceSnap } : {}),
             },
           ]
@@ -591,8 +477,6 @@ export function useChat() {
         }
       }
       streamingContent.value = ''
-      streamingDiagnosisReport.value = null
-      streamingHerbSafety.value = null
       streamingRetrievalPassages.value = []
       streamPhase.value = null
     } finally {
@@ -638,7 +522,6 @@ export function useChat() {
     ragMeta.value = null
     streamPhase.value = null
     streamActivityLog.value = []
-    lastStreamingArtifactKey = ''
     const names = images.map((f) => f.name).join('、')
     const userLabel =
       images.length > 0 ? `${text}\n\n（附图${images.length}张：${names}）` : text
@@ -646,8 +529,6 @@ export function useChat() {
       messages.value = [...messages.value, { role: 'user', content: userLabel }]
     }
     streamingContent.value = ''
-    streamingDiagnosisReport.value = null
-    streamingHerbSafety.value = null
     streamingRetrievalPassages.value = []
     loading.value = true
 
@@ -701,16 +582,11 @@ export function useChat() {
           agentMode: mode,
         }
       }
-      const visionReport = tryParseDiagnosisReportFromMarkdown(answer)
-      if (visionReport) {
-        appendArtifactVersion(visionReport, null)
-      }
       messages.value = [
         ...messages.value,
         {
           role: 'assistant',
           content: answer,
-          ...(visionReport ? { diagnosisReport: visionReport } : {}),
         },
       ]
       await fetchSessions()
@@ -722,8 +598,6 @@ export function useChat() {
     } finally {
       loading.value = false
       streamPhase.value = null
-      streamingDiagnosisReport.value = null
-      streamingHerbSafety.value = null
       streamingRetrievalPassages.value = []
       scrollToBottom(opts?.scrollRoot ?? null)
     }
@@ -736,13 +610,10 @@ export function useChat() {
     loading,
     error,
     streamingContent,
-    streamingDiagnosisReport,
-    streamingHerbSafety,
     streamingRetrievalPassages,
     ragMeta,
     streamPhase,
     streamActivityLog,
-    artifactReportVersions,
     fetchSessions,
     ensureSession,
     loadHistory,

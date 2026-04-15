@@ -12,11 +12,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.tcm.inquiry.config.TcmApiProperties;
 import com.tcm.inquiry.modules.consultation.dto.ConsultationChatRequest;
 import com.tcm.inquiry.modules.agent.service.AgentService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import com.tcm.inquiry.modules.consultation.service.ConsultationChatService;
 import com.tcm.inquiry.modules.consultation.service.ConsultationMessageStore;
-import com.tcm.inquiry.modules.consultation.service.TcmSafetyGuardrailService;
 import com.tcm.inquiry.modules.consultation.repository.ChatMessageRepository;
 import com.tcm.inquiry.modules.consultation.repository.ChatSessionRepository;
 
@@ -32,8 +30,6 @@ class ConsultationChatServiceTest {
     @Mock private Executor sseAsyncExecutor;
     @Mock private TcmApiProperties apiProperties;
     @Mock private AgentService agentService;
-    @Mock private ObjectMapper objectMapper;
-    @Mock private TcmSafetyGuardrailService safetyGuardrailService;
 
     @InjectMocks private ConsultationChatService consultationChatService;
 
