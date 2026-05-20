@@ -38,7 +38,7 @@ import {
 } from "@/lib/chatAgentConstants";
 import type { GenerationState } from "@/types/chat";
 import type { ChatModelCatalogResponse } from "@/types/models";
-import type { ChatSurfacePhase } from "@/hooks/useChat";
+import type { ChatSurfacePhase } from "@/types/chat-ui";
 import { CHAT_PENDING_ATTACHMENT_MAX } from "@/lib/chatAttachmentConstants";
 import type { RoundTokensUsage } from "@/components/chat/input/RoundTokensHint";
 import { RoundTokensHint } from "@/components/chat/input/RoundTokensHint";

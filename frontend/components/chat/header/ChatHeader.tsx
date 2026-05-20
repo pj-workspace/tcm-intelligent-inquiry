@@ -15,7 +15,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import type { ServerConversation } from "@/types/chat";
-import type { ChatSurfacePhase } from "@/hooks/useChat";
+import type { ChatSurfacePhase } from "@/types/chat-ui";
 import { uiDropdownBelow } from "@/lib/ui-motion";
 
 type ChatHeaderProps = {

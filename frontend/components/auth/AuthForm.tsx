@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, Suspense, forwardRef } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { Sun } from "lucide-react";
@@ -17,229 +17,9 @@ type AuthFormProps = {
   initialMode?: "login" | "register";
 };
 
-function OAuthIconGitee() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <title>Gitee</title>
-      <path
-        fill="currentColor"
-        d="M11.984 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.016 0zm6.09 5.333c.328 0 .593.266.592.593v1.482a.594.594 0 0 1-.593.592H9.777c-.982 0-1.778.796-1.778 1.778v5.63c0 .327.266.592.593.592h5.63c.982 0 1.778-.796 1.778-1.778v-.296a.593.593 0 0 0-.592-.593h-4.15a.592.592 0 0 1-.592-.592v-1.482a.593.593 0 0 1 .593-.592h6.815c.327 0 .593.265.593.592v3.408a4 4 0 0 1-4 4H5.926a.593.593 0 0 1-.593-.593V9.778a4.444 4.444 0 0 1 4.445-4.444h8.296Z"
-      />
-    </svg>
-  );
-}
+import { ThirdFlowModal } from "@/components/auth/ThirdFlowModal";
+import { OAuthButtons } from "@/components/auth/OAuthButtons";
 
-function OAuthIconGitHub() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 fill-current" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <title>GitHub</title>
-      <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
-    </svg>
-  );
-}
-
-const ThirdFlowModal = forwardRef<
-  HTMLDivElement,
-  {
-    provider: string;
-    flowId: string;
-    onClose: () => void;
-    finishLogin: (token: string) => void | Promise<void>;
-  }
->(function ThirdFlowModal({ provider, flowId, onClose, finishLogin }, ref) {
-  const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
-  const [password, setPassword] = useState("");
-  const [nickname, setNickname] = useState("");
-  const [needPw, setNeedPw] = useState(false);
-  const [pending, setPending] = useState(false);
-  const [hint, setHint] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-  const [sendBusy, setSendBusy] = useState(false);
-  const sendCd = useCooldownTimer();
-
-  const sendCode = async () => {
-    setErr(null);
-    if (!email.trim()) {
-      setErr("请输入邮箱");
-      return;
-    }
-    if (sendCd.left > 0 || sendBusy) return;
-    setSendBusy(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/auth/code/send`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
-      });
-      if (!res.ok) {
-        const msg = await parseApiError(res);
-        setErr(msg);
-        toast.error(msg);
-        return;
-      }
-      toast.success("验证码已发送，请查收邮箱");
-      sendCd.start(60);
-      setHint("请在邮箱中查收 6 位验证码");
-    } finally {
-      setSendBusy(false);
-    }
-  };
-
-  const submitComplete = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErr(null);
-    setPending(true);
-    try {
-      const body: Record<string, string | undefined> = {
-        flowId,
-        email: email.trim(),
-        code,
-        password: password || undefined,
-        nickname: nickname || undefined,
-      };
-      const res = await fetch(
-        `${API_BASE}/api/auth/oauth/${provider}/complete`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        }
-      );
-      const dataRaw = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const msg =
-          (dataRaw && typeof dataRaw === "object" && "message" in dataRaw
-            ? String((dataRaw as { message?: string }).message)
-            : null) || (await parseApiError(res));
-        throw new Error(msg);
-      }
-      const data = dataRaw as {
-        need_password?: boolean;
-        suggest_nickname?: string;
-        access_token?: string;
-      };
-      if (data.need_password) {
-        setNeedPw(true);
-        if (data.suggest_nickname) setNickname(data.suggest_nickname);
-        setPending(false);
-        return;
-      }
-      const { access_token: at } = data;
-      if (!at) throw new Error("登录失败");
-      await finishLogin(at);
-    } catch (ex) {
-      setErr(ex instanceof Error ? ex.message : "登录失败");
-    } finally {
-      setPending(false);
-    }
-  };
-
-  return (
-    <motion.div
-      ref={ref}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
-      {...uiModalBackdrop}
-    >
-      <motion.div
-        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-[#e5e5e5]"
-        onClick={(e) => e.stopPropagation()}
-        {...uiModalPanel}
-      >
-        <h2 className="text-lg font-semibold mb-1">绑定邮箱</h2>
-        <p className="text-sm text-gray-500 mb-4">
-          请在下方填写邮箱并完成验证，以继续使用 {provider} 登录。
-        </p>
-        <form onSubmit={submitComplete} className="space-y-3">
-          <div>
-            <label className="text-xs text-gray-500">邮箱</label>
-            <input
-              type="email"
-              className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="六位验证码"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              className="min-w-0 flex-1 rounded-xl border px-3 py-2 text-sm tracking-widest"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              required
-              minLength={6}
-              maxLength={8}
-            />
-            <button
-              type="button"
-              disabled={sendCd.left > 0 || sendBusy}
-              onClick={() => void sendCode()}
-              className="shrink-0 rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3 py-2 text-sm whitespace-nowrap disabled:opacity-50"
-            >
-              {sendBusy
-                ? "发送中…"
-                : sendCd.left > 0
-                  ? `${sendCd.left}s 后可重发`
-                  : "发送验证码"}
-            </button>
-          </div>
-          {needPw && (
-            <>
-              <div>
-                <label className="text-xs text-gray-500">设置密码（至少 6 位）</label>
-                <input
-                  type="password"
-                  className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  minLength={6}
-                  required={needPw}
-                />
-              </div>
-              <div>
-                <label className="text-xs text-gray-500">昵称（可选）</label>
-                <input
-                  type="text"
-                  className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
-                  value={nickname}
-                  onChange={(e) => setNickname(e.target.value)}
-                />
-              </div>
-            </>
-          )}
-          {hint && !err && (
-            <p className="text-sm text-green-700">{hint}</p>
-          )}
-          {err && (
-            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-2 py-1">{err}</p>
-          )}
-          <div className="flex gap-2 pt-2">
-            <button
-              type="button"
-              className="flex-1 py-2 rounded-xl border text-sm"
-              onClick={onClose}
-            >
-              取消
-            </button>
-            <button
-              type="submit"
-              disabled={pending}
-              className="flex-1 py-2 rounded-xl bg-[#1a1a1a] text-white text-sm disabled:opacity-50"
-            >
-              {pending ? "提交中…" : "完成绑定"}
-            </button>
-          </div>
-        </form>
-      </motion.div>
-    </motion.div>
-  );
-});
-
-ThirdFlowModal.displayName = "ThirdFlowModal";
 
 function AuthFormInner({
   onAuthenticated,
@@ -789,33 +569,11 @@ function AuthFormInner({
           </div>
         )}
 
-        <div
-          className={`border-t border-[#eae8e4] ${
-            compact ? "space-y-3 pt-4" : "space-y-3 pt-5"
-          }`}
-        >
-          <p className="text-center text-[11px] font-medium uppercase tracking-wide text-[#b4b4b9]">
-            第三方账号
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => startOAuth("github")}
-              className={`flex items-center justify-center gap-2 rounded-xl border border-[#e5e5e5] bg-white text-sm font-medium text-[#374151] shadow-sm hover:bg-[#fafafa] ${compact ? "py-2" : "py-2.5"}`}
-            >
-              <OAuthIconGitHub />
-              GitHub
-            </button>
-            <button
-              type="button"
-              onClick={() => startOAuth("gitee")}
-              className={`flex items-center justify-center gap-2 rounded-xl border border-[#e5e5e5] bg-white text-sm font-medium text-[#C71D23] shadow-sm hover:bg-orange-50/50 ${compact ? "py-2" : "py-2.5"}`}
-            >
-              <OAuthIconGitee />
-              Gitee
-            </button>
-          </div>
-        </div>
+        <OAuthButtons
+          compact={compact}
+          onGitHub={() => startOAuth("github")}
+          onGitee={() => startOAuth("gitee")}
+        />
       </form>
 
       <AnimatePresence mode="sync">
