@@ -16,7 +16,7 @@ import {
 } from "@/components/chat";
 import { WidgetCard } from "@/components/chat/messages/WidgetCard";
 import type { SidebarFilter } from "@/components/chat/sidebar/Sidebar";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ChatWorkspaceModals } from "@/components/home/ChatWorkspaceModals";
 import { useAuth } from "@/contexts/auth-context";
 import { API_BASE } from "@/lib/api";
 import { downloadConversationMarkdown } from "@/lib/conversation-export";
@@ -25,7 +25,6 @@ import { useScrollBehavior } from "@/hooks/useScrollBehavior";
 import { useChat } from "@/hooks/useChat";
 import { useChatAgentsCatalog } from "@/hooks/useChatAgentsCatalog";
 import type { ChatMessage, Message, ServerConversation, WidgetMessage } from "@/types/chat";
-import { uiModalBackdrop, uiModalPanel } from "@/lib/ui-motion";
 import { ConversationSkeleton } from "@/components/chat/ConversationSkeleton";
 import { WelcomeHero } from "./WelcomeHero";
 import {
@@ -674,191 +673,40 @@ export function HomePageClient() {
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#fdfdfc]">
-      <ConfirmDialog
-        open={deleteTargetId !== null}
-        title="删除会话"
-        description="确定删除该会话？删除后无法恢复。"
-        confirmLabel="删除"
-        cancelLabel="取消"
-        danger
-        pending={deletePending}
-        onConfirm={() => void confirmDeleteConversation()}
-        onCancel={closeDeleteDialog}
-      />
-
-      <ConfirmDialog
-        open={bulkDeleteConfirmOpen}
-        title="批量删除"
-        description={`确定删除已选中的 ${sidebarSelectedIds.size} 条会话？删除后无法恢复。`}
-        confirmLabel="删除"
-        cancelLabel="取消"
-        danger
-        pending={bulkDeletePending}
-        onConfirm={() => void runBulkDelete()}
-        onCancel={() => {
+      <ChatWorkspaceModals
+        deleteTargetId={deleteTargetId}
+        deletePending={deletePending}
+        onConfirmDeleteConversation={() => void confirmDeleteConversation()}
+        onCloseDeleteDialog={closeDeleteDialog}
+        bulkDeleteConfirmOpen={bulkDeleteConfirmOpen}
+        bulkDeletePending={bulkDeletePending}
+        bulkSelectedCount={sidebarSelectedIds.size}
+        onConfirmBulkDelete={() => void runBulkDelete()}
+        onCancelBulkDelete={() => {
           if (bulkDeletePending) return;
           setBulkDeleteConfirmOpen(false);
         }}
-      />
-
-      <ConfirmDialog
-        open={deleteFolderConfirm !== null}
-        title="删除分组"
-        description={
-          deleteFolderConfirm
-            ? `确定删除分组「${deleteFolderConfirm.name}」？会话将移回未分组。`
-            : ""
+        deleteFolderConfirm={deleteFolderConfirm}
+        onConfirmDeleteFolder={() => void confirmDeleteFolder()}
+        onCancelDeleteFolder={() => setDeleteFolderConfirm(null)}
+        renameConvModal={renameConvModal}
+        onRenameConvDraftChange={(draft) =>
+          setRenameConvModal((m) => (m ? { ...m, draft } : m))
         }
-        confirmLabel="删除"
-        cancelLabel="取消"
-        danger
-        pending={false}
-        onConfirm={() => void confirmDeleteFolder()}
-        onCancel={() => setDeleteFolderConfirm(null)}
+        onCloseRenameConv={() => setRenameConvModal(null)}
+        onSaveRenameConv={() => void handleSaveSidebarRename()}
+        newGroupModalOpen={newGroupModalOpen}
+        newGroupNameDraft={newGroupNameDraft}
+        onNewGroupNameChange={setNewGroupNameDraft}
+        onCloseNewGroup={() => setNewGroupModalOpen(false)}
+        onSubmitNewGroup={() => void submitNewGroup()}
+        renameFolderModal={renameFolderModal}
+        onRenameFolderDraftChange={(draft) =>
+          setRenameFolderModal((m) => (m ? { ...m, draft } : m))
+        }
+        onCloseRenameFolder={() => setRenameFolderModal(null)}
+        onSaveRenameFolder={() => void submitRenameFolder()}
       />
-
-      {/* 侧栏「编辑会话名称」 */}
-      <AnimatePresence>
-        {renameConvModal && (
-          <motion.div
-            key="rename-conv"
-            className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
-            onClick={(e) => e.target === e.currentTarget && setRenameConvModal(null)}
-            {...uiModalBackdrop}
-          >
-            <motion.div
-              className="w-full max-w-md rounded-2xl border border-[#e5e5e5] bg-white p-6 shadow-lg"
-              onClick={(e) => e.stopPropagation()}
-              {...uiModalPanel}
-            >
-              <h2 className="text-lg font-semibold text-gray-900">编辑会话名称</h2>
-              <input
-                autoFocus
-                className="mt-4 w-full rounded-xl border border-[#e5e5e5] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
-                value={renameConvModal.draft}
-                onChange={(e) =>
-                  setRenameConvModal((m) => (m ? { ...m, draft: e.target.value } : m))
-                }
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") void handleSaveSidebarRename();
-                  if (e.key === "Escape") setRenameConvModal(null);
-                }}
-              />
-              <div className="mt-6 flex justify-end gap-2">
-                <button
-                  type="button"
-                  className="rounded-xl border border-[#e5e5e5] px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                  onClick={() => setRenameConvModal(null)}
-                >
-                  取消
-                </button>
-                <button
-                  type="button"
-                  className="rounded-xl bg-[#1a1a1a] px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
-                  onClick={() => void handleSaveSidebarRename()}
-                >
-                  保存
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* 新建分组 */}
-      <AnimatePresence>
-        {newGroupModalOpen && (
-          <motion.div
-            key="new-group"
-            className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
-            onClick={(e) => e.target === e.currentTarget && setNewGroupModalOpen(false)}
-            {...uiModalBackdrop}
-          >
-            <motion.div
-              className="w-full max-w-md rounded-2xl border border-[#e5e5e5] bg-white p-6 shadow-lg"
-              onClick={(e) => e.stopPropagation()}
-              {...uiModalPanel}
-            >
-              <h2 className="text-lg font-semibold text-gray-900">新建分组</h2>
-              <input
-                autoFocus
-                className="mt-4 w-full rounded-xl border border-[#e5e5e5] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
-                placeholder="分组名称"
-                value={newGroupNameDraft}
-                onChange={(e) => setNewGroupNameDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") void submitNewGroup();
-                  if (e.key === "Escape") setNewGroupModalOpen(false);
-                }}
-              />
-              <div className="mt-6 flex justify-end gap-2">
-                <button
-                  type="button"
-                  className="rounded-xl border border-[#e5e5e5] px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                  onClick={() => setNewGroupModalOpen(false)}
-                >
-                  取消
-                </button>
-                <button
-                  type="button"
-                  className="rounded-xl bg-[#1a1a1a] px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
-                  onClick={() => void submitNewGroup()}
-                >
-                  创建
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* 重命名分组 */}
-      <AnimatePresence>
-        {renameFolderModal && (
-          <motion.div
-            key={`rename-folder-${renameFolderModal.id}`}
-            className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
-            onClick={(e) => e.target === e.currentTarget && setRenameFolderModal(null)}
-            {...uiModalBackdrop}
-          >
-            <motion.div
-              className="w-full max-w-md rounded-2xl border border-[#e5e5e5] bg-white p-6 shadow-lg"
-              onClick={(e) => e.stopPropagation()}
-              {...uiModalPanel}
-            >
-              <h2 className="text-lg font-semibold text-gray-900">重命名分组</h2>
-              <input
-                autoFocus
-                className="mt-4 w-full rounded-xl border border-[#e5e5e5] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
-                value={renameFolderModal.draft}
-                onChange={(e) =>
-                  setRenameFolderModal((m) => (m ? { ...m, draft: e.target.value } : m))
-                }
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") void submitRenameFolder();
-                  if (e.key === "Escape") setRenameFolderModal(null);
-                }}
-              />
-              <div className="mt-6 flex justify-end gap-2">
-                <button
-                  type="button"
-                  className="rounded-xl border border-[#e5e5e5] px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                  onClick={() => setRenameFolderModal(null)}
-                >
-                  取消
-                </button>
-                <button
-                  type="button"
-                  className="rounded-xl bg-[#1a1a1a] px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
-                  onClick={() => void submitRenameFolder()}
-                >
-                  保存
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <Sidebar
         folders={conversationFolders}

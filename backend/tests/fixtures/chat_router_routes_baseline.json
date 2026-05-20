@@ -1,0 +1,19 @@
+[
+  {"method": "GET", "path": "/api/chat/providers/{provider_id}/balance"},
+  {"method": "GET", "path": "/api/chat/billing/usage-summary"},
+  {"method": "GET", "path": "/api/chat/billing/usage-events"},
+  {"method": "POST", "path": "/api/chat"},
+  {"method": "POST", "path": "/api/chat/follow-up-suggestions"},
+  {"method": "POST", "path": "/api/chat/attachment-suggestions"},
+  {"method": "GET", "path": "/api/chat/model-options"},
+  {"method": "GET", "path": "/api/chat/conversations"},
+  {"method": "GET", "path": "/api/chat/conversations/{conversation_id}/messages"},
+  {"method": "GET", "path": "/api/chat/conversations/{conversation_id}/billing/usage-summary"},
+  {"method": "PUT", "path": "/api/chat/conversations/{conversation_id}/group"},
+  {"method": "GET", "path": "/api/chat/groups"},
+  {"method": "POST", "path": "/api/chat/groups"},
+  {"method": "PATCH", "path": "/api/chat/groups/{group_id}"},
+  {"method": "DELETE", "path": "/api/chat/groups/{group_id}"},
+  {"method": "DELETE", "path": "/api/chat/conversations/{conversation_id}"},
+  {"method": "PUT", "path": "/api/chat/conversations/{conversation_id}/title"}
+]

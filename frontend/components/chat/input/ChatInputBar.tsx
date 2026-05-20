@@ -8,8 +8,6 @@ import * as HoverCard from "@radix-ui/react-hover-card";
 import * as Select from "@radix-ui/react-select";
 import {
   Plus,
-  Send,
-  Square,
   ChevronDown,
   PenLine,
   BookOpen,
@@ -44,6 +42,7 @@ import type { ChatSurfacePhase } from "@/hooks/useChat";
 import { CHAT_PENDING_ATTACHMENT_MAX } from "@/lib/chatAttachmentConstants";
 import type { RoundTokensUsage } from "@/components/chat/input/RoundTokensHint";
 import { RoundTokensHint } from "@/components/chat/input/RoundTokensHint";
+import { ChatSendControls } from "@/components/chat/input/ChatSendControls";
 
 export type ChatInputBarUsageHint = {
   usage: RoundTokensUsage;
@@ -1075,36 +1074,13 @@ export function ChatInputBar({
                 </div>
               )}
 
-              {genState !== "idle" ? (
-                <button
-                  type="button"
-                  onClick={onStop}
-                  title="终止输出"
-                  className="p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center bg-red-500 text-white hover:bg-red-600 active:scale-95"
-                >
-                  <Square className="w-4 h-4 fill-current" />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={onSend}
-                  disabled={sendBlocked}
-                  className={`p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center ${
-                    hasSendableContent && genState === "idle" && !attachmentUploadBusy
-                      ? "bg-black text-white hover:bg-gray-800 scale-105"
-                      : "bg-transparent text-gray-400 hover:bg-gray-100 hover:text-gray-600 opacity-65"
-                  }`}
-                  title={
-                    attachmentUploadBusy
-                      ? "正在上传图片"
-                      : !hasSendableContent
-                        ? "输入文字或添加图片后再发送"
-                        : "发送"
-                  }
-                >
-                  <Send className="w-4 h-4" />
-                </button>
-              )}
+              <ChatSendControls
+                genState={genState}
+                hasSendableContent={hasSendableContent}
+                attachmentUploadBusy={attachmentUploadBusy}
+                onSend={onSend}
+                onStop={onStop}
+              />
             </div>
           </div>
         </motion.div>

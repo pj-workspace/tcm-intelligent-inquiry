@@ -36,188 +36,21 @@ import type {
   ConversationFolder,
 } from "@/types/chat";
 import type { ChatModelCatalogResponse } from "@/types/models";
-
-const PINNED_IDS_KEY = "tcm_pinned_conversation_ids";
-
-const PENDING_CHAT_DRAFT_KEY = "tcm_pending_chat_draft";
-
-const DEFAULT_AGENT_LS_KEY = "tcm_default_agent_id";
-
-function readStoredDefaultAgentId(): string | null {
-  try {
-    const raw = localStorage.getItem(DEFAULT_AGENT_LS_KEY)?.trim();
-    return raw || null;
-  } catch {
-    return null;
-  }
-}
-
-/** 策略 A：null 表示 omit agent_id，走后端系统默认或会话已存值 */
-function agentIdForChatRequest(chatAgentId: string | null): string | undefined {
-  const id = chatAgentId?.trim();
-  return id ? id : undefined;
-}
-
-/** 迁移用：旧版仅缓存模型 id */
-const CHAT_MODEL_LS_KEY = "tcm_chat_model";
-
-/** 所选厂商 + 模型 id（JSON） */
-const CHAT_PICK_LS_KEY = "tcm_chat_pick";
-
-function readStoredPick(): { providerId: string; modelId: string } | null {
-  try {
-    const raw = localStorage.getItem(CHAT_PICK_LS_KEY)?.trim();
-    if (!raw) return null;
-    const j = JSON.parse(raw) as { providerId?: unknown; modelId?: unknown };
-    if (typeof j.providerId !== "string" || typeof j.modelId !== "string") return null;
-    return { providerId: j.providerId.trim(), modelId: j.modelId.trim() };
-  } catch {
-    return null;
-  }
-}
-
-function writeStoredPick(p: { providerId: string; modelId: string }) {
-  try {
-    localStorage.setItem(CHAT_PICK_LS_KEY, JSON.stringify(p));
-  } catch {
-    /* ignore */
-  }
-}
-
-function resolveInitialPick(catalog: ChatModelCatalogResponse): {
-  providerId: string;
-  modelId: string;
-} {
-  const stored = readStoredPick();
-  let legacyMid = "";
-  try {
-    legacyMid = localStorage.getItem(CHAT_MODEL_LS_KEY)?.trim() ?? "";
-  } catch {
-    /* ignore */
-  }
-
-  const defaultPid = catalog.default_llm_provider;
-  const providers = catalog.providers;
-  const firstConfigured =
-    providers.find((p) => p.configured) ?? providers[0] ?? null;
-  if (!firstConfigured || !firstConfigured.models.length) {
-    return { providerId: defaultPid, modelId: "" };
-  }
-
-  let pid =
-    stored?.providerId && providers.some((p) => p.id === stored.providerId)
-      ? stored.providerId
-      : defaultPid;
-  let prov = providers.find((p) => p.id === pid) ?? firstConfigured;
-
-  let mid =
-    stored?.modelId && prov.models.some((m) => m.id === stored.modelId)
-      ? stored.modelId
-      : "";
-
-  if (!mid && legacyMid) {
-    const hitProvider = providers.find((p) =>
-      p.models.some((m) => m.id === legacyMid),
-    );
-    if (hitProvider?.configured) {
-      pid = hitProvider.id;
-      prov = hitProvider;
-      mid = legacyMid;
-    } else if (prov.models.some((m) => m.id === legacyMid)) {
-      mid = legacyMid;
-    }
-  }
-
-  if (!mid) {
-    mid =
-      prov.models.find((m) => m.default)?.id ?? prov.models[0]?.id ?? "";
-  }
-
-  if (!prov.configured && firstConfigured) {
-    prov = firstConfigured;
-    pid = prov.id;
-    mid =
-      prov.models.find((m) => m.default)?.id ?? prov.models[0]?.id ?? "";
-  }
-
-  return { providerId: pid, modelId: mid };
-}
-
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-/** 同步应用「结束思考步」到消息列表（供与 tool-call 等同批 setState 使用） */
-function applyFinalizeThinkingStepToMessages(
-  msgs: Message[],
-  traceId: string,
-  stepId: string,
-  starts: Record<string, number>,
-): Message[] {
-  const start = starts[stepId];
-  if (start == null) return msgs;
-  const sec = Math.max(0, (Date.now() - start) / 1000);
-  delete starts[stepId];
-  return msgs.map((m) =>
-    m.type === "trace" && m.id === traceId
-      ? {
-          ...m,
-          steps: m.steps.map((step) =>
-            step.type === "thinking" && step.id === stepId
-              ? { ...step, durationSec: sec }
-              : step
-          ),
-        }
-      : m
-  );
-}
-
-/**
- * abort() + body stream 在读时中止时，不一定是 `Error/DOMException` 且 `.name=== "AbortError"`；
- * Next/部分浏览器会直接报 network / stream premature close。
- */
-function isLikelyUserAbort(err: unknown, signal: AbortSignal): boolean {
-  if (signal.aborted) return true;
-  if (
-    typeof DOMException !== "undefined" &&
-    err instanceof DOMException &&
-    err.name === "AbortError"
-  ) {
-    return true;
-  }
-  if (err instanceof Error && err.name === "AbortError") return true;
-  const msg =
-    typeof err === "object" &&
-    err !== null &&
-    "message" in err &&
-    typeof (err as { message: unknown }).message === "string"
-      ? (err as { message: string }).message
-      : "";
-  return /aborted|The operation was aborted|premature close|ERR_STREAM_/i.test(msg);
-}
-
-/** SSE `llm-usage` 内 `usage`（normalize_llm_usage）逐项转为非负增量 */
-function normalizedUsageDelta(u: unknown): { prompt: number; completion: number; total: number } {
-  if (!u || typeof u !== "object") return { prompt: 0, completion: 0, total: 0 };
-  const o = u as Record<string, unknown>;
-  const prompt =
-    typeof o.prompt_tokens === "number"
-      ? o.prompt_tokens
-      : typeof o.input_tokens === "number"
-        ? o.input_tokens
-        : 0;
-  const completion =
-    typeof o.completion_tokens === "number"
-      ? o.completion_tokens
-      : typeof o.output_tokens === "number"
-        ? o.output_tokens
-        : 0;
-  let total = typeof o.total_tokens === "number" ? o.total_tokens : 0;
-  if (!total && (prompt > 0 || completion > 0)) total = prompt + completion;
-  return {
-    prompt: Math.max(0, prompt),
-    completion: Math.max(0, completion),
-    total: Math.max(0, total),
-  };
-}
+import { parseSseDataLine } from "@/lib/chat/sseParser";
+import {
+  PINNED_IDS_KEY,
+  PENDING_CHAT_DRAFT_KEY,
+  DEFAULT_AGENT_LS_KEY,
+  CHAT_MODEL_LS_KEY,
+  agentIdForChatRequest,
+  applyFinalizeThinkingStepToMessages,
+  delay,
+  isLikelyUserAbort,
+  normalizedUsageDelta,
+  readStoredDefaultAgentId,
+  resolveInitialPick,
+  writeStoredPick,
+} from "@/hooks/chat/chatHelpers";
 
 export function useChat(opts: {
   autoFollowMainRef: React.MutableRefObject<boolean>;
@@ -939,22 +772,30 @@ export function useChat(opts: {
           for (const line of lines) {
             if (!line.startsWith("data: ")) continue;
             const dataStr = line.slice(6);
-            if (dataStr === "[DONE]") continue;
+            const parsedLine = parseSseDataLine(dataStr);
+            if (parsedLine.kind === "done") continue;
+            if (parsedLine.kind !== "json") continue;
 
             try {
-              const data = JSON.parse(dataStr);
+              const data = parsedLine.data;
+              const sseStr = (v: unknown): string =>
+                typeof v === "string" ? v : "";
 
               if (data.type === "meta") {
-                if (data.conversationId) {
+                const convId =
+                  typeof data.conversationId === "string"
+                    ? data.conversationId
+                    : "";
+                if (convId) {
                   setSseRouteAssignPending(true);
-                  router.replace(chatPathConversation(data.conversationId));
-                  setConversationId(data.conversationId);
-                  localStorage.setItem("tcm_conversation_id", data.conversationId);
+                  router.replace(chatPathConversation(convId));
+                  setConversationId(convId);
+                  localStorage.setItem("tcm_conversation_id", convId);
                   setServerConversations((prev) => {
-                    if (prev.some((c) => c.id === data.conversationId)) return prev;
+                    if (prev.some((c) => c.id === convId)) return prev;
                     return [
                       {
-                        id: data.conversationId,
+                        id: convId,
                         title: "",
                         created_at: new Date().toISOString(),
                         group_id: pendingNewConversationGroupRef.current,
@@ -967,7 +808,8 @@ export function useChat(opts: {
                   pendingChatModelRef.current = data.chatModel.trim();
                 }
               } else if (data.type === "thinking-delta") {
-                const piece = data.textDelta ?? "";
+                const piece =
+                  typeof data.textDelta === "string" ? data.textDelta : "";
                 if (openThinkingStepId === null) {
                   const nid = `think-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
                   openThinkingStepId = nid;
@@ -1022,7 +864,7 @@ export function useChat(opts: {
                 const stepSnap = openThinkingStepId;
                 openThinkingStepId = null;
                 const runKey =
-                  data.runId ??
+                  sseStr(data.runId) ||
                   `run-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
                 const rowId = `tool-${runKey}`;
                 setGenState("tool");
@@ -1040,10 +882,9 @@ export function useChat(opts: {
                   const toolStep: ToolStep = {
                     id: rowId,
                     type: "tool",
-                    toolName:
-                      typeof data.name === "string" && data.name ? data.name : "tool",
+                    toolName: sseStr(data.name) || "tool",
                     status: "running",
-                    runId: data.runId ?? runKey,
+                    runId: sseStr(data.runId) || runKey,
                     inputPreview: toolIoToPreview((data as { input?: unknown }).input),
                   };
                   const trace = base.find(
@@ -1067,7 +908,7 @@ export function useChat(opts: {
                 });
               } else if (data.type === "tool-result") {
                 openThinkingStepId = null;
-                const rid = data.runId as string | undefined;
+                const rid = sseStr(data.runId) || undefined;
                 const outputPreviewFromEvent =
                   typeof data.outputPreview === "string" && data.outputPreview
                     ? data.outputPreview

@@ -73,21 +73,24 @@ openapi: "{BASE}/openapi.json"
 
 ### D.3 SSE 事件对象（`type` 枚举）
 
-所有事件均为 JSON 对象，且含字段 `type`。下表为**约定集合**（后端 `chat/service.py` 发出）：
+所有事件均为 JSON 对象，且含字段 `type`。下表为**约定集合**（后端 `app/chat/services/streaming/` 发出，以代码为准）：
 
 | type | 必填字段 | 可选字段 | 语义 |
 |------|-----------|-----------|------|
-| `notice` | `safetyNotice` | — | 安全提示 |
-| `meta` | `conversationId`, `safetyNotice` | `agentId`, `anonSessionSecret` | 新会话；匿名时含 `anonSessionSecret` |
+| `notice` | `safetyNotice` | — | 流开始时的安全提示（前端可无专门分支） |
+| `meta` | `conversationId`, `safetyNotice` | `agentId`, `chatModel`, `anonSessionSecret` | 会话元数据；匿名首包含 `anonSessionSecret` |
 | `text-delta` | `textDelta` | — | 助手正文增量 |
 | `thinking-delta` | `textDelta` | — | 思考/推理增量（展示用；**不落库为最终正文**） |
 | `tool-call` | `name` | `input`, `runId` | 工具开始；`input` 为已安全化对象 |
-| `tool-result` | `name` | `outputPreview`, `runId` | 工具结束；`outputPreview` 为摘要字符串 |
+| `tool-result` | `name` | `outputPreview`, `runId`, `status` | 工具结束；`outputPreview` 为摘要字符串 |
+| `widget` | `widgetId`, `question` | `widgetType`, `choices`, `allowFreeText` | 交互选择框（如 ask_user 工具） |
+| `title-updated` | `conversationId`, `title` | — | 会话标题更新（异步生成或兜底） |
+| `llm-usage` | `type`, `usage` | `usageEventId`, `providerId`, `chatModel` 等 | Token 用量增量（前端累计展示） |
 | `error` | `message` | — | 错误 |
 
 **UI 建议（非强制）**：用 `runId` 配对 `tool-call` 与 `tool-result`（若两者均含且一致）。
 
-**通义千问深度思考**：`llm_provider=qwen` 时，可在后端环境变量设置 `QWEN_ENABLE_THINKING=true`，并将 `QWEN_CHAT_MODEL` 设为支持思考的模型（如 `qwen-flash`）。后端会通过兼容接口的 `extra_body` 传入 `enable_thinking: true`（与 DashScope OpenAI 兼容调用一致）。流式响应里思考内容在 `choices[0].delta.reasoning_content`；标准 `langchain_openai.ChatOpenAI` 不会把该字段写入消息 chunk，本仓库在 `app/llm/providers/qwen.py` 的 `DashScopeChatOpenAI` 与 `app/chat/service.py` 中做了补齐与转发，前端即可收到 `thinking-delta`。不支持该参数的模型请保持 `false`。
+**通义千问深度思考**：`llm_provider=qwen` 时，可在后端环境变量设置 `QWEN_ENABLE_THINKING=true`，并将 `QWEN_CHAT_MODEL` 设为支持思考的模型（如 `qwen-flash`）。后端会通过兼容接口的 `extra_body` 传入 `enable_thinking: true`（与 DashScope OpenAI 兼容调用一致）。流式响应里思考内容在 `choices[0].delta.reasoning_content`；标准 `langchain_openai.ChatOpenAI` 不会把该字段写入消息 chunk，本仓库在 `app/llm/providers/qwen.py` 的 `DashScopeChatOpenAI` 与 `app/chat/services/streaming/` 中做了补齐与转发，前端即可收到 `thinking-delta`。不支持该参数的模型请保持 `false`。
 
 ### D.4 匿名会话状态机
 
@@ -131,4 +134,4 @@ openapi: "{BASE}/openapi.json"
 ## H. 相关文档
 
 - `api-documentation.md`：OpenAPI 与 `doc/` 的分工、如何加载上下文。
-- 服务端若扩展 SSE `type`，以 `backend/app/chat/service.py` 为准，并同步更新 **D.3** 表格。
+- 服务端若扩展 SSE `type`，以 `backend/app/chat/services/streaming/` 为准，并同步更新 **D.3** 表格。
