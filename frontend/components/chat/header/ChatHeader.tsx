@@ -400,8 +400,8 @@ export function ChatHeader({
                 P
               </span>
             </button>
-            {/* 使用 pt-2 代替菜单 margin-top，避免头像与面板之间的空隙丢失 hover */}
-            <div className="absolute right-0 top-full z-50 flex justify-end pt-2">
+            {/* pt-2 为头像到面板的 hover 桥；外层默认 pointer-events-none，避免透明区域挡住左侧会话菜单 */}
+            <div className="absolute right-0 top-full z-50 flex justify-end pt-2 pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto">
               <div className="w-32 origin-top-right rounded-lg border border-[#e5e5e5] bg-white py-1 shadow-lg opacity-0 scale-[0.98] translate-y-[-6px] pointer-events-none invisible transition-[opacity,transform,visibility] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0 group-hover:visible group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:scale-100 group-focus-within:translate-y-0 group-focus-within:visible group-focus-within:pointer-events-auto">
                 <button
                   type="button"
