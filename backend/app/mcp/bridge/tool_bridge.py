@@ -19,6 +19,13 @@ _mcp_server_headers: dict[str, dict[str, str]] = {}
 _mcp_server_transport: dict[str, str] = {}
 _mcp_server_url: dict[str, str] = {}
 _mcp_stdio_config: dict[str, dict[str, Any]] = {}
+_mcp_tool_meta: dict[str, dict[str, str]] = {}
+
+
+def get_mcp_tool_metadata(lc_name: str) -> dict[str, str] | None:
+    """LangChain 工具名 → MCP 服务展示名 / 远端工具名 / transport。"""
+    meta = _mcp_tool_meta.get(lc_name)
+    return dict(meta) if meta else None
 
 
 def _sanitize_segment(name: str, max_len: int = 40) -> str:
@@ -132,6 +139,11 @@ def register_mcp_tools_for_server(
         )
         tool_registry.register(tool)
         registered.append(lc_name)
+        _mcp_tool_meta[lc_name] = {
+            "server_display_name": server_display_name,
+            "remote_tool_name": remote.strip(),
+            "transport": transport,
+        }
         logger.info("已注册 MCP LangChain 工具 name=%s remote=%s", lc_name, remote)
 
     _mcp_registered_lc_names[server_id] = registered
@@ -152,6 +164,7 @@ def unregister_mcp_tools_for_server(server_id: str) -> None:
     _mcp_stdio_config.pop(server_id, None)
     for n in names:
         tool_registry.unregister(n)
+        _mcp_tool_meta.pop(n, None)
         logger.info("已卸载 MCP LangChain 工具 name=%s", n)
     if names:
         invalidate_default_graph_cache()

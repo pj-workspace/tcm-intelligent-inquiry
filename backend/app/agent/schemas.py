@@ -54,6 +54,9 @@ class BuiltinToolInfo(BaseModel):
     label: str
     description: str
     category: str
+    source: str = Field(default="builtin", description="builtin | mcp")
+    mcp_server: str | None = Field(default=None, description="MCP 服务展示名")
+    mcp_remote_name: str | None = Field(default=None, description="MCP 远端工具名")
     args_schema: list[ToolArgInfo]
     used_by_agents: int
 

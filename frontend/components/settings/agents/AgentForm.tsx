@@ -3,7 +3,7 @@
 import { Bot, RotateCcw, Save, Wrench, X } from "lucide-react";
 import { Select } from "@/components/ui/Select";
 import { DEFAULT_SYSTEM_PROMPT } from "@/hooks/useAgents";
-import { displayToolNameZh } from "@/lib/tool-labels";
+import { AgentToolPicker } from "@/components/settings/agents/AgentToolPicker";
 import type { AgentFormData, KnowledgeBaseLite } from "@/types/agent";
 import type { BuiltinToolInfo } from "@/types/tool";
 
@@ -20,13 +20,6 @@ interface AgentFormProps {
   toggleTool: (toolName: string) => void;
 }
 
-const CATEGORY_DOT: Record<string, string> = {
-  knowledge: "bg-orange-400",
-  formula: "bg-emerald-400",
-  web: "bg-blue-400",
-  system: "bg-gray-400",
-};
-
 export function AgentForm({
   editingId,
   formData,
@@ -40,11 +33,6 @@ export function AgentForm({
   toggleTool,
 }: AgentFormProps) {
   const isNew = editingId === "new";
-  const toolInfoMap = new Map(toolInfos.map((t) => [t.name, t]));
-
-  // 把 MCP 工具与未识别工具放到末尾分组
-  const builtinNames = availableTools.filter((n) => toolInfoMap.has(n));
-  const externalNames = availableTools.filter((n) => !toolInfoMap.has(n));
 
   return (
     <div
@@ -210,90 +198,14 @@ export function AgentForm({
                 暂无可绑定工具
               </div>
             ) : (
-              <div className="grid gap-2 md:grid-cols-2">
-                {builtinNames.map((toolName) => {
-                  const info = toolInfoMap.get(toolName);
-                  const checked = formData.tool_names.includes(toolName);
-                  const dot = CATEGORY_DOT[info?.category ?? "system"] ?? "bg-gray-400";
-                  const summary =
-                    info?.description.split("\n").map((l) => l.trim()).filter(Boolean)[0] ??
-                    "";
-
-                  return (
-                    <label
-                      key={toolName}
-                      className={`flex cursor-pointer items-start gap-2.5 rounded-lg border p-3 transition-colors ${
-                        checked
-                          ? "border-orange-300 bg-orange-50/50 ring-1 ring-orange-100"
-                          : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        className="mt-0.5 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
-                        checked={checked}
-                        onChange={() => toggleTool(toolName)}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
-                          <span className="text-sm font-medium text-gray-900">
-                            {info?.label ?? displayToolNameZh(toolName)}
-                          </span>
-                        </div>
-                        <p className="mt-0.5 truncate font-mono text-[10px] text-gray-400">
-                          {toolName}
-                        </p>
-                        {summary && (
-                          <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-gray-500">
-                            {summary}
-                          </p>
-                        )}
-                      </div>
-                    </label>
-                  );
-                })}
-
-                {externalNames.length > 0 && (
-                  <>
-                    <div className="col-span-full mt-2 mb-1 flex items-center gap-2 text-[11px] font-medium text-gray-400">
-                      <span>外部工具（MCP）</span>
-                      <div className="h-px flex-1 bg-gray-100" />
-                    </div>
-                    {externalNames.map((toolName) => {
-                      const checked = formData.tool_names.includes(toolName);
-                      return (
-                        <label
-                          key={toolName}
-                          className={`flex cursor-pointer items-start gap-2.5 rounded-lg border p-3 transition-colors ${
-                            checked
-                              ? "border-blue-300 bg-blue-50/50 ring-1 ring-blue-100"
-                              : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            className="mt-0.5 rounded border-gray-300 text-blue-500 focus:ring-blue-500"
-                            checked={checked}
-                            onChange={() => toggleTool(toolName)}
-                          />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5">
-                              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-400" />
-                              <span className="text-sm font-medium text-gray-900">
-                                {displayToolNameZh(toolName)}
-                              </span>
-                            </div>
-                            <p className="mt-0.5 truncate font-mono text-[10px] text-gray-400">
-                              {toolName}
-                            </p>
-                          </div>
-                        </label>
-                      );
-                    })}
-                  </>
-                )}
-              </div>
+              <AgentToolPicker
+                toolInfos={toolInfos}
+                selected={formData.tool_names}
+                onToggle={toggleTool}
+                onSetSelected={(names) =>
+                  setFormData((p) => ({ ...p, tool_names: names }))
+                }
+              />
             )}
           </div>
         </div>

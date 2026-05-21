@@ -30,6 +30,7 @@ const CATEGORY_DOT: Record<string, string> = {
   formula: "bg-emerald-400",
   web: "bg-blue-400",
   system: "bg-gray-400",
+  mcp: "bg-violet-400",
 };
 
 export function AgentCard({
@@ -88,12 +89,15 @@ export function AgentCard({
                 {agent.tool_names.length > 0 ? (
                   agent.tool_names.map((t) => {
                     const info = toolInfoMap.get(t);
-                    const isMcp = !info && t.startsWith("mcp_");
+                    const isMcp = info?.source === "mcp" || t.startsWith("mcp_");
                     const dot = info
                       ? CATEGORY_DOT[info.category] ?? "bg-gray-400"
                       : isMcp
-                      ? "bg-blue-400"
+                      ? "bg-violet-400"
                       : "bg-gray-400";
+                    const label =
+                      info?.label ??
+                      (isMcp ? t.replace(/^mcp_[^_]+_/, "") : displayToolNameZh(t));
                     return (
                       <span
                         key={t}
@@ -101,7 +105,7 @@ export function AgentCard({
                         title={t}
                       >
                         <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
-                        {info?.label ?? displayToolNameZh(t)}
+                        {label}
                       </span>
                     );
                   })

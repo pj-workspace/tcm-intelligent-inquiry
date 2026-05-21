@@ -10,6 +10,7 @@ import {
   Globe,
   Play,
   Settings,
+  Terminal,
   Users,
   X,
 } from "lucide-react";
@@ -25,6 +26,7 @@ const CATEGORY_META: Record<ToolCategory, { color: string; bg: string; Icon: Rea
     formula: { color: "text-emerald-600", bg: "bg-emerald-50", Icon: BookOpen },
     web: { color: "text-blue-600", bg: "bg-blue-50", Icon: Globe },
     system: { color: "text-gray-500", bg: "bg-gray-100", Icon: Settings },
+    mcp: { color: "text-violet-600", bg: "bg-violet-50", Icon: Terminal },
   };
 
 interface ToolInvokeModalProps {

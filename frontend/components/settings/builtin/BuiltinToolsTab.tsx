@@ -8,6 +8,7 @@ import {
   Database,
   Globe,
   Settings,
+  Terminal,
   Users,
 } from "lucide-react";
 import { API_BASE, apiHeaders } from "@/lib/api";
@@ -23,6 +24,7 @@ const CATEGORY_META: Record<
   formula:   { label: "方剂",   color: "text-emerald-600", bg: "bg-emerald-50", Icon: BookOpen },
   web:       { label: "联网",   color: "text-blue-600",    bg: "bg-blue-50",    Icon: Globe },
   system:    { label: "系统",   color: "text-gray-500",    bg: "bg-gray-100",   Icon: Settings },
+  mcp:       { label: "MCP",    color: "text-violet-600",  bg: "bg-violet-50",  Icon: Terminal },
 };
 
 // ── 单张工具卡片（纯展示，点击开模态框）────────────────────────────────────────

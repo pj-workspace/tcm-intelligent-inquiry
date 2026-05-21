@@ -26,6 +26,7 @@ from app.agent.tools.registry import tool_registry
 from app.agent.executor import invalidate_agent_graph_cache
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.logging import get_logger
+from app.mcp.bridge.tool_bridge import get_mcp_tool_metadata
 
 logger = get_logger(__name__)
 
@@ -196,6 +197,23 @@ class AgentService:
 
         infos: list[BuiltinToolInfo] = []
         for tool in tool_registry.all():
+            mcp_meta = get_mcp_tool_metadata(tool.name)
+            if mcp_meta:
+                remote = mcp_meta.get("remote_tool_name") or tool.name
+                server = mcp_meta.get("server_display_name") or "MCP"
+                used = sum(1 for a in agents if tool.name in (a.tool_names or []))
+                infos.append(BuiltinToolInfo(
+                    name=tool.name,
+                    label=remote,
+                    description=(tool.description or "").strip(),
+                    category="mcp",
+                    source="mcp",
+                    mcp_server=server,
+                    mcp_remote_name=remote,
+                    args_schema=_parse_tool_args(tool),
+                    used_by_agents=used,
+                ))
+                continue
             meta = _TOOL_META.get(tool.name, {"label": tool.name, "category": "system"})
             used = sum(1 for a in agents if tool.name in (a.tool_names or []))
             infos.append(BuiltinToolInfo(
@@ -203,6 +221,7 @@ class AgentService:
                 label=meta["label"],
                 description=(tool.description or "").strip(),
                 category=meta["category"],
+                source="builtin",
                 args_schema=_parse_tool_args(tool),
                 used_by_agents=used,
             ))
