@@ -79,6 +79,9 @@ async def lifespan(_: FastAPI):
             await probe_task
         except asyncio.CancelledError:
             pass
+    from app.mcp.client.stdio_pool import stdio_pool
+
+    await stdio_pool.close_all()
     logger.info("API 服务关闭")
 
 

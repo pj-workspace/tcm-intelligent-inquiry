@@ -3,8 +3,21 @@
 import { useEffect, useState } from "react";
 import { API_BASE, apiHeaders, apiJsonHeaders, parseApiError } from "@/lib/api";
 import { toast } from "sonner";
-import type { McpServer } from "@/types/mcp";
+import type { McpImportResponse, McpServer } from "@/types/mcp";
 import type { McpFormData } from "@/components/settings/mcp/McpAddForm";
+import { parseArgsText, parseEnvText } from "@/lib/mcp/parseMcpConfig";
+
+const emptyForm = (): McpFormData => ({
+  name: "",
+  transport: "http",
+  url: "",
+  command: "",
+  argsText: "",
+  envText: "",
+  description: "",
+  authToken: "",
+  bulkImport: null,
+});
 
 export function useMcp(token: string | null) {
   const [servers, setServers] = useState<McpServer[]>([]);
@@ -14,18 +27,12 @@ export function useMcp(token: string | null) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState<McpFormData>({
-    name: "",
-    url: "",
-    description: "",
-    authToken: "",
-  });
+  const [formData, setFormData] = useState<McpFormData>(emptyForm());
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [expandedTools, setExpandedTools] = useState<Record<string, boolean>>(
     {}
   );
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const fetchServers = async () => {
     if (!token) return;
     try {
@@ -49,32 +56,89 @@ export function useMcp(token: string | null) {
 
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token || !formData.name.trim() || !formData.url.trim()) return;
+    if (!token) return;
+
+    if (formData.bulkImport && Object.keys(formData.bulkImport).length > 0) {
+      setIsSubmitting(true);
+      try {
+        const res = await fetch(`${API_BASE}/api/mcp/import`, {
+          method: "POST",
+          headers: apiJsonHeaders(token),
+          body: JSON.stringify({ mcpServers: formData.bulkImport }),
+        });
+        if (!res.ok) throw new Error(await parseApiError(res));
+        const data = (await res.json()) as McpImportResponse;
+        await fetchServers();
+        setShowAddForm(false);
+        setFormData(emptyForm());
+        const ok = data.imported.length;
+        const fail = data.errors.length;
+        if (fail > 0) {
+          toast.warning(`已导入 ${ok} 个，${fail} 个失败：${data.errors[0]}`);
+        } else {
+          toast.success(`已批量导入 ${ok} 个 MCP 服务`);
+        }
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "批量导入失败");
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
+    if (!formData.name.trim()) return;
+
     setIsSubmitting(true);
     try {
-      const headers: Record<string, string> = {};
-      const token_ = formData.authToken.trim();
-      if (token_) {
-        headers["Authorization"] = token_.startsWith("Bearer ")
-          ? token_
-          : `Bearer ${token_}`;
-      }
-      const res = await fetch(`${API_BASE}/api/mcp`, {
-        method: "POST",
-        headers: apiJsonHeaders(token),
-        body: JSON.stringify({
+      let body: Record<string, unknown>;
+
+      if (formData.transport === "stdio") {
+        if (!formData.command.trim()) return;
+        const args = parseArgsText(formData.argsText);
+        const env = parseEnvText(formData.envText);
+        body = {
           name: formData.name.trim(),
+          transport: "stdio",
+          stdio: {
+            command: formData.command.trim(),
+            args,
+            env,
+          },
+          description: formData.description.trim(),
+          enabled: true,
+        };
+      } else {
+        if (!formData.url.trim()) return;
+        const headers: Record<string, string> = {};
+        const token_ = formData.authToken.trim();
+        if (token_) {
+          headers["Authorization"] = token_.startsWith("Bearer ")
+            ? token_
+            : `Bearer ${token_}`;
+        }
+        body = {
+          name: formData.name.trim(),
+          transport: "http",
           url: formData.url.trim(),
           description: formData.description.trim(),
           enabled: true,
           headers,
-        }),
+        };
+      }
+
+      const res = await fetch(`${API_BASE}/api/mcp`, {
+        method: "POST",
+        headers: apiJsonHeaders(token),
+        body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error(await parseApiError(res));
-      const added = await res.json() as { tool_names?: string[]; last_probe_error?: string | null };
+      const added = (await res.json()) as {
+        tool_names?: string[];
+        last_probe_error?: string | null;
+      };
       await fetchServers();
       setShowAddForm(false);
-      setFormData({ name: "", url: "", description: "", authToken: "" });
+      setFormData(emptyForm());
       const toolCount = added.tool_names?.length ?? 0;
       if (added.last_probe_error) {
         toast.warning(`已保存，但探测异常：${added.last_probe_error}`);
@@ -82,7 +146,8 @@ export function useMcp(token: string | null) {
         toast.success(`MCP 服务已添加，发现 ${toolCount} 个工具`);
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "添加失败");
+      const msg = err instanceof Error ? err.message : "添加失败";
+      toast.error(msg.includes("JSON") ? `参数解析失败：${msg}` : msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -97,7 +162,10 @@ export function useMcp(token: string | null) {
         headers: apiHeaders(token),
       });
       if (!res.ok) throw new Error(await parseApiError(res));
-      const refreshed = await res.json() as { tool_names?: string[]; last_probe_error?: string | null };
+      const refreshed = (await res.json()) as {
+        tool_names?: string[];
+        last_probe_error?: string | null;
+      };
       await fetchServers();
       const toolCount = refreshed.tool_names?.length ?? 0;
       if (refreshed.last_probe_error) {

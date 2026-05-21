@@ -15,7 +15,9 @@ class McpServerRecord(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     name: Mapped[str] = mapped_column(String(255))
-    url: Mapped[str] = mapped_column(Text, nullable=False)
+    transport: Mapped[str] = mapped_column(String(16), default="http", nullable=False)
+    url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    stdio_config: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     description: Mapped[str] = mapped_column(Text, default="")
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     headers: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)

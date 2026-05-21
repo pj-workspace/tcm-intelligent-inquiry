@@ -9,6 +9,8 @@ from app.auth.api.deps import require_api_user
 from app.auth.models import UserRecord
 from app.core.database import get_session
 from app.mcp.schemas import (
+    McpImportRequest,
+    McpImportResponse,
     McpServerCreateRequest,
     McpServerListResponse,
     McpServerResponse,
@@ -37,6 +39,19 @@ async def register_server(
     svc: McpService = Depends(_svc),
 ):
     return await svc.register_server(req)
+
+
+@router.post(
+    "/import",
+    response_model=McpImportResponse,
+    summary="批量导入 Cursor mcpServers 配置（支持 command 与 url）",
+)
+async def import_servers(
+    req: McpImportRequest,
+    _: Annotated[UserRecord, Depends(require_api_user)],
+    svc: McpService = Depends(_svc),
+):
+    return await svc.import_cursor_config(req)
 
 
 @router.get("/{server_id}", response_model=McpServerResponse, summary="获取 MCP 服务详情")

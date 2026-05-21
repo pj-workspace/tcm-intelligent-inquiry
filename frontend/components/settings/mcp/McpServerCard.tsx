@@ -1,6 +1,6 @@
 "use client";
 
-import { RefreshCw, Trash2, ChevronDown, Plug } from "lucide-react";
+import { RefreshCw, Trash2, ChevronDown, Plug, Terminal } from "lucide-react";
 import type { McpServer } from "@/types/mcp";
 
 interface McpServerCardProps {
@@ -12,6 +12,15 @@ interface McpServerCardProps {
   onToggleTools: (id: string) => void;
 }
 
+function endpointLabel(server: McpServer): string {
+  if (server.transport === "stdio" && server.stdio) {
+    const args =
+      server.stdio.args.length > 0 ? ` ${server.stdio.args.join(" ")}` : "";
+    return `${server.stdio.command}${args}`;
+  }
+  return server.url ?? "—";
+}
+
 export function McpServerCard({
   server,
   isRefreshing,
@@ -20,16 +29,35 @@ export function McpServerCard({
   onDelete,
   onToggleTools,
 }: McpServerCardProps) {
+  const isStdio = server.transport === "stdio";
+
   return (
     <div className="overflow-hidden rounded-xl border border-[#e5e5e5] bg-white shadow-sm transition-shadow hover:shadow-md">
       <div className="flex items-start justify-between border-b border-gray-50 p-5">
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-            <Plug className="h-5 w-5" />
+          <div
+            className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+              isStdio ? "bg-violet-50 text-violet-600" : "bg-blue-50 text-blue-600"
+            }`}
+          >
+            {isStdio ? (
+              <Terminal className="h-5 w-5" />
+            ) : (
+              <Plug className="h-5 w-5" />
+            )}
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <h3 className="font-semibold text-gray-900">{server.name}</h3>
+              <span
+                className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                  isStdio
+                    ? "bg-violet-50 text-violet-700"
+                    : "bg-blue-50 text-blue-700"
+                }`}
+              >
+                {isStdio ? "stdio" : "HTTP"}
+              </span>
               {server.enabled ? (
                 <span className="rounded bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-700">
                   启用
@@ -40,7 +68,9 @@ export function McpServerCard({
                 </span>
               )}
             </div>
-            <p className="mt-1 font-mono text-xs text-gray-500">{server.url}</p>
+            <p className="mt-1 break-all font-mono text-xs text-gray-500">
+              {endpointLabel(server)}
+            </p>
             {server.description && (
               <p className="mt-1.5 text-sm text-gray-600">{server.description}</p>
             )}
@@ -114,7 +144,7 @@ export function McpServerCard({
         )}
         {isExpanded && server.tool_names.length === 0 && (
           <div className="mt-3 pb-1 text-xs text-gray-400">
-            未能从服务端点发现可用工具。
+            未能从该 MCP 服务发现可用工具。
           </div>
         )}
       </div>

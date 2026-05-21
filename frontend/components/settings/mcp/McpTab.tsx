@@ -55,7 +55,7 @@ export function McpTab() {
         <div>
           <h2 className="text-lg font-semibold text-gray-900">MCP 服务</h2>
           <p className="mt-1 text-sm text-gray-500">
-            连接外部模型上下文协议（MCP）服务器，动态扩展大模型能力。
+            连接 MCP 服务器（HTTP 远端或 stdio 本地 command，与 Cursor mcp.json 格式兼容），动态扩展大模型能力。
           </p>
         </div>
         {!showAddForm && (
