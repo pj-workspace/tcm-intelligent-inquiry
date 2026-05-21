@@ -19,7 +19,13 @@ export type ChatMessage = {
 
 export type ThinkingStep = Extract<BrainstormStep, { type: "thinking" }>;
 export type ToolStep = Extract<BrainstormStep, { type: "tool" }>;
-export type FlatMessage = ChatMessage | ThinkingStep | ToolStep | WidgetMessage;
+export type InterimTextStep = Extract<BrainstormStep, { type: "interim_text" }>;
+export type FlatMessage =
+  | ChatMessage
+  | ThinkingStep
+  | ToolStep
+  | InterimTextStep
+  | WidgetMessage;
 
 export type TraceMessage = {
   id: string;
