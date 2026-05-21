@@ -24,6 +24,7 @@ from app.agent.prompts import (
     WEB_SEARCH_TOOL_NAME,
     dynamic_prompt_suffix,
 )
+from app.agent.tools._internal.mark_summary import mark_summary_tool
 from app.agent.tools.loader import ensure_tools_loaded
 from app.agent.tools.registry import tool_registry
 from app.core.config import get_settings, primary_qwen_chat_model
@@ -100,6 +101,26 @@ async def build_agent_graph(agent_id: str | None) -> CompiledStateGraph:
         return graph
 
 
+def _with_mark_summary(
+    tools: list,
+    *,
+    effective_deep_think: bool,
+) -> list:
+    """Think + 有工具时，追加 ``mark_summary`` 内部信号工具到 tools 列表末尾。
+
+    - 非 think 模式 → 原样返回（模型物理上无法看到此工具）
+    - 纯聊（``tools=[]``）→ 原样返回（不挂任何工具，包括 mark_summary）
+    - 已含 mark_summary → 防御性跳过避免重复
+    """
+    if not effective_deep_think:
+        return tools
+    if not tools:
+        return tools
+    if any(getattr(t, "name", None) == "mark_summary" for t in tools):
+        return tools
+    return [*tools, mark_summary_tool]
+
+
 async def _build_ephemeral_agent_graph(
     agent_id: str | None,
     suffix: str,
@@ -142,7 +163,11 @@ async def _build_ephemeral_agent_graph(
                 effective_web_search,
                 [t.name for t in tools],
             )
-        return build_react_agent_graph(llm, tools, prompt=prompt)
+        return build_react_agent_graph(
+            llm,
+            _with_mark_summary(tools, effective_deep_think=effective_deep_think),
+            prompt=prompt,
+        )
 
     from app.agent.models import AgentRecord
 
@@ -171,7 +196,11 @@ async def _build_ephemeral_agent_graph(
                 chat_model_override=mid,
                 llm_provider=llm_provider,
             )
-            return build_react_agent_graph(llm, tools, prompt=prompt)
+            return build_react_agent_graph(
+                llm,
+                _with_mark_summary(tools, effective_deep_think=effective_deep_think),
+                prompt=prompt,
+            )
 
         if not effective_tool_calling:
             tools = []
@@ -189,6 +218,7 @@ async def _build_ephemeral_agent_graph(
                 effective_deep_think,
             )
             return build_react_agent_graph(llm, tools, prompt=prompt)
+            # 纯聊路径 tools=[]，故 _with_mark_summary 也会原样返回，无需再包
 
         ensure_tools_loaded()
         names = row.tool_names or []
@@ -222,7 +252,11 @@ async def _build_ephemeral_agent_graph(
             effective_web_search,
             mid,
         )
-        return build_react_agent_graph(llm, tools, prompt=prompt)
+        return build_react_agent_graph(
+            llm,
+            _with_mark_summary(tools, effective_deep_think=effective_deep_think),
+            prompt=prompt,
+        )
 
 
 async def build_agent_graph_for_chat_request(

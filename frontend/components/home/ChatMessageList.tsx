@@ -177,6 +177,8 @@ export function ChatMessageList({
           isStreaming={msg.status === "streaming"}
           durationSec={msg.totalDurationSec}
           collapsed={msg.collapsed}
+          aborted={msg.aborted === true}
+          summaryAcknowledged={msg.summaryAcknowledged === true}
           compactTopAfterAssistant={
             prevMsg?.type === "message" && prevMsg.role === "assistant"
           }

@@ -85,6 +85,9 @@ export function groupMessagesIntoTraces(
 
   const flushTrace = (collapsed: boolean, endIsoCandidate?: string) => {
     if (!pendingSteps.length) return;
+    const hasAbortedTool = pendingSteps.some(
+      (s) => s.type === "tool" && s.aborted === true,
+    );
     grouped.push({
       id: `trace-${pendingSteps[0].id}`,
       type: "trace",
@@ -92,20 +95,21 @@ export function groupMessagesIntoTraces(
       status: "done",
       totalDurationSec: computeTraceDuration(pendingSteps, endIsoCandidate),
       collapsed,
+      ...(hasAbortedTool ? { aborted: true } : {}),
     } satisfies TraceMessage);
     pendingSteps = [];
   };
 
   for (const item of items) {
     if (item.type === "message") {
-      // assistant / user 都终止当前 trace；assistant 后保持 trace 展开（与流式 sealCurrentTrace 一致）
+      // assistant / user 都终止当前 trace；与流式 finalizeTrace 行为一致，默认折叠
       const endIso = item.createdAt;
-      flushTrace(false, endIso);
+      flushTrace(true, endIso);
       grouped.push(item);
       continue;
     }
     if (item.type === "widget") {
-      flushTrace(false);
+      flushTrace(true);
       grouped.push(item);
       continue;
     }
@@ -114,8 +118,8 @@ export function groupMessagesIntoTraces(
     }
   }
 
-  // 末尾残留：保持展开（折叠由用户手动操作）
-  flushTrace(false);
+  // 末尾残留：默认折叠（与新的流式 finalize 行为统一，用户可手动展开）
+  flushTrace(true);
 
   // 历史加载：根据 widget 后紧跟的第一条用户消息推断答案状态，并将该用户消息从列表中移除
   // （widget 紧凑状态已展示答案，无需再显示用户气泡，与实时流体验保持一致）

@@ -100,25 +100,34 @@ export function useChatStream(deps: UseChatStreamDeps) {
     );
   }, []);
 
-  const finalizeTrace = useCallback((traceId: string | null, collapsed: boolean) => {
-    if (!traceId) return;
-    const start = traceStartedAt.current[traceId];
-    const elapsedSec = start != null ? Math.max(0, (Date.now() - start) / 1000) : undefined;
-    delete traceStartedAt.current[traceId];
-    setMessages((prev) =>
-      prev.map((m) =>
-        m.type === "trace" && m.id === traceId
-          ? {
-              ...m,
-              status: "done",
-              collapsed,
-              totalDurationSec:
-                elapsedSec ?? m.totalDurationSec ?? sumThinkingDurations(m.steps),
-            }
-          : m
-      )
-    );
-  }, []);
+  const finalizeTrace = useCallback(
+    (
+      traceId: string | null,
+      collapsed: boolean,
+      options: { aborted?: boolean } = {},
+    ) => {
+      if (!traceId) return;
+      const start = traceStartedAt.current[traceId];
+      const elapsedSec =
+        start != null ? Math.max(0, (Date.now() - start) / 1000) : undefined;
+      delete traceStartedAt.current[traceId];
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.type === "trace" && m.id === traceId
+            ? {
+                ...m,
+                status: "done",
+                collapsed,
+                totalDurationSec:
+                  elapsedSec ?? m.totalDurationSec ?? sumThinkingDurations(m.steps),
+                ...(options.aborted ? { aborted: true } : {}),
+              }
+            : m
+        )
+      );
+    },
+    [],
+  );
 
   /** 用户中止 / SSE 错误后，将 trace 内仍在 running 的工具收口为「已终止」状态。 */
   const markRunningToolsAborted = useCallback(
@@ -190,6 +199,74 @@ export function useChatStream(deps: UseChatStreamDeps) {
       let streamEndedWithWidget = false;
       /** 当前 assistant 气泡的累积文本（用于追问 follow-ups 与导出） */
       let assistantReplyAccum = "";
+      // ── Think 模式：buffer-and-decide + mark_summary 边界信号 ────────────
+      // think 模式下 text-delta 先写入 trace 内的"pending interim step"（视觉同
+      // thinking）。直到模型显式调用 mark_summary 工具，后端发出 `summary-start`
+      // 信号，前端把 `inSummaryPhase` 置 true：
+      //   - 该信号之后的 text-delta 直接写顶层 assistant 气泡，零跳变
+      //   - trace 立即收口、打上 summaryAcknowledged 让 footer 显示「完成」
+      // 兜底：若模型未调用 mark_summary 就结束，走 promotePendingInterim（会有一次跳变）。
+      const isThinkMode = deepThinkEnabled;
+      let pendingInterimStepId: string | null = null;
+      let pendingInterimText = "";
+      let inSummaryPhase = false;
+
+      /**
+       * Think 模式收口：把当前 pending interim step 从 trace 内拎出来，
+       * 作为顶层 assistant 气泡。返回 true 表示真的发生了 promote。
+       *
+       * - normal end: interrupted=false
+       * - user abort / SSE error: interrupted=true（assistant 气泡带"已终止"小尾巴）
+       *
+       * 若 trace 在 promote 后剩 0 个 step（罕见：模型只吐了一段 interim 文本），
+       * 该 trace 会被整段移除，避免出现"空 trace 头"。
+       *
+       * 注：定义在 try 外，便于 catch / finally 也能调用（abort / 网络错误路径）。
+       */
+      const promotePendingInterim = (interrupted: boolean): boolean => {
+        if (!pendingInterimStepId || !currentTraceId) {
+          pendingInterimStepId = null;
+          pendingInterimText = "";
+          return false;
+        }
+        const traceId = currentTraceId;
+        const stepId = pendingInterimStepId;
+        const content = pendingInterimText;
+        pendingInterimStepId = null;
+        pendingInterimText = "";
+        if (!content.trim()) return false;
+        const newMsgId = `${Date.now()}-msg-${Math.random().toString(36).slice(2, 9)}`;
+        setMessages((prev) => {
+          const next: Message[] = [];
+          for (const msg of prev) {
+            if (msg.type === "trace" && msg.id === traceId) {
+              const filtered = msg.steps.filter(
+                (s) => !(s.type === "thinking" && s.id === stepId),
+              );
+              if (filtered.length === 0) {
+                // 空 trace 直接丢弃
+                continue;
+              }
+              next.push({ ...msg, steps: filtered });
+            } else {
+              next.push(msg);
+            }
+          }
+          next.push({
+            id: newMsgId,
+            role: "assistant",
+            type: "message",
+            content,
+            modelName: pendingChatModelRef.current,
+            ...(interrupted ? { interrupted: true } : {}),
+          });
+          return next;
+        });
+        currentAssistantMsgId = newMsgId;
+        hasAssistantMsg = true;
+        assistantReplyAccum = content;
+        return true;
+      };
 
       try {
         const preferredGid =
@@ -294,8 +371,8 @@ export function useChatStream(deps: UseChatStreamDeps) {
             openThinkingStepId = null;
           }
           if (currentTraceId) {
-            // collapsed=false：保持展开，用户能看到工具列表
-            finalizeTrace(currentTraceId, false);
+            // 杂乱样式：收口同时折叠 trace，让正文上下文清爽；用户可手动展开
+            finalizeTrace(currentTraceId, true);
             currentTraceId = null;
           }
           if (sealing) {
@@ -305,6 +382,46 @@ export function useChatStream(deps: UseChatStreamDeps) {
               assistantReplyAccum = "";
             }
             autoFollowMainRef.current = true;
+          }
+        };
+
+        /**
+         * Think 模式 text-delta：把内容写入 trace 内一个 thinking 类型的
+         * "pending interim step"。同一段 text 持续累加到同一个 step，
+         * 直到下一次 tool-call 到来 → 该 step 固化为 trace 步骤；
+         * 直到 stream 结束 → 该 step 被 promote 为顶层 assistant 气泡。
+         */
+        const appendThinkInterim = (piece: string) => {
+          if (!piece) return;
+          const traceIdResolved = ensureCurrentTraceId();
+          setGenState("typing");
+          pendingInterimText += piece;
+          if (pendingInterimStepId === null) {
+            const nid = `interim-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+            pendingInterimStepId = nid;
+            setMessages((prev) =>
+              upsertTraceWithStep(prev, traceIdResolved, {
+                id: nid,
+                type: "thinking",
+                content: piece,
+              }),
+            );
+          } else {
+            const sid = pendingInterimStepId;
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.type === "trace" && msg.id === traceIdResolved
+                  ? {
+                      ...msg,
+                      steps: msg.steps.map((step) =>
+                        step.type === "thinking" && step.id === sid
+                          ? { ...step, content: step.content + piece }
+                          : step,
+                      ),
+                    }
+                  : msg,
+              ),
+            );
           }
         };
 
@@ -358,6 +475,11 @@ export function useChatStream(deps: UseChatStreamDeps) {
               } else if (data.type === "thinking-delta") {
                 const piece =
                   typeof data.textDelta === "string" ? data.textDelta : "";
+                // 防御性兜底：summary 阶段后任何 thinking-delta（后端应已过滤）一律忽略，
+                // 避免重新 ensureCurrentTraceId 开出第二个 trace 头
+                if (inSummaryPhase) {
+                  continue;
+                }
                 if (openThinkingStepId === null) {
                   const traceIdResolved = ensureCurrentTraceId();
                   const nid = `think-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -393,6 +515,12 @@ export function useChatStream(deps: UseChatStreamDeps) {
               } else if (data.type === "tool-call") {
                 const stepSnap = openThinkingStepId;
                 openThinkingStepId = null;
+                // think 模式：当前 pending interim 段被"固化"为 trace 内的一段
+                // thinking 步骤（不再向它累加；下一段 text-delta 会开新 step）
+                if (isThinkMode) {
+                  pendingInterimStepId = null;
+                  pendingInterimText = "";
+                }
                 const traceIdResolved = ensureCurrentTraceId();
                 const runKey =
                   sseStr(data.runId) ||
@@ -462,38 +590,76 @@ export function useChatStream(deps: UseChatStreamDeps) {
                   })
                 );
               } else if (data.type === "text-delta") {
-                // 统一策略：text-delta 永远写入顶层 assistant 气泡。
-                // 若当前还有未 finalize 的 trace，先 sealCurrentTraceBeforeText 将其
-                // 结案（保持展开 collapsed=false）并分配新的 continuation 气泡 id。
-                // 这样 think / 非 think 模式都不会出现"先在 trace 内增长再蹦出"的现象，
-                // 也不会出现"先出现在正文又被收回 trace"的反向闪烁。
-                sealCurrentTraceBeforeText();
                 const piece =
                   typeof data.textDelta === "string" ? data.textDelta : "";
-                setGenState("typing");
-                if (!hasAssistantMsg) {
-                  hasAssistantMsg = true;
-                  assistantReplyAccum = piece;
-                  setMessages((prev) => [
-                    ...prev,
-                    {
-                      id: currentAssistantMsgId,
-                      role: "assistant",
-                      type: "message",
-                      content: piece,
-                      modelName: pendingChatModelRef.current,
-                    },
-                  ]);
+                const writeToAssistantBubble = () => {
+                  setGenState("typing");
+                  if (!hasAssistantMsg) {
+                    hasAssistantMsg = true;
+                    assistantReplyAccum = piece;
+                    setMessages((prev) => [
+                      ...prev,
+                      {
+                        id: currentAssistantMsgId,
+                        role: "assistant",
+                        type: "message",
+                        content: piece,
+                        modelName: pendingChatModelRef.current,
+                      },
+                    ]);
+                  } else {
+                    assistantReplyAccum += piece;
+                    setMessages((prev) =>
+                      prev.map((msg) =>
+                        msg.type === "message" && msg.id === currentAssistantMsgId
+                          ? { ...msg, content: (msg.content || "") + piece }
+                          : msg,
+                      ),
+                    );
+                  }
+                };
+                if (inSummaryPhase) {
+                  // Summary 阶段：mark_summary 之后的最终答案，直接写顶层气泡，
+                  // 不经过 trace（trace 已在 summary-start 时收口、不再扩张）
+                  writeToAssistantBubble();
+                } else if (isThinkMode) {
+                  // Think 模式 + 尚未收到 summary-start：写 trace 内 pending interim
+                  appendThinkInterim(piece);
                 } else {
-                  assistantReplyAccum += piece;
+                  // 非 think：保持「多 trace 多 bubble」杂乱样式
+                  sealCurrentTraceBeforeText();
+                  writeToAssistantBubble();
+                }
+              } else if (data.type === "summary-start") {
+                // think 模式专属：mark_summary 工具触发，trace 阶段结束。
+                // - 当前 pending interim 段已经在 trace 里作为 thinking step；
+                //   不再 promote，保留为"过渡话术"
+                // - trace 即刻 finalize（折叠 + summaryAcknowledged），footer 显示「完成」
+                // - 重置 assistant 气泡 id / 计数；后续 text-delta 走 writeToAssistantBubble
+                finalizeThinkingStep(currentTraceId, openThinkingStepId);
+                openThinkingStepId = null;
+                pendingInterimStepId = null;
+                pendingInterimText = "";
+                if (currentTraceId) {
+                  const traceIdToFinalize = currentTraceId;
                   setMessages((prev) =>
-                    prev.map((msg) =>
-                      msg.type === "message" && msg.id === currentAssistantMsgId
-                        ? { ...msg, content: (msg.content || "") + piece }
-                        : msg,
+                    prev.map((m) =>
+                      m.type === "trace" && m.id === traceIdToFinalize
+                        ? { ...m, summaryAcknowledged: true }
+                        : m,
                     ),
                   );
+                  finalizeTrace(traceIdToFinalize, true);
+                  currentTraceId = null;
                 }
+                if (hasAssistantMsg) {
+                  currentAssistantMsgId = `${Date.now()}-msg-${Math.random().toString(36).slice(2, 9)}`;
+                  hasAssistantMsg = false;
+                  assistantReplyAccum = "";
+                }
+                inSummaryPhase = true;
+                autoFollowMainRef.current = true;
+                setGenState("typing");
               } else if (data.type === "widget") {
                 const widgetMsg: WidgetMessage = {
                   id: String(data.widgetId || `w-${Date.now()}`),
@@ -504,6 +670,13 @@ export function useChatStream(deps: UseChatStreamDeps) {
                   allowFreeText: data.allowFreeText !== false,
                 };
                 streamEndedWithWidget = true;
+                // think 模式：widget 前的最后一段 interim text 视为「提问前的说明」，
+                // 升级为正常 assistant 气泡（非 interrupted），让 widget 卡在它下方
+                if (isThinkMode) {
+                  promotePendingInterim(false);
+                  if (currentTraceId) finalizeTrace(currentTraceId, true);
+                  currentTraceId = null;
+                }
                 setMessages((prev) => {
                   // 移除 insertNewStreamingTrace 在工具调用后插入的空 continuation 气泡，
                   // 避免空气泡携带 toolbar 和 follow-up 建议显示在 widget 前面
@@ -560,9 +733,14 @@ export function useChatStream(deps: UseChatStreamDeps) {
                 console.error("Backend error:", data.message);
                 finalizeThinkingStep(currentTraceId, openThinkingStepId);
                 openThinkingStepId = null;
+                if (isThinkMode) {
+                  // think 模式下，把当前 pending interim 升级为带 interrupted
+                  // 标记的助手气泡，之后下面的「**Error:** ...」会拼在它后面
+                  promotePendingInterim(true);
+                }
                 if (currentTraceId) {
                   markRunningToolsAborted(currentTraceId, "error");
-                  finalizeTrace(currentTraceId, false);
+                  finalizeTrace(currentTraceId, true, { aborted: true });
                   currentTraceId = null;
                 }
                 const errLine = `**Error:** ${data.message}`;
@@ -603,8 +781,13 @@ export function useChatStream(deps: UseChatStreamDeps) {
         }
 
         finalizeThinkingStep(currentTraceId, openThinkingStepId);
-        // 流正常结束：保持 trace 展开（杂乱样式），用户能看到工具调用列表
-        if (currentTraceId) finalizeTrace(currentTraceId, false);
+        // think 模式：把最后那段 pending interim 升级为顶层 assistant 气泡
+        // 作为「最终总结」
+        if (isThinkMode) {
+          promotePendingInterim(false);
+        }
+        // 流正常结束：trace 自动折叠，只露一行 headline；用户可手动展开
+        if (currentTraceId) finalizeTrace(currentTraceId, true);
 
         if (
           !abortController.signal.aborted &&
@@ -643,9 +826,12 @@ export function useChatStream(deps: UseChatStreamDeps) {
         if (!isLikelyUserAbort(error, abortController.signal)) {
           console.error("Chat error:", error);
           finalizeThinkingStep(currentTraceId, openThinkingStepId);
+          if (isThinkMode) {
+            promotePendingInterim(true);
+          }
           if (currentTraceId) {
             markRunningToolsAborted(currentTraceId, "error");
-            finalizeTrace(currentTraceId, false);
+            finalizeTrace(currentTraceId, true, { aborted: true });
           }
           thinkingStepStartedAt.current = {};
           traceStartedAt.current = {};
@@ -663,11 +849,18 @@ export function useChatStream(deps: UseChatStreamDeps) {
       } finally {
         if (abortController.signal.aborted) {
           finalizeThinkingStep(currentTraceId, openThinkingStepId);
+          // think 模式：abort 时把 pending interim 升级为带 interrupted 的助手气泡
+          // （选项 Y）。这样用户看到的最后一条 assistant 内容是模型 abort 前在写的那段。
+          const promotedOnAbort = isThinkMode
+            ? promotePendingInterim(true)
+            : false;
           if (currentTraceId) {
             markRunningToolsAborted(currentTraceId, "aborted");
-            finalizeTrace(currentTraceId, false);
+            finalizeTrace(currentTraceId, true, { aborted: true });
           }
-          setMessages((prev) => {
+          // promote 已经把内容写成新的 assistant 气泡且自带 interrupted=true，
+          // 无需下面的 lastAi 兜底逻辑（避免重复打标记或追加空气泡）
+          if (!promotedOnAbort) setMessages((prev) => {
             const lastAi = [...prev]
               .reverse()
               .find((m): m is ChatMessage => m.type === "message" && m.role === "assistant");

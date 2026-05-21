@@ -50,8 +50,8 @@ describe("groupMessagesIntoTraces", () => {
     const trace = out[1];
     if (trace.type !== "trace") throw new Error("expected trace");
     expect(trace.steps.map((s) => s.type)).toEqual(["thinking", "tool"]);
-    // 杂乱样式：trace 保持展开（折叠由用户手动操作）
-    expect(trace.collapsed).toBe(false);
+    // 新行为：trace 默认折叠（与流式 finalize 一致），用户可手动展开
+    expect(trace.collapsed).toBe(true);
   });
 
   it("multi-trace / multi-assistant layout: each tool segment gets its own trace", () => {
@@ -213,6 +213,50 @@ describe("groupMessagesIntoTraces", () => {
     expect(mapped.status).toBe("error");
     expect(mapped.aborted).toBe(true);
     expect(mapped.outputPreview).toBe("已终止");
+  });
+
+  it("trace inherits aborted=true when any tool step was aborted", () => {
+    const out = groupMessagesIntoTraces([
+      userMsg("u1"),
+      thinkingStep("t1"),
+      {
+        id: "to1",
+        type: "tool",
+        toolName: "mcp_x_search",
+        status: "error",
+        aborted: true,
+        outputPreview: "已终止",
+      } as FlatMessage,
+      assistantMsg("a1", "中断后的回应"),
+    ]);
+    const trace = out[1];
+    if (trace.type !== "trace") throw new Error("expected trace");
+    expect(trace.aborted).toBe(true);
+  });
+
+  it("trace has no aborted flag when all tools completed normally", () => {
+    const out = groupMessagesIntoTraces([
+      userMsg("u1"),
+      thinkingStep("t1"),
+      toolStep("to1"),
+      assistantMsg("a1", "ok"),
+    ]);
+    const trace = out[1];
+    if (trace.type !== "trace") throw new Error("expected trace");
+    expect(trace.aborted).toBeUndefined();
+  });
+
+  it("historical traces have no summaryAcknowledged (footer 不显示 完成)", () => {
+    // 后端目前不持久化 mark_summary 信号，刷新历史时 summaryAcknowledged 一律 undefined
+    const out = groupMessagesIntoTraces([
+      userMsg("u1"),
+      thinkingStep("t1"),
+      toolStep("to1"),
+      assistantMsg("a1", "最终答案"),
+    ]);
+    const trace = out[1];
+    if (trace.type !== "trace") throw new Error("expected trace");
+    expect(trace.summaryAcknowledged).toBeUndefined();
   });
 
   it("normal failed tool record has no aborted flag set", () => {

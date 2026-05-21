@@ -32,6 +32,10 @@ export interface BrainstormPanelProps {
   onToggle?: () => void;
   /** 紧跟在助手正文气泡后时使用，减小与上文的空隙 */
   compactTopAfterAssistant?: boolean;
+  /** true：trace 由 abort / 错误收口，footer 用「已终止」 */
+  aborted?: boolean;
+  /** true：模型显式调用了 mark_summary，footer 显示「完成」；否则 trace 不显示 footer */
+  summaryAcknowledged?: boolean;
 }
 
 export type WebResultItem = {

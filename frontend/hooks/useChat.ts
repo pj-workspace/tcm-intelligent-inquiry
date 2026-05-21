@@ -94,6 +94,8 @@ export function useChat(opts: {
   const initialListLoadedRef = useRef(false);
   /** 已加载过的会话消息，切换时先展示缓存避免清空闪屏 */
   const messagesCacheRef = useRef<Map<string, Message[]>>(new Map());
+  /** 刚删除的会话 id，避免 URL 尚未切走时 pathname effect 再次拉取消息 */
+  const recentlyDeletedConversationIdsRef = useRef(new Set<string>());
 
   const setConversationId = useCallback((next: string | null) => {
     conversationIdRef.current = next;
@@ -470,6 +472,7 @@ export function useChat(opts: {
         headers: { Authorization: `Bearer ${accessToken}` },
         signal,
       });
+      if (res.status === 404) return;
       if (!res.ok) throw new Error("Failed to fetch messages");
       const data = (await res.json()) as ApiMessageRow[];
       if (signal?.aborted) return;
@@ -870,6 +873,7 @@ export function useChat(opts: {
       setMessagesLoading(false);
       setSseRouteAssignPending(false);
       resetFollowUpSuggestions();
+      if (!options?.skipNavigation) onNavigateToNewChatSurface?.();
       localStorage.removeItem("tcm_conversation_id");
       localStorage.removeItem("tcm_anon_secret");
       setConversationId(null);
@@ -886,7 +890,6 @@ export function useChat(opts: {
       cancelAttachmentUploadAnimations();
       setChatAgentId(readStoredDefaultAgentId());
       if (token) void refreshServerConversations();
-      if (!options?.skipNavigation) onNavigateToNewChatSurface?.();
     },
     [
       token,
@@ -903,6 +906,7 @@ export function useChat(opts: {
       if (genState !== "idle" || !token) return;
       const idTrim = id.trim();
       if (!idTrim) return;
+      if (recentlyDeletedConversationIdsRef.current.has(idTrim)) return;
       if (
         idTrim === conversationId &&
         !messagesLoading &&
@@ -998,6 +1002,7 @@ export function useChat(opts: {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error("Failed to delete conversation");
+      recentlyDeletedConversationIdsRef.current.add(id);
       setServerConversations((prev) => prev.filter((c) => c.id !== id));
       setPinnedIdsState((prev) => {
         const next = prev.filter((x) => x !== id);
@@ -1008,7 +1013,10 @@ export function useChat(opts: {
         }
         return next;
       });
-      if (conversationId === id) handleNewChat();
+      if (conversationId === id) {
+        onNavigateToNewChatSurface?.();
+        handleNewChat({ skipNavigation: true });
+      }
       messagesCacheRef.current.delete(id);
       setDeleteTargetId(null);
     } catch (e) {
@@ -1016,7 +1024,7 @@ export function useChat(opts: {
     } finally {
       setDeletePending(false);
     }
-  }, [token, deleteTargetId, conversationId, handleNewChat]);
+  }, [token, deleteTargetId, conversationId, handleNewChat, onNavigateToNewChatSurface]);
 
   const moveConversationToGroup = useCallback(
     async (convId: string, groupId: string | null) => {
@@ -1107,6 +1115,7 @@ export function useChat(opts: {
             headers: h,
           });
         }
+        for (const id of ids) recentlyDeletedConversationIdsRef.current.add(id);
         setServerConversations((prev) => prev.filter((c) => !ids.includes(c.id)));
         setPinnedIdsState((prev) => {
           const next = prev.filter((x) => !ids.includes(x));
@@ -1117,14 +1126,18 @@ export function useChat(opts: {
           }
           return next;
         });
-        if (conversationId && ids.includes(conversationId)) handleNewChat();
+        if (conversationId && ids.includes(conversationId)) {
+          onNavigateToNewChatSurface?.();
+          handleNewChat({ skipNavigation: true });
+        }
+        for (const id of ids) messagesCacheRef.current.delete(id);
       } catch (e) {
         console.error(e);
       } finally {
         setBulkDeletePending(false);
       }
     },
-    [token, conversationId, handleNewChat]
+    [token, conversationId, handleNewChat, onNavigateToNewChatSurface]
   );
 
   // ── Auth effects ───────────────────────────────────────────────────────────
@@ -1191,9 +1204,33 @@ export function useChat(opts: {
       return;
     }
     const urlId = parsed.conversationId;
+
+    if (recentlyDeletedConversationIdsRef.current.has(urlId)) {
+      recentlyDeletedConversationIdsRef.current.delete(urlId);
+      onNavigateToNewChatSurface?.() ?? router.replace(chatPathNew());
+      return;
+    }
+
+    if (
+      initialListLoadedRef.current &&
+      !serverConversations.some((c) => c.id === urlId)
+    ) {
+      router.replace(chatPathNew());
+      return;
+    }
+
     if (conversationId === urlId) return;
     void handleSelectConversation(urlId);
-  }, [authLoading, token, chatPathname, conversationId, router, handleSelectConversation]);
+  }, [
+    authLoading,
+    token,
+    chatPathname,
+    conversationId,
+    router,
+    handleSelectConversation,
+    serverConversations,
+    onNavigateToNewChatSurface,
+  ]);
 
   /** 已登录：刷新 `/chat/folder/:id` 时拉取会话与分组列表（否则侧栏与分组工作台为空） */
   useEffect(() => {

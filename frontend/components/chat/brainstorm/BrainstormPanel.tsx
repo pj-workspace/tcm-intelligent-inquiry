@@ -12,6 +12,7 @@ import {
 } from "@/lib/brainstorm-utils";
 import { useBrainstormScroll } from "@/hooks/useBrainstormScroll";
 import { BrainstormStepItem } from "./BrainstormStepItem";
+import { TimelineNode } from "./TimelineNode";
 
 export type { BrainstormStep } from "@/types/brainstorm";
 
@@ -22,6 +23,8 @@ export function BrainstormPanel({
   collapsed = false,
   onToggle,
   compactTopAfterAssistant = false,
+  aborted = false,
+  summaryAcknowledged = false,
 }: BrainstormPanelProps) {
   const isOpen = !collapsed;
   const [toolIoExpanded, setToolIoExpanded] = useState<Record<string, boolean>>({});
@@ -110,6 +113,25 @@ export function BrainstormPanel({
                         onToggle={() => toggleToolIo(step.id)}
                       />
                     ))}
+                    {/* trace 收口节点：
+                        - aborted=true → ⊗ 已终止
+                        - summaryAcknowledged=true（模型显式调用了 mark_summary） → ✓ 完成
+                        - 其他情况（模型未发出明确收口信号） → 不显示 footer，trace 静默收口 */}
+                    {!isStreaming && steps.length > 0 && (aborted || summaryAcknowledged) && (
+                      <div className="relative pl-7 mt-3">
+                        <TimelineNode
+                          kind={aborted ? "trace_aborted" : "trace_done"}
+                        />
+                        <div
+                          className={clsx(
+                            "text-[13px] leading-[1.4rem]",
+                            aborted ? "text-gray-400" : "text-emerald-600/90",
+                          )}
+                        >
+                          {aborted ? "已终止" : "完成"}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <span

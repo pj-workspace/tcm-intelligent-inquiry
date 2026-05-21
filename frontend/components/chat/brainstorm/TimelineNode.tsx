@@ -1,14 +1,18 @@
 "use client";
 
 import clsx from "clsx";
-import { Clock, Loader2, Wrench, XCircle } from "lucide-react";
+import { Check, Clock, Loader2, Wrench, XCircle } from "lucide-react";
 
 export type TimelineNodeKind =
   | "thinking"
   | "thinking_active"
   | "tool"
   | "tool_running"
-  | "tool_error";
+  | "tool_error"
+  /** trace 正常收口的尾节点；视觉为 ✓ */
+  | "trace_done"
+  /** trace 由 abort / 错误收口的尾节点；视觉为 ⊗ */
+  | "trace_aborted";
 
 interface TimelineNodeProps {
   kind: TimelineNodeKind;
@@ -25,6 +29,10 @@ export function TimelineNode({ kind }: TimelineNodeProps) {
       ? XCircle
       : isTool
       ? Wrench
+      : kind === "trace_done"
+      ? Check
+      : kind === "trace_aborted"
+      ? XCircle
       : Clock;
 
   const iconClass = clsx(
@@ -34,6 +42,8 @@ export function TimelineNode({ kind }: TimelineNodeProps) {
     kind === "tool" && "text-[#5b78ad]",
     kind === "tool_running" && "animate-spin text-[#5b78ad]/70",
     kind === "tool_error" && "text-red-400",
+    kind === "trace_done" && "text-emerald-500",
+    kind === "trace_aborted" && "text-gray-400",
   );
 
   return (
@@ -43,7 +53,11 @@ export function TimelineNode({ kind }: TimelineNodeProps) {
         // 1.1rem 高图标 + top-[0.15rem] → 视觉中心位于 0.7rem (11.2px)
         // 与所有 step 内容统一的 leading-[1.4rem] 单行中心一致
         "absolute left-0 top-[0.15rem] flex h-[1.1rem] w-[1.1rem] items-center justify-center rounded-full bg-[#fdfdfc] ring-1",
-        kind === "tool_error" ? "ring-red-200" : "ring-[#e6ddd0]",
+        kind === "tool_error" || kind === "trace_aborted"
+          ? "ring-red-200"
+          : kind === "trace_done"
+            ? "ring-emerald-200"
+            : "ring-[#e6ddd0]",
       )}
     >
       <Icon className={iconClass} />

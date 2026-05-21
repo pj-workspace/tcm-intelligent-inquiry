@@ -21,6 +21,7 @@ SSE_EVENT_TYPES = frozenset(
         "thinking-delta",
         "tool-call",
         "tool-result",
+        "summary-start",
         "widget",
         "title-updated",
         "llm-usage",
@@ -65,6 +66,7 @@ def test_json_safe_for_sse_nested():
         {"type": "thinking-delta", "textDelta": "think"},
         {"type": "tool-call", "name": "t"},
         {"type": "tool-result", "name": "t", "status": "success"},
+        {"type": "summary-start"},
         {
             "type": "widget",
             "widgetId": "w",

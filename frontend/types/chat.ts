@@ -34,6 +34,11 @@ export type TraceMessage = {
   status: "streaming" | "done";
   totalDurationSec?: number;
   collapsed: boolean;
+  /** true：trace 由「用户主动终止 / SSE 错误」收口。footer 显示「已终止」 */
+  aborted?: boolean;
+  /** true：模型在 think 模式下显式调用了 mark_summary（后端发 summary-start 信号）。
+   *  仅此时 footer 显示「✓ 完成」；否则 trace 静默收口、不显示底部完成节点。 */
+  summaryAcknowledged?: boolean;
 };
 
 /** AI 发送的交互控件（目前仅支持选择框） */

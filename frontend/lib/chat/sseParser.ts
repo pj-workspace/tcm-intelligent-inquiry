@@ -9,6 +9,7 @@ export const KNOWN_SSE_EVENT_TYPES = [
   "thinking-delta",
   "tool-call",
   "tool-result",
+  "summary-start",
   "widget",
   "title-updated",
   "llm-usage",

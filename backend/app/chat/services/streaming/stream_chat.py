@@ -12,6 +12,7 @@ from langchain_core.messages import ToolMessage
 from sqlalchemy import delete, select
 
 from app.agent.executor import build_agent_graph_for_chat_request
+from app.agent.tools._internal.mark_summary import MARK_SUMMARY_TOOL_NAME
 from app.mcp.bridge.tool_bridge import mcp_tool_sse_metadata
 from app.chat.images.vl_sanitize import (
     collect_unique_image_urls_from_messages,
@@ -193,6 +194,13 @@ async def stream_chat(
     # 保证前端刷新后历史仍能看到该次工具调用而不是凭空消失。
     tool_pending_by_run: dict[str, dict[str, Any]] = {}
     tool_pending_fifo: list[dict[str, Any]] = []
+    # think 模式 + mark_summary 信号：模型调用 mark_summary 工具后置 True，
+    # 之后的 text-delta 视为"最终答案"，flush 入库为 role=assistant；
+    # 之前的 text-delta 视为"过渡话术"，flush 入库为 role=thinking。
+    in_summary_phase: bool = False
+    # mark_summary 之后模型违反约束又调用的工具 run_id 集合，让 on_tool_end 跳过它们；
+    # abort 路径也会忽略这些，不会写入"已终止"记录。
+    ignored_post_summary_runs: set[str] = set()
 
     try:
         yield sse({"type": "notice", "safetyNotice": STREAM_SAFETY_NOTICE})
@@ -383,12 +391,32 @@ async def stream_chat(
                 )
                 await session.commit()
 
-        async def flush_assistant_segment() -> None:
+        async def flush_assistant_segment(*, interim: bool = False) -> None:
+            """flush 助手正文段。
+
+            - ``interim=False``：当作"最终回答"持久化，``role=assistant``，附带模型名。
+            - ``interim=True`` 且开启了深度思考、**且尚未进入 summary 阶段**：当作
+              "过程中的过渡话术"持久化为 ``role=thinking``，前端历史聚合时归入 trace。
+            - 一旦 ``in_summary_phase=True``（mark_summary 已触发），后续所有 flush 一律
+              视为最终答案：写 ``role=assistant``，无视 ``interim`` 参数。
+            """
             nonlocal assistant_parts
             if not assistant_parts:
                 return
             text = "".join(assistant_parts)
             assistant_parts.clear()
+            if interim and resolved.effective_deep_think and not in_summary_phase:
+                async with async_session_factory() as session:
+                    session.add(
+                        MessageRecord(
+                            id=str(uuid.uuid4()),
+                            conversation_id=conv_id,
+                            role="thinking",
+                            content=text,
+                        )
+                    )
+                    await session.commit()
+                return
             lbl = meta_chat_model_label(resolved)
             async with async_session_factory() as session:
                 session.add(
@@ -447,6 +475,7 @@ async def stream_chat(
                                 else:
                                     trace_thinking_parts.append(rdelta)
                     streamed = False
+                    post_summary_thinking_chars = 0
                     for kind, delta in iter_model_stream_parts(chunk):
                         if not delta:
                             continue
@@ -456,12 +485,26 @@ async def stream_chat(
                             assistant_parts.append(delta)
                             yield sse({"type": "text-delta", "textDelta": delta})
                         else:
+                            # mark_summary 之后模型违反 prompt 约束又输出 reasoning：
+                            # 静默丢弃，**不发 SSE 也不入 thinking_buf 也不入库**，
+                            # 避免前端在 summary 阶段后开新 trace 头。
+                            if in_summary_phase:
+                                post_summary_thinking_chars += len(delta)
+                                continue
                             if assistant_parts:
-                                await flush_assistant_segment()
+                                # 后面紧跟 thinking → 之前那段 assistant 文本是过渡，
+                                # think 模式下入库为 role=thinking
+                                await flush_assistant_segment(interim=True)
                             if thinking_t0 is None:
                                 thinking_t0 = time.monotonic()
                             thinking_buf.append(delta)
                             yield sse({"type": "thinking-delta", "textDelta": delta})
+                    if post_summary_thinking_chars > 0:
+                        # INFO 级日志（非 ai_chat_trace 也可见），便于统计模型"反悔"率
+                        logger.info(
+                            "summary 阶段丢弃 thinking-delta: %d 字符（模型在 mark_summary 后又输出 reasoning）",
+                            post_summary_thinking_chars,
+                        )
                     if not streamed:
                         delta = extract_text(chunk)
                         if delta:
@@ -514,9 +557,43 @@ async def stream_chat(
                                 yield sse(lu_out)
 
             elif etype == "on_tool_start":
-                await flush_thinking_segment()
-                await flush_assistant_segment()
                 name = event.get("name") or ""
+                # ── 内部信号工具：mark_summary ────────────────────────────────
+                # think 模式独有；不对前端发 tool-call / tool-result，不入库 tool 记录，
+                # 改为发出 ``summary-start`` 信号让前端切到"最终答案阶段"。
+                if name == MARK_SUMMARY_TOOL_NAME:
+                    await flush_thinking_segment()
+                    # 信号前的 assistant 文本是真正的"过渡话术"，按 interim 入库
+                    await flush_assistant_segment(interim=True)
+                    in_summary_phase = True
+                    if chat_trace:
+                        logger.info(
+                            "\n%s",
+                            format_tool_event_raw(
+                                "on_tool_start mark_summary（已短路，发 summary-start）",
+                                {"name": name, "run_id": run_id},
+                            ),
+                        )
+                    yield sse({"type": "summary-start"})
+                    continue
+                # 已进入 summary 阶段后再来其他工具：按"模型违反约束"处理，
+                # 静默丢弃 tool-call，不写 SSE、不入 pending、也不让 tool_end 走正常流程
+                if in_summary_phase:
+                    if chat_trace:
+                        logger.info(
+                            "\n%s",
+                            format_tool_event_raw(
+                                "post-summary tool-call 被忽略",
+                                {"name": name, "run_id": run_id},
+                            ),
+                        )
+                    if run_id is not None:
+                        ignored_post_summary_runs.add(str(run_id))
+                    continue
+                await flush_thinking_segment()
+                # tool 前的 assistant 文本必然是过渡话术；think 模式下入库为 role=thinking，
+                # 与前端 `pendingInterimStepId` 在 tool-call 时固化为 thinking step 对齐
+                await flush_assistant_segment(interim=True)
                 raw_in = data.get("input")
                 if raw_in is None:
                     raw_in = data.get("tool_input")
@@ -553,6 +630,17 @@ async def stream_chat(
 
             elif etype == "on_tool_end":
                 name = event.get("name") or ""
+                # 短路：mark_summary 在 on_tool_start 已发 summary-start，这里完全静默
+                if name == MARK_SUMMARY_TOOL_NAME:
+                    continue
+                # 短路：summary 阶段后被丢弃的工具，运行结果也不上报
+                run_key_check = str(run_id) if run_id is not None else None
+                if (
+                    run_key_check is not None
+                    and run_key_check in ignored_post_summary_runs
+                ):
+                    ignored_post_summary_runs.discard(run_key_check)
+                    continue
                 out = data.get("output")
                 _widget_sse: dict[str, Any] | None = None
                 _raw_out_str = ""
