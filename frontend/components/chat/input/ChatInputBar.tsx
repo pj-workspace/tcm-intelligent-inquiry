@@ -4,8 +4,6 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import clsx from "clsx";
 import { motion, AnimatePresence } from "framer-motion";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import * as HoverCard from "@radix-ui/react-hover-card";
-import * as Select from "@radix-ui/react-select";
 import {
   Plus,
   ChevronDown,
@@ -28,14 +26,8 @@ import {
   type LucideIcon,
   Image as ImageIcon,
   FileText,
-  X,
   ArrowUpRight,
-  Bot,
 } from "lucide-react";
-import {
-  SYSTEM_AGENT_LABEL,
-  SYSTEM_AGENT_SELECT_VALUE,
-} from "@/lib/chatAgentConstants";
 import type { GenerationState } from "@/types/chat";
 import type { ChatModelCatalogResponse } from "@/types/models";
 import type { ChatSurfacePhase } from "@/types/chat-ui";
@@ -43,6 +35,8 @@ import { CHAT_PENDING_ATTACHMENT_MAX } from "@/lib/chatAttachmentConstants";
 import type { RoundTokensUsage } from "@/components/chat/input/RoundTokensHint";
 import { RoundTokensHint } from "@/components/chat/input/RoundTokensHint";
 import { ChatSendControls } from "@/components/chat/input/ChatSendControls";
+import { ChatAttachmentPanel } from "@/components/chat/input/ChatAttachmentPanel";
+import { ModelAgentPicker } from "@/components/chat/input/ModelAgentPicker";
 
 export type ChatInputBarUsageHint = {
   usage: RoundTokensUsage;
@@ -50,7 +44,6 @@ export type ChatInputBarUsageHint = {
 };
 
 /** Select value 内分隔厂商 id 与模型 id（避免与模型名冲突） */
-const MODEL_PICK_SEP = "\u001f";
 
 const springTransition = {
   type: "spring" as const,
@@ -192,60 +185,6 @@ function initialQuickPromptsForHydration(): QuickPromptItem[] {
   return QUICK_PROMPT_POOL.slice(0, QUICK_PROMPT_SHOW_COUNT);
 }
 
-function AttachmentUploadSkeletonTile({ progress }: { progress: number }) {
-  const p = Math.min(1, Math.max(0, progress));
-  const pctLabel = p >= 1 ? 100 : Number((p * 100).toFixed(1));
-  const r = 12.5;
-  const c = 2 * Math.PI * r;
-  const dashOffset = c * (1 - p);
-
-  return (
-    <div
-      className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-zinc-100"
-      role="progressbar"
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={Math.round(p * 100)}
-      aria-label={`上传进度 ${pctLabel}%`}
-      style={{ contain: "layout style paint" }}
-    >
-      <div className="pointer-events-none absolute inset-0 opacity-[0.85] attachment-upload-skeleton-shimmer" />
-      <div className="absolute inset-0 flex items-center justify-center bg-white/[0.28]">
-        <svg
-          width="52"
-          height="52"
-          viewBox="0 0 36 36"
-          className="-rotate-90 shrink-0 text-gray-900 [transition:none]"
-          aria-hidden
-        >
-          <circle
-            cx="18"
-            cy="18"
-            r={r}
-            fill="none"
-            stroke="#e4e4e7"
-            strokeWidth="3"
-          />
-          <circle
-            cx="18"
-            cy="18"
-            r={r}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeDasharray={c}
-            strokeDashoffset={dashOffset}
-          />
-        </svg>
-        <span className="pointer-events-none absolute tabular-nums text-[11px] font-semibold leading-none tracking-tight text-gray-800 drop-shadow-[0_0_1px_rgba(255,255,255,0.9)]">
-          {pctLabel}%
-        </span>
-      </div>
-    </div>
-  );
-}
-
 type ChatInputBarProps = {
   input: string;
   hasStarted: boolean;
@@ -351,29 +290,6 @@ export function ChatInputBar({
     genState !== "idle" || attachmentUploadBusy || !hasSendableContent;
   const attachmentAtCap = pendingImageUrls.length >= CHAT_PENDING_ATTACHMENT_MAX;
 
-  const selectedProv = modelCatalog?.providers.find(
-    (p) => p.id === selectedProviderId.trim(),
-  );
-  const selectedRow = selectedProv?.models.find(
-    (m) => m.id === selectedModelId.trim(),
-  );
-
-  const fallbackPickValue = useMemo(() => {
-    if (!modelCatalog?.providers?.length) return "";
-    const p =
-      modelCatalog.providers.find((x) => x.configured) ??
-      modelCatalog.providers[0];
-    const m = p?.models.find((x) => x.default) ?? p?.models[0];
-    if (!p?.id || !m?.id) return "";
-    return `${p.id}${MODEL_PICK_SEP}${m.id}`;
-  }, [modelCatalog]);
-
-  const pickValue =
-    selectedProviderId.trim() && selectedModelId.trim()
-      ? `${selectedProviderId.trim()}${MODEL_PICK_SEP}${selectedModelId.trim()}`
-      : "";
-
-  const selectCompositeValue = pickValue || fallbackPickValue;
 
   /** 粘贴剪贴板图片：与点击添加共用上传逻辑（非图片或未拦截时仍可正常粘贴文字） */
   const handleComposerPaste = useCallback(
@@ -590,72 +506,18 @@ export function ChatInputBar({
           transition={springTransition}
           className="relative flex w-full flex-col overflow-hidden rounded-3xl border border-[#e5e5e5] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-shadow focus-within:border-gray-300 focus-within:shadow-[0_4px_20px_rgba(0,0,0,0.05)]"
         >
-          {(pendingImageUrls.length > 0 ||
-            attachmentUploadSkeletonCount > 0 ||
-            attachmentUploadBusy) && (
-            <div className="space-y-2 border-b border-gray-100 px-4 py-2.5">
-              {(pendingImageUrls.length > 0 ||
-                (attachmentUploadBusy && attachmentUploadSkeletonCount > 0)) && (
-                <div className="flex flex-wrap gap-2">
-                  {pendingImageUrls.map((url, i) => (
-                    <div key={`${i}-${url.slice(0, 48)}`} className="group relative">
-                      {/* eslint-disable-next-line @next/next/no-img-element -- 动态 OSS URL，非导入资源 */}
-                      <img
-                        src={url}
-                        alt=""
-                        className="h-16 w-16 rounded-xl border border-gray-200 bg-gray-50 object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => onRemovePendingImage(i)}
-                        disabled={attachmentUploadBusy}
-                        title="移除"
-                        className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-gray-900 text-white opacity-90 shadow transition-opacity hover:opacity-100 disabled:opacity-40"
-                      >
-                        <X className="h-3 w-3" strokeWidth={2.5} />
-                      </button>
-                    </div>
-                  ))}
-                  {attachmentUploadBusy &&
-                    attachmentUploadSkeletonCount > 0 &&
-                    Array.from({ length: attachmentUploadSkeletonCount }).map((_, i) => (
-                      <AttachmentUploadSkeletonTile
-                        key={`sk-${i}`}
-                        progress={attachmentUploadSlotProgress[i] ?? 0}
-                      />
-                    ))}
-                  <button
-                    type="button"
-                    disabled={
-                      attachmentDisabled ||
-                      genState !== "idle" ||
-                      attachmentUploadBusy ||
-                      attachmentAtCap
-                    }
-                    onClick={() => imageFileInputRef.current?.click()}
-                    title={
-                      attachmentDisabled
-                        ? attachmentDisabledReason ?? "当前模型不支持接收图片输入"
-                        : attachmentAtCap
-                          ? `最多 ${CHAT_PENDING_ATTACHMENT_MAX} 个附件`
-                          : attachmentUploadBusy
-                            ? "正在上传图片…"
-                            : "继续添加图片"
-                    }
-                    aria-label="继续添加图片"
-                    className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-gray-500 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-gray-200 disabled:hover:bg-gray-50 disabled:hover:text-gray-500"
-                  >
-                    <Plus className="h-6 w-6" strokeWidth={2} />
-                  </button>
-                </div>
-              )}
-              {attachmentAtCap && !attachmentUploadBusy ? (
-                <p className="text-[11px] text-gray-400">
-                  已达本次发送上限（{CHAT_PENDING_ATTACHMENT_MAX} 个）
-                </p>
-              ) : null}
-            </div>
-          )}
+          <ChatAttachmentPanel
+            pendingImageUrls={pendingImageUrls}
+            attachmentUploadBusy={attachmentUploadBusy}
+            attachmentUploadSkeletonCount={attachmentUploadSkeletonCount}
+            attachmentUploadSlotProgress={attachmentUploadSlotProgress}
+            attachmentDisabled={attachmentDisabled}
+            attachmentDisabledReason={attachmentDisabledReason}
+            attachmentAtCap={attachmentAtCap}
+            genState={genState}
+            onRemovePendingImage={onRemovePendingImage}
+            onAddImageClick={() => imageFileInputRef.current?.click()}
+          />
           {hasStarted ? (
             <RoundTokensHint usage={usageHint?.usage ?? null} variant={usageHint?.variant} />
           ) : null}
@@ -883,196 +745,18 @@ export function ChatInputBar({
                 </DropdownMenu.Portal>
               </DropdownMenu.Root>
 
-              {showAgentPicker && onSelectAgent && (
-                <div className="max-w-[min(20rem,46vw)] shrink-0">
-                  <Select.Root
-                    disabled={genState !== "idle" || agentsLoading}
-                    value={
-                      selectedAgentId?.trim()
-                        ? selectedAgentId.trim()
-                        : SYSTEM_AGENT_SELECT_VALUE
-                    }
-                    onValueChange={(v) => {
-                      if (v === SYSTEM_AGENT_SELECT_VALUE) onSelectAgent(null);
-                      else onSelectAgent(v);
-                    }}
-                  >
-                    <Select.Trigger className="flex w-full max-w-[min(20rem,46vw)] items-center gap-1 rounded-lg border border-transparent px-2 py-1.5 text-sm font-medium text-gray-800 outline-none transition-colors hover:bg-gray-100 focus-visible:border-gray-300 disabled:opacity-45">
-                      <Bot className="h-3.5 w-3.5 shrink-0 opacity-55" aria-hidden />
-                      <span className="min-w-0 flex-1 truncate text-left">
-                        <Select.Value placeholder={SYSTEM_AGENT_LABEL} />
-                      </span>
-                      <Select.Icon aria-hidden>
-                        <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-55" />
-                      </Select.Icon>
-                    </Select.Trigger>
-                    <Select.Portal>
-                      <Select.Content
-                        position="popper"
-                        sideOffset={6}
-                        collisionPadding={12}
-                        className="ui-radix-floating z-[9999] max-h-[min(16rem,calc(100vh-6rem))] min-w-[10.5rem] overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
-                      >
-                        <Select.Viewport className="max-h-[min(15rem,calc(100vh-8rem))] p-1">
-                          <Select.Item
-                            value={SYSTEM_AGENT_SELECT_VALUE}
-                            className="relative cursor-pointer select-none rounded-lg px-2.5 py-2 text-xs outline-none data-[highlighted]:bg-gray-50"
-                          >
-                            <Select.ItemText>{SYSTEM_AGENT_LABEL}</Select.ItemText>
-                            <Select.ItemIndicator className="absolute right-2 top-1/2 -translate-y-1/2">
-                              <Check className="h-3.5 w-3.5" />
-                            </Select.ItemIndicator>
-                          </Select.Item>
-                          {agents.map((a) => (
-                            <Select.Item
-                              key={a.id}
-                              value={a.id}
-                              className="relative cursor-pointer select-none rounded-lg px-2.5 py-2 text-xs outline-none data-[highlighted]:bg-gray-50"
-                            >
-                              <Select.ItemText className="line-clamp-2">{a.name}</Select.ItemText>
-                              <Select.ItemIndicator className="absolute right-2 top-1/2 -translate-y-1/2">
-                                <Check className="h-3.5 w-3.5" />
-                              </Select.ItemIndicator>
-                            </Select.Item>
-                          ))}
-                        </Select.Viewport>
-                      </Select.Content>
-                    </Select.Portal>
-                  </Select.Root>
-                </div>
-              )}
-
-              {!modelCatalog?.providers?.length ? (
-                <span
-                  className="truncate rounded-lg px-2 py-1.5 text-xs font-medium text-gray-500 opacity-75"
-                  title="使用服务端配置的默认对话模型（未获取到模型目录）"
-                >
-                  默认模型
-                </span>
-              ) : (
-                <div className="max-w-[min(20rem,46vw)] shrink-0">
-                  <Select.Root
-                    disabled={genState !== "idle"}
-                    value={selectCompositeValue || undefined}
-                    onValueChange={(v) => {
-                      const i = v.indexOf(MODEL_PICK_SEP);
-                      if (i <= 0) return;
-                      onSelectModel(v.slice(0, i), v.slice(i + MODEL_PICK_SEP.length));
-                    }}
-                  >
-                    <Select.Trigger className="flex w-full max-w-[min(20rem,46vw)] items-center gap-1 rounded-lg border border-transparent px-2 py-1.5 text-sm font-medium text-gray-800 outline-none transition-colors hover:bg-gray-100 focus-visible:border-gray-300 disabled:opacity-45">
-                      <span
-                        className="min-w-0 flex-1 truncate text-left"
-                        title={
-                          selectedProv && selectedRow
-                            ? `${selectedProv.label} · ${selectedRow.full_label ?? selectedRow.label}`
-                            : undefined
-                        }
-                      >
-                        {selectedRow
-                          ? selectedRow.full_label ?? selectedRow.label
-                          : "选择模型"}
-                      </span>
-                      <Select.Icon aria-hidden>
-                        <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-55" />
-                      </Select.Icon>
-                    </Select.Trigger>
-                    <Select.Portal>
-                      <Select.Content
-                        position="popper"
-                        sideOffset={6}
-                        collisionPadding={12}
-                        className="ui-radix-floating z-[9999] max-h-[min(24rem,calc(100vh-6rem))] min-w-[min(22rem,var(--radix-select-trigger-width))] overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
-                      >
-                        <Select.Viewport className="max-h-[min(22rem,calc(100vh-8rem))] p-1">
-                          {modelCatalog.providers.map((prov) => (
-                            <Select.Group key={prov.id}>
-                              <Select.Label className="px-2.5 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-                                {prov.label}
-                                {!prov.configured ? " · 未配置 KEY" : ""}
-                              </Select.Label>
-                              {prov.models.map((m) => (
-                                <Select.Item
-                                  key={`${prov.id}:${m.id}`}
-                                  value={`${prov.id}${MODEL_PICK_SEP}${m.id}`}
-                                  disabled={!prov.configured}
-                                  className="relative cursor-pointer select-none rounded-lg p-0 text-sm outline-none data-[disabled]:cursor-not-allowed data-[highlighted]:bg-gray-50 data-[disabled]:opacity-45"
-                                >
-                                  <HoverCard.Root openDelay={220} closeDelay={80}>
-                                    <HoverCard.Trigger asChild>
-                                      <div className="flex w-full items-center justify-between gap-2 px-2.5 py-2 text-gray-900">
-                                        <Select.ItemText asChild>
-                                          <span className="flex-1 whitespace-normal text-left text-[13px] leading-snug line-clamp-2">
-                                            {m.full_label ?? m.label}
-                                          </span>
-                                        </Select.ItemText>
-                                        <span
-                                          className={clsx(
-                                            "flex shrink-0 items-center gap-0.5 text-[11px] font-medium tabular-nums text-gray-400",
-                                            !prov.configured && "opacity-60",
-                                          )}
-                                        >
-                                          <Brain
-                                            className="h-3.5 w-3.5 shrink-0 opacity-55"
-                                            aria-hidden
-                                          />
-                                          {m.speed_tag ?? "—"}
-                                        </span>
-                                      </div>
-                                    </HoverCard.Trigger>
-                                    <HoverCard.Portal>
-                                      <HoverCard.Content
-                                        side="right"
-                                        align="start"
-                                        sideOffset={12}
-                                        collisionPadding={16}
-                                        className="z-[10050] w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-900 shadow-xl outline-none"
-                                      >
-                                        <div className="text-[15px] font-semibold leading-snug">
-                                          {m.full_label ?? m.label}
-                                        </div>
-                                        <div className="mt-1 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-xs text-gray-500">
-                                          <span>{prov.label}</span>
-                                          <span className="text-gray-300">·</span>
-                                          <code className="rounded bg-gray-100 px-1 py-px font-mono text-[10px] text-gray-600">
-                                            {m.id}
-                                          </code>
-                                        </div>
-                                        {!prov.configured ? (
-                                          <p className="mt-3 rounded-lg bg-amber-50 px-2 py-1.5 text-xs leading-snug text-amber-950">
-                                            尚未配置 API Key：请在服务端{" "}
-                                            <span className="font-mono">.env</span>{" "}
-                                            填写对应 Key 后启用。
-                                          </p>
-                                        ) : null}
-                                        <p className="mt-3 text-xs leading-relaxed text-gray-600">
-                                          {m.description}
-                                        </p>
-                                        {prov.id === "deepseek" && prov.configured ? (
-                                          <p className="mt-2 text-[11px] leading-snug text-gray-500">
-                                            官方支持思考模式与工具调用并存；多轮请求需完整回传每步{" "}
-                                            <span className="font-mono">reasoning_content</span>
-                                            ，本项目已自动处理。
-                                          </p>
-                                        ) : null}
-                                        {m.context_window_hint ? (
-                                          <p className="mt-3 border-t border-gray-100 pt-2 text-[11px] italic leading-snug text-gray-500">
-                                            {m.context_window_hint}
-                                          </p>
-                                        ) : null}
-                                      </HoverCard.Content>
-                                    </HoverCard.Portal>
-                                  </HoverCard.Root>
-                                </Select.Item>
-                              ))}
-                            </Select.Group>
-                          ))}
-                        </Select.Viewport>
-                      </Select.Content>
-                    </Select.Portal>
-                  </Select.Root>
-                </div>
-              )}
+              <ModelAgentPicker
+                genState={genState}
+                modelCatalog={modelCatalog}
+                selectedProviderId={selectedProviderId}
+                selectedModelId={selectedModelId}
+                onSelectModel={onSelectModel}
+                showAgentPicker={showAgentPicker}
+                agents={agents}
+                selectedAgentId={selectedAgentId}
+                onSelectAgent={onSelectAgent}
+                agentsLoading={agentsLoading}
+              />
 
               <ChatSendControls
                 genState={genState}
