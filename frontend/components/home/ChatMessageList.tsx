@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BrainstormPanel, ClaudeStar, MessageBubble } from "@/components/chat";
 import { WidgetCard } from "@/components/chat/messages/WidgetCard";
@@ -19,6 +20,8 @@ function assistantSegmentShowsToolbar(messages: Message[], index: number): boole
     if (m.type === "message" && m.role === "user") break;
     if (m.type === "message" && m.role === "assistant") return false;
     if (m.type === "widget") return false;
+    // 流式 trace 仍在进行，本段不会是最终段（后续会再开新助手气泡承接工具结果）
+    if (m.type === "trace" && m.status === "streaming") return false;
   }
   return true;
 }
@@ -38,6 +41,27 @@ export type ChatMessageListProps = {
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
 };
 
+/**
+ * 等待指示器秒数：waiting / tool / thinking 时计时；idle / typing 清零。
+ * 等待 ≥3 秒时在 ClaudeStar 旁附 "Ns" 缓解"是否卡住"焦虑。
+ */
+function useWaitingElapsedSec(genState: GenerationState): number {
+  const [elapsedSec, setElapsedSec] = useState(0);
+  useEffect(() => {
+    if (genState === "idle" || genState === "typing") {
+      setElapsedSec(0);
+      return;
+    }
+    const start = Date.now();
+    setElapsedSec(0);
+    const timer = setInterval(() => {
+      setElapsedSec(Math.floor((Date.now() - start) / 1000));
+    }, 500);
+    return () => clearInterval(timer);
+  }, [genState]);
+  return elapsedSec;
+}
+
 export function ChatMessageList({
   messages,
   setMessages,
@@ -52,6 +76,11 @@ export function ChatMessageList({
   onWidgetAnswer,
   messagesEndRef,
 }: ChatMessageListProps) {
+  const waitingElapsedSec = useWaitingElapsedSec(genState);
+  // 流式中只要不是逐字输出，就显示 ClaudeStar 等待指示（waiting / tool / thinking）。
+  // trace 卡片自身展示工具进度；ClaudeStar 只是底部"还在动"的兜底反馈。
+  const showWaitingIndicator =
+    genState === "waiting" || genState === "tool" || genState === "thinking";
   return (
     <div className="relative pt-8 pb-4 md:pb-5">
       {showMessagesRefreshingOverlay ? (
@@ -68,6 +97,9 @@ export function ChatMessageList({
     const afterTrace = prevMsg?.type === "trace";
     const beforeTrace =
       msg.role === "assistant" && nextMsg?.type === "trace";
+    /** 紧跟一个仍在流式的 trace：该段助手不是最终段，避免占住一行工具栏占位 */
+    const beforeStreamingTrace =
+      beforeTrace && nextMsg?.type === "trace" && nextMsg.status === "streaming";
     return (
       <motion.div
         key={msg.id}
@@ -89,7 +121,8 @@ export function ChatMessageList({
           interrupted={msg.interrupted}
           assistantToolbarReserve={
             msg.role === "assistant" &&
-            msg.id === lastAssistantMessageId
+            msg.id === lastAssistantMessageId &&
+            !beforeStreamingTrace
           }
           assistantActionsDisabled={genState !== "idle"}
           followUpItems={
@@ -188,7 +221,7 @@ export function ChatMessageList({
   return null;
 })}
       <AnimatePresence>
-        {genState === "waiting" && (
+        {showWaitingIndicator && (
           <motion.div
             initial={{ opacity: 0, height: 0, scale: 0.5 }}
             animate={{ opacity: 1, height: "auto", scale: 1 }}
@@ -197,8 +230,13 @@ export function ChatMessageList({
             className="w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-auto px-4 sm:px-5 md:px-6 lg:px-8 flex justify-start overflow-hidden"
             style={{ transformOrigin: "left center" }}
           >
-            <div className="py-3">
+            <div className="flex items-center gap-2 pt-0 pb-3">
               <ClaudeStar />
+              {waitingElapsedSec >= 3 && (
+                <span className="text-xs tabular-nums text-gray-400">
+                  {waitingElapsedSec}s
+                </span>
+              )}
             </div>
           </motion.div>
         )}
@@ -206,7 +244,7 @@ export function ChatMessageList({
 
       <div
         ref={messagesEndRef}
-        className="min-h-[min(8.25vh,4rem)] shrink-0 md:min-h-[min(7.5vh,4.25rem)]"
+        className="min-h-[min(10vh,5rem)] shrink-0 md:min-h-[min(9.5vh,5.5rem)]"
         aria-hidden
       />
     </div>

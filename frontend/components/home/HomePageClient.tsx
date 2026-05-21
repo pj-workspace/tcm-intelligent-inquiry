@@ -807,7 +807,7 @@ export function HomePageClient() {
                   !viewingGroupLanding
                     ? [
                         showWelcomeHero ? "flex min-h-0 flex-col" : "",
-                        "pb-[clamp(6.25rem,10vh,8.75rem)] md:pb-[clamp(6.5rem,10.25vh,9rem)]",
+                        "pb-[clamp(7rem,11vh,9.5rem)] md:pb-[clamp(7.25rem,11.25vh,9.75rem)]",
                       ].join(" ")
                     : ""
                 }`}

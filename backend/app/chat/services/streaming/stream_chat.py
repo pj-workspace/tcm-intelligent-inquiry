@@ -75,6 +75,53 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 
+def _build_aborted_tool_record(
+    meta: dict[str, Any],
+    run_id: str | None,
+) -> dict[str, Any]:
+    """构造中止/超时收尾时的工具记录 JSON 内容。"""
+    name = str(meta.get("name") or "tool").strip() or "tool"
+    rec: dict[str, Any] = {
+        "name": name,
+        "status": "error",
+        "aborted": True,
+        "outputPreview": "已终止",
+    }
+    rec.update(mcp_tool_sse_metadata(name))
+    inp = meta.get("input")
+    if inp is not None:
+        rec["input"] = inp
+    if run_id:
+        rec["runId"] = run_id
+    return rec
+
+
+async def _persist_pending_tools_as_aborted(
+    conv_id: str,
+    pending_by_run: dict[str, dict[str, Any]],
+    pending_fifo: list[dict[str, Any]],
+) -> None:
+    """将仍 running 的工具写入历史，标记 aborted=True。"""
+    rows: list[dict[str, Any]] = []
+    for run_id, meta in pending_by_run.items():
+        rows.append(_build_aborted_tool_record(meta, run_id))
+    for meta in pending_fifo:
+        rows.append(_build_aborted_tool_record(meta, None))
+    if not rows:
+        return
+    async with async_session_factory() as session:
+        for rec in rows:
+            session.add(
+                MessageRecord(
+                    id=str(uuid.uuid4()),
+                    conversation_id=conv_id,
+                    role="tool",
+                    content=json.dumps(rec, ensure_ascii=False),
+                )
+            )
+        await session.commit()
+
+
 async def stream_chat(
     message: str,
     history: list[ChatMessage],
@@ -141,6 +188,11 @@ async def stream_chat(
     trace_thinking_parts: list[str] = []
     flush_thinking_fn = None
     flush_assistant_fn = None
+
+    # 已开始但未结束的工具调用：用于在中止/异常时持久化为「已终止」状态，
+    # 保证前端刷新后历史仍能看到该次工具调用而不是凭空消失。
+    tool_pending_by_run: dict[str, dict[str, Any]] = {}
+    tool_pending_fifo: list[dict[str, Any]] = []
 
     try:
         yield sse({"type": "notice", "safetyNotice": STREAM_SAFETY_NOTICE})
@@ -307,8 +359,6 @@ async def stream_chat(
         assistant_parts: list[str] = []
         thinking_buf: list[str] = []
         thinking_t0: float | None = None
-        tool_pending_by_run: dict[str, dict[str, Any]] = {}
-        tool_pending_fifo: list[dict[str, Any]] = []
         trace_stream_rm_merged: dict[str, Any] = {}
         _break_after_widget: bool = False
         seen_llm_usage_sigs: set[str] = set()
@@ -681,6 +731,26 @@ async def stream_chat(
         yield sse({"type": "error", "message": safe_err})
         yield sse_done()
     finally:
+        # 中止/异常时仍有 pending 的工具：写一条「已终止」工具记录，
+        # 避免刷新历史后该工具气泡消失。使用 shield 防止 SSE 取消打断写库。
+        if conv_id and (tool_pending_by_run or tool_pending_fifo):
+            pending_snapshot_by_run = dict(tool_pending_by_run)
+            pending_snapshot_fifo = list(tool_pending_fifo)
+            tool_pending_by_run.clear()
+            tool_pending_fifo.clear()
+            try:
+                await asyncio.shield(
+                    _persist_pending_tools_as_aborted(
+                        conv_id,
+                        pending_snapshot_by_run,
+                        pending_snapshot_fifo,
+                    )
+                )
+            except asyncio.CancelledError:
+                # 上层取消我们的等待，shield 内部任务仍在事件循环中继续写库
+                pass
+            except Exception:
+                logger.exception("中止后写入工具终止状态失败")
         if kb_ctx_token is not None:
             chat_agent_kb_id.reset(kb_ctx_token)
         chat_user_id.reset(ctx_token)

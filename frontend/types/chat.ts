@@ -13,6 +13,8 @@ export type ChatMessage = {
   followUpSuggestions?: string[];
   /** 助手消息：用户点击终止后标记为 true */
   interrupted?: boolean;
+  /** 后端 created_at ISO；用于历史聚合时还原 trace 总时长 */
+  createdAt?: string;
 };
 
 export type ThinkingStep = Extract<BrainstormStep, { type: "thinking" }>;
@@ -48,6 +50,8 @@ export type ApiMessageRow = {
   id: string;
   role: string;
   content: string;
+  /** 后端 server_default=now() 的 ISO 字符串，前端用于 trace 总时长还原 */
+  created_at?: string;
   duration_sec?: number | null;
   model_name?: string | null;
   follow_up_suggestions?: string[] | null;

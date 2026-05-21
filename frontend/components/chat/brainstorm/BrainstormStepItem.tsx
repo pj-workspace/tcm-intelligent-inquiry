@@ -2,110 +2,133 @@
 
 import clsx from "clsx";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, Loader2 } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import type { BrainstormStep } from "@/types/brainstorm";
 import {
   runningToolLabel,
+  toolAbortedLabel,
   toolFailureLabel,
   toolSuccessLabel,
-  parseWebResults,
-  parseSummaryBlocks,
 } from "@/lib/brainstorm-utils";
+import { TimelineNode, type TimelineNodeKind } from "./TimelineNode";
+import { ThinkingMarkdown } from "./ThinkingMarkdown";
 
 interface BrainstormStepItemProps {
   step: BrainstormStep;
   isFirst: boolean;
+  /** 是否为 trace.steps 末尾；与 isStreaming 一起决定 thinking 是否显示光标 */
+  isLast?: boolean;
+  /** trace 是否仍在流式中 */
+  isStreaming?: boolean;
   expanded: boolean;
   onToggle: () => void;
+}
+
+/**
+ * 所有 step 统一布局：图标绝对定位在 left:0，内容左 pl-7。
+ * 关键：所有内容（thinking / tool）的首行高度统一为 1.4rem
+ * （leading-[1.4rem]），图标 1.1rem 高，top:0.15rem → 图标中心刚好落在首行中心。
+ */
+function StepShell({
+  kind,
+  isFirst,
+  children,
+}: {
+  kind: TimelineNodeKind;
+  isFirst: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={clsx("relative pl-7", isFirst ? "mt-2.5" : "mt-3")}>
+      <TimelineNode kind={kind} />
+      {children}
+    </div>
+  );
 }
 
 export function BrainstormStepItem({
   step,
   isFirst,
+  isLast = false,
+  isStreaming = false,
   expanded,
   onToggle,
 }: BrainstormStepItemProps) {
   if (step.type === "thinking") {
-    const active = step.durationSec == null;
+    const active = step.durationSec == null && (isLast ? isStreaming : false);
     return (
-      <div className={clsx("relative pl-3", isFirst ? "mt-2" : "mt-3")}>
-        <p className="whitespace-pre-wrap text-[13px] italic leading-relaxed text-gray-500">
-          {step.content}
-          {active && (
-            <span className="ml-1 inline-block h-3.5 w-1 animate-pulse bg-gray-400 align-middle" />
-          )}
-        </p>
-      </div>
+      <StepShell kind={active ? "thinking_active" : "thinking"} isFirst={isFirst}>
+        <ThinkingMarkdown content={step.content} active={active} />
+      </StepShell>
     );
   }
 
-  /* 工具行：默认一行，成功后可展开看规整结果；失败不暴露后台错误 */
+  /* 工具行：极简一行 + 可展开 outputPreview */
   const failed = step.status === "error";
-  const webResults =
-    step.toolName === "searx_web_search" && !failed
-      ? parseWebResults(step.outputPreview)
-      : [];
-  const summaries =
-    step.toolName !== "searx_web_search" && !failed
-      ? parseSummaryBlocks(step.outputPreview)
-      : [];
+  const aborted = failed && step.aborted === true;
+  const running = step.status === "running";
   const canExpand =
-    step.status === "success" &&
-    !failed &&
-    (webResults.length > 0 || summaries.length > 0);
+    step.status === "success" && !!(step.outputPreview ?? "").trim();
 
-  const toolLine =
-    step.status === "running"
-      ? runningToolLabel(step.toolName, step.mcpRemoteName)
-      : failed
-      ? toolFailureLabel(step.toolName, step.mcpRemoteName)
-      : toolSuccessLabel(
-          step.toolName,
-          step.outputPreview,
-          webResults,
-          summaries,
-          step.mcpRemoteName
-        );
+  const kind: TimelineNodeKind = running
+    ? "tool_running"
+    : failed
+    ? "tool_error"
+    : "tool";
+
+  const toolLine = running
+    ? runningToolLabel(step.toolName, step.mcpRemoteName)
+    : aborted
+    ? toolAbortedLabel(step.toolName, step.mcpRemoteName)
+    : failed
+    ? toolFailureLabel(step.toolName, step.mcpRemoteName)
+    : toolSuccessLabel(
+        step.toolName,
+        step.outputPreview,
+        undefined,
+        undefined,
+        step.mcpRemoteName,
+      );
 
   const lineClass = clsx(
-    "relative flex w-fit max-w-full items-center gap-1.5 rounded-md px-1 py-0.5 text-left text-[13px] transition-colors",
+    // leading-[1.4rem] 与 thinking/interim 一致，使图标 top-[0.15rem] 居中于首行
+    "relative flex w-fit max-w-full items-center gap-1.5 rounded-md px-1 text-left text-[13px] leading-[1.4rem] transition-colors",
     failed ? "text-gray-400 cursor-default" : "text-[#5b78ad]",
     canExpand && "cursor-pointer hover:bg-[#5b78ad]/[0.07]",
-    !canExpand && !failed && "cursor-default"
+    !canExpand && !failed && "cursor-default",
   );
 
   const lineInner = (
     <>
-      {step.status === "running" && (
-        <Loader2 className="h-3 w-3 shrink-0 animate-spin text-[#5b78ad]/60" />
-      )}
       <span className="min-w-0 truncate">{toolLine}</span>
       {canExpand ? (
         <ChevronDown
           aria-hidden
           className={clsx(
             "h-3 w-3 shrink-0 text-[#5b78ad]/50 transition-transform duration-200",
-            expanded && "rotate-180"
+            expanded && "rotate-180",
           )}
         />
       ) : null}
     </>
   );
 
+  const title = step.mcpRemoteName ?? step.toolName;
+
   return (
-    <div className={clsx("relative pl-3", isFirst ? "mt-2" : "mt-2.5")}>
+    <StepShell kind={kind} isFirst={isFirst}>
       {canExpand ? (
         <button
           type="button"
           className={lineClass}
           aria-expanded={expanded}
-          title={step.mcpRemoteName ?? step.toolName}
+          title={title}
           onClick={onToggle}
         >
           {lineInner}
         </button>
       ) : (
-        <div className={lineClass} title={step.mcpRemoteName ?? step.toolName}>
+        <div className={lineClass} title={title}>
           {lineInner}
         </div>
       )}
@@ -119,45 +142,14 @@ export function BrainstormStepItem({
             transition={{ duration: 0.22, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <div className="mt-1.5 max-h-64 overflow-y-auto pl-1 pr-2 text-[13px] leading-relaxed text-gray-500">
-              {webResults.length > 0 ? (
-                <ol className="space-y-1.5">
-                  {webResults.map((item, itemIdx) => (
-                    <li key={`${item.title}-${itemIdx}`} className="flex gap-2">
-                      <span className="shrink-0 tabular-nums text-gray-400">
-                        {itemIdx + 1}.
-                      </span>
-                      {item.url ? (
-                        <a
-                          href={item.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="min-w-0 text-gray-600 underline-offset-4 hover:text-[#5b78ad] hover:underline"
-                        >
-                          {item.title} ↗
-                        </a>
-                      ) : (
-                        <span>{item.title}</span>
-                      )}
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <div className="space-y-2">
-                  {summaries.map((summary, summaryIdx) => (
-                    <p
-                      key={`${summary}-${summaryIdx}`}
-                      className="border-l border-[#e2d8ca] pl-3 text-gray-500"
-                    >
-                      {summary}
-                    </p>
-                  ))}
-                </div>
-              )}
+            <div className="mt-1.5 max-h-64 overflow-y-auto rounded-md bg-gray-50/60 px-3 py-2 text-[12.5px] leading-relaxed text-gray-600">
+              <pre className="whitespace-pre-wrap break-words font-mono text-[12px]">
+                {step.outputPreview ?? ""}
+              </pre>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </StepShell>
   );
 }

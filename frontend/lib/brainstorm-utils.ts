@@ -1,5 +1,9 @@
 import { isMcpToolName, toolDisplayName } from "@/lib/tool-labels";
-import type { EdgeFadeState, WebResultItem } from "@/types/brainstorm";
+import type {
+  BrainstormStep,
+  EdgeFadeState,
+  WebResultItem,
+} from "@/types/brainstorm";
 
 export const INTERNAL_SCROLL_THRESHOLD = 72;
 export const INTERNAL_LOCK_THRESHOLD = 8;
@@ -70,6 +74,66 @@ export function toolFailureLabel(
 ): string {
   const name = toolDisplayName(toolName, mcpRemoteName);
   return `${name} 失败(>﹏<)`;
+}
+
+/** 主动终止 / 超时兜底导致的终态：与「失败」区分（不引导重试，仅告知中断） */
+export function toolAbortedLabel(
+  toolName: string,
+  mcpRemoteName?: string | null
+): string {
+  const name = toolDisplayName(toolName, mcpRemoteName);
+  return `${name} 已终止`;
+}
+
+/** trace 头部：流式中实时反映当前活跃 step 的语义 */
+export function streamingTraceHeadline(steps: BrainstormStep[]): string {
+  for (let i = steps.length - 1; i >= 0; i--) {
+    const step = steps[i];
+    if (step.type === "tool" && step.status === "running") {
+      return runningToolLabel(step.toolName, step.mcpRemoteName);
+    }
+  }
+  for (let i = steps.length - 1; i >= 0; i--) {
+    const step = steps[i];
+    if (step.type === "thinking" && step.durationSec == null) {
+      return "思考中...";
+    }
+  }
+  return "处理中...";
+}
+
+/** trace 头部：流结束后按内容自动汇总（Claude 风格） */
+export function summarizeTraceHeadline(
+  steps: BrainstormStep[],
+  durationSec?: number,
+): string {
+  const tools = steps.filter(
+    (s): s is Extract<BrainstormStep, { type: "tool" }> => s.type === "tool",
+  );
+  const thinkings = steps.filter((s) => s.type === "thinking");
+  const dur =
+    durationSec != null ? ` · ${formatDurationSec(durationSec)}` : "";
+
+  if (steps.length === 0) return `完成${dur}`;
+
+  if (tools.length === 0) {
+    if (thinkings.length > 0) return `思考过程${dur}`;
+    return `完成${dur}`;
+  }
+
+  if (tools.length === 1) {
+    const t = tools[0];
+    const name = toolDisplayName(t.toolName, t.mcpRemoteName);
+    return `调用了 ${name}${dur}`;
+  }
+
+  const distinctNames = new Set(
+    tools.map((t) => toolDisplayName(t.toolName, t.mcpRemoteName)),
+  );
+  if (distinctNames.size === 1) {
+    return `调用了 ${[...distinctNames][0]} ${tools.length} 次${dur}`;
+  }
+  return `用了 ${tools.length} 个工具${dur}`;
 }
 
 export function parseWebResults(raw?: string): WebResultItem[] {

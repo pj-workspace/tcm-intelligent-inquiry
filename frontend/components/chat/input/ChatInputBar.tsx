@@ -413,7 +413,7 @@ export function ChatInputBar({
   return (
     <motion.div
       transition={springTransition}
-      className="absolute bottom-0 left-0 right-0 z-10 flex flex-col items-center bg-gradient-to-t from-[#fdfdfc] from-45% via-[#fdfdfc]/96 to-transparent px-4 pb-5 pt-4 md:px-8"
+      className="absolute bottom-0 left-0 right-0 z-10 flex flex-col items-center bg-gradient-to-t from-[#fdfdfc] from-45% via-[#fdfdfc]/96 to-transparent px-4 pb-5 pt-6 md:px-8"
     >
       <div className="relative w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl">
         {/* 首屏五大快捷卡片：仅在输入区「无图且无字」且无上传中时展示 */}

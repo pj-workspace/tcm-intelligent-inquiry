@@ -53,6 +53,12 @@ def dynamic_prompt_suffix(
     effective_web_search: bool,
     web_search_mode: Literal["auto", "force"],
 ) -> str:
+    """运行时 prompt 后缀；deep_think 触发推理输出，web_search 控制联网检索。
+
+    注意：「工具间不输出过渡话术」的约束已固化在 RAW_DEFAULT_SYSTEM_PROMPT
+    与 RAW_CHAT_ONLY_SYSTEM_PROMPT 中，**不在此处叠加**——这样默认缓存图
+    仍能命中（suffix 在普通对话下仍为空）。
+    """
     parts: list[str] = []
     if effective_deep_think:
         parts.append(DEEP_THINK_SUFFIX)

@@ -6,7 +6,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 
 import type { BrainstormPanelProps } from "@/types/brainstorm";
-import { formatDurationSec, runningToolLabel } from "@/lib/brainstorm-utils";
+import {
+  streamingTraceHeadline,
+  summarizeTraceHeadline,
+} from "@/lib/brainstorm-utils";
 import { useBrainstormScroll } from "@/hooks/useBrainstormScroll";
 import { BrainstormStepItem } from "./BrainstormStepItem";
 
@@ -28,26 +31,15 @@ export function BrainstormPanel({
     setToolIoExpanded((prev) => ({ ...prev, [stepId]: !prev[stepId] }));
   }, []);
 
-  const traceHeadline = (() => {
-    if (!isStreaming) {
-      return durationSec != null
-        ? `头脑风暴结束 · ${formatDurationSec(durationSec)}`
-        : "头脑风暴结束";
-    }
-    for (let i = steps.length - 1; i >= 0; i--) {
-      const step = steps[i];
-      if (step.type === "tool" && step.status === "running") {
-        return runningToolLabel(step.toolName, step.mcpRemoteName);
-      }
-    }
-    return "头脑风暴中...";
-  })();
+  const traceHeadline = isStreaming
+    ? streamingTraceHeadline(steps)
+    : summarizeTraceHeadline(steps, durationSec);
 
   return (
     <div
       className={clsx(
         "flex w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl justify-start px-4 sm:px-5 md:mx-auto md:px-6 lg:px-8",
-        compactTopAfterAssistant ? "pt-0 pb-2" : "pt-1.5 pb-2",
+        compactTopAfterAssistant ? "pt-0 pb-4" : "pt-1.5 pb-4",
       )}
     >
       <div className="w-full max-w-full">
@@ -99,19 +91,21 @@ export function BrainstormPanel({
                   ref={scrollRef}
                   onScroll={onScroll}
                   onWheel={onWheel}
-                  className="brainstorm-scroll-area no-scrollbar max-h-[min(28rem,58vh)] overflow-y-auto px-4 pb-4 pr-3 [scrollbar-width:none] [-ms-overflow-style:none]"
+                  className="brainstorm-scroll-area no-scrollbar max-h-[min(28rem,58vh)] overflow-y-auto px-4 pb-1 pr-3 [scrollbar-width:none] [-ms-overflow-style:none]"
                 >
-                  <div className="relative flex flex-col pl-5">
-                    {/* 时间轴竖线 */}
+                  <div className="relative flex flex-col">
+                    {/* 时间轴竖线：穿过图标节点中心（pl-7 中 1.1rem 图标的中点 ≈ 0.55rem） */}
                     <span
                       aria-hidden
-                      className="pointer-events-none absolute left-[0.55rem] top-1 bottom-1 w-px rounded-full bg-gradient-to-b from-[#f1ebe1] via-[#e6ddd0] to-[#f3ede5] opacity-60"
+                      className="pointer-events-none absolute left-[0.53rem] top-3 bottom-3 w-px rounded-full bg-gradient-to-b from-[#e6ddd0] via-[#d8cdb9] to-[#e6ddd0] opacity-70"
                     />
                     {steps.map((step, idx) => (
                       <BrainstormStepItem
                         key={step.id}
                         step={step}
                         isFirst={idx === 0}
+                        isLast={idx === steps.length - 1}
+                        isStreaming={isStreaming}
                         expanded={!!toolIoExpanded[step.id]}
                         onToggle={() => toggleToolIo(step.id)}
                       />

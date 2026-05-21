@@ -120,6 +120,33 @@ export function useChatStream(deps: UseChatStreamDeps) {
     );
   }, []);
 
+  /** 用户中止 / SSE 错误后，将 trace 内仍在 running 的工具收口为「已终止」状态。 */
+  const markRunningToolsAborted = useCallback(
+    (traceId: string | null, reason: "aborted" | "error" = "aborted") => {
+      if (!traceId) return;
+      const label = reason === "aborted" ? "已终止" : "已中断";
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (m.type !== "trace" || m.id !== traceId) return m;
+          return {
+            ...m,
+            steps: m.steps.map((step) =>
+              step.type === "tool" && step.status === "running"
+                ? {
+                    ...step,
+                    status: "error" as const,
+                    aborted: true,
+                    outputPreview: step.outputPreview ?? label,
+                  }
+                : step,
+            ),
+          };
+        }),
+      );
+    },
+    [],
+  );
+
   // ── SSE streaming ──────────────────────────────────────────────────────────
   const runChatStream = useCallback(
     async (
@@ -161,6 +188,7 @@ export function useChatStream(deps: UseChatStreamDeps) {
       let hasAssistantMsg = false;
       let streamEndedWithSSEError = false;
       let streamEndedWithWidget = false;
+      /** 当前 assistant 气泡的累积文本（用于追问 follow-ups 与导出） */
       let assistantReplyAccum = "";
 
       try {
@@ -207,82 +235,77 @@ export function useChatStream(deps: UseChatStreamDeps) {
         let buffer = "";
         if (!reader) return;
 
-        const ensureFreshTraceBeforeToolOrThink = (prev: Message[], base: string | null) => {
-          if (!base) {
-            currentTraceId = `trace-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-            traceStartedAt.current[currentTraceId] = Date.now();
-            return currentTraceId;
-          }
-          const rw = prev.find(
-            (m): m is TraceMessage => m.type === "trace" && m.id === base
-          );
-          if (hasAssistantMsg && rw?.status === "done") {
-            currentTraceId = `trace-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-            traceStartedAt.current[currentTraceId] = Date.now();
-            return currentTraceId;
-          }
-          currentTraceId = base;
-          return base;
+        /**
+         * 多 trace 多 bubble 杂乱样式：每"段"工具/思考使用一个 trace；
+         * text-delta 来时会 finalize 当前 trace（保持展开），让下一次 tool-call
+         * 在 ensureCurrentTraceId 里再新建一个 trace。
+         */
+        const ensureCurrentTraceId = (): string => {
+          if (currentTraceId) return currentTraceId;
+          const nid = `trace-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+          currentTraceId = nid;
+          traceStartedAt.current[nid] = Date.now();
+          return nid;
         };
 
-        const continuationAssistantBubble = (): ChatMessage => ({
-          id: `${Date.now().toString()}-msg-${Math.random().toString(36).slice(2, 9)}`,
-          role: "assistant",
-          type: "message",
-          content: "",
-          modelName: pendingChatModelRef.current,
-        });
-
-        /** 按 SSE 时间在「已到手的正文 ↔ 占位接续气泡」之间插入新头脑风暴块 */
-        const insertNewStreamingTrace = (
-          prev: Message[],
-          traceMsg: TraceMessage,
+        /** 将 step 追加到 trace；若 trace 尚不存在则在 base 末尾新建 trace 包含该 step。 */
+        const upsertTraceWithStep = (
+          base: Message[],
+          traceIdResolved: string,
+          step: import("@/types/brainstorm").BrainstormStep,
         ): Message[] => {
-          if (!hasAssistantMsg) return [...prev, traceMsg];
-
-          const emptyPhIdx = prev.findLastIndex(
-            (m): m is ChatMessage =>
-              m.type === "message" &&
-              m.role === "assistant" &&
-              m.id === currentAssistantMsgId &&
-              !(m.content || "").trim(),
+          const exists = base.some(
+            (m): m is TraceMessage =>
+              m.type === "trace" && m.id === traceIdResolved,
           );
-          let lastTraceBeforePlaceholder = -1;
-          if (emptyPhIdx !== -1) {
-            for (let i = 0; i < emptyPhIdx; i++) {
-              if (prev[i].type === "trace") lastTraceBeforePlaceholder = i;
+          if (!exists) {
+            return [
+              ...base,
+              {
+                id: traceIdResolved,
+                type: "trace",
+                steps: [step],
+                status: "streaming",
+                totalDurationSec: undefined,
+                collapsed: false,
+              } satisfies TraceMessage,
+            ];
+          }
+          return base.map((m) =>
+            m.type === "trace" && m.id === traceIdResolved
+              ? { ...m, status: "streaming", steps: [...m.steps, step] }
+              : m,
+          );
+        };
+
+        /**
+         * text-delta 到达：若有进行中的 trace，将其 finalize 为 done（保持展开），
+         * 重置 currentTraceId/openThinkingStepId；**仅在真的关掉了 trace/thinking 时**
+         * 分配新的 continuation 气泡 id，让后续 text-delta 写入新气泡——多段正文与
+         * 多段 trace 交替的"杂乱"布局靠这一步形成。
+         *
+         * 若调用时 currentTraceId 已经是 null（即连续多个 text-delta），
+         * 则不分配新 bubble id，保证同一段正文持续追加到同一个气泡内。
+         */
+        const sealCurrentTraceBeforeText = () => {
+          const sealing = openThinkingStepId !== null || currentTraceId !== null;
+          if (openThinkingStepId) {
+            finalizeThinkingStep(currentTraceId, openThinkingStepId);
+            openThinkingStepId = null;
+          }
+          if (currentTraceId) {
+            // collapsed=false：保持展开，用户能看到工具列表
+            finalizeTrace(currentTraceId, false);
+            currentTraceId = null;
+          }
+          if (sealing) {
+            if (hasAssistantMsg) {
+              currentAssistantMsgId = `${Date.now()}-msg-${Math.random().toString(36).slice(2, 9)}`;
+              hasAssistantMsg = false;
+              assistantReplyAccum = "";
             }
+            autoFollowMainRef.current = true;
           }
-          if (
-            emptyPhIdx !== -1 &&
-            lastTraceBeforePlaceholder !== -1 &&
-            lastTraceBeforePlaceholder < emptyPhIdx
-          ) {
-            return [
-              ...prev.slice(0, lastTraceBeforePlaceholder + 1),
-              traceMsg,
-              ...prev.slice(lastTraceBeforePlaceholder + 1),
-            ];
-          }
-
-          const nonemptyAsIdx = prev.findLastIndex(
-            (m): m is ChatMessage =>
-              m.type === "message" &&
-              m.role === "assistant" &&
-              !!(m.content || "").trim(),
-          );
-          if (nonemptyAsIdx !== -1) {
-            const cont = continuationAssistantBubble();
-            currentAssistantMsgId = cont.id;
-            return [
-              ...prev.slice(0, nonemptyAsIdx + 1),
-              traceMsg,
-              cont,
-              ...prev.slice(nonemptyAsIdx + 1),
-            ];
-          }
-
-          return [...prev, traceMsg];
         };
 
         while (true) {
@@ -336,69 +359,51 @@ export function useChatStream(deps: UseChatStreamDeps) {
                 const piece =
                   typeof data.textDelta === "string" ? data.textDelta : "";
                 if (openThinkingStepId === null) {
+                  const traceIdResolved = ensureCurrentTraceId();
                   const nid = `think-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
                   openThinkingStepId = nid;
                   thinkingStepStartedAt.current[nid] = Date.now();
                   setGenState("thinking");
-                  setMessages((prev) => {
-                    const traceIdResolved = ensureFreshTraceBeforeToolOrThink(prev, currentTraceId);
-                    const trace = prev.find(
-                      (msg): msg is TraceMessage =>
-                        msg.type === "trace" && msg.id === traceIdResolved
-                    );
-                    if (!trace) {
-                      return insertNewStreamingTrace(prev, {
-                        id: traceIdResolved,
-                        type: "trace",
-                        steps: [{ id: nid, type: "thinking", content: piece }],
-                        status: "streaming",
-                        totalDurationSec: undefined,
-                        collapsed: false,
-                      });
-                    }
-                    return prev.map((msg) =>
-                      msg.type === "trace" && msg.id === traceIdResolved
-                        ? {
-                            ...msg,
-                            status: "streaming",
-                            steps: [...msg.steps, { id: nid, type: "thinking", content: piece }],
-                          }
-                        : msg
-                    );
-                  });
+                  setMessages((prev) =>
+                    upsertTraceWithStep(prev, traceIdResolved, {
+                      id: nid,
+                      type: "thinking",
+                      content: piece,
+                    }),
+                  );
                 } else {
                   setGenState("thinking");
                   const tid = openThinkingStepId;
-                  setMessages((prev) => {
-                    const traceIdResolved = ensureFreshTraceBeforeToolOrThink(prev, currentTraceId);
-                    return prev.map((msg) =>
+                  const traceIdResolved = ensureCurrentTraceId();
+                  setMessages((prev) =>
+                    prev.map((msg) =>
                       msg.type === "trace" && msg.id === traceIdResolved
                         ? {
                             ...msg,
                             steps: msg.steps.map((step) =>
                               step.type === "thinking" && step.id === tid
                                 ? { ...step, content: step.content + piece }
-                                : step
+                                : step,
                             ),
                           }
-                        : msg
-                    );
-                  });
+                        : msg,
+                    ),
+                  );
                 }
               } else if (data.type === "tool-call") {
                 const stepSnap = openThinkingStepId;
                 openThinkingStepId = null;
+                const traceIdResolved = ensureCurrentTraceId();
                 const runKey =
                   sseStr(data.runId) ||
                   `run-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
                 const rowId = `tool-${runKey}`;
                 setGenState("tool");
                 setMessages((prev) => {
-                  const traceIdResolved = ensureFreshTraceBeforeToolOrThink(prev, currentTraceId);
                   let base = prev;
                   if (stepSnap) {
                     base = applyFinalizeThinkingStepToMessages(
-                      prev,
+                      base,
                       traceIdResolved,
                       stepSnap,
                       thinkingStepStartedAt.current,
@@ -408,29 +413,14 @@ export function useChatStream(deps: UseChatStreamDeps) {
                     id: rowId,
                     type: "tool",
                     toolName: sseStr(data.name) || "tool",
-                    mcpRemoteName: sseStr((data as { mcpRemoteName?: unknown }).mcpRemoteName) || undefined,
+                    mcpRemoteName:
+                      sseStr((data as { mcpRemoteName?: unknown }).mcpRemoteName) ||
+                      undefined,
                     status: "running",
                     runId: sseStr(data.runId) || runKey,
                     inputPreview: toolIoToPreview((data as { input?: unknown }).input),
                   };
-                  const trace = base.find(
-                    (msg): msg is TraceMessage => msg.type === "trace" && msg.id === traceIdResolved
-                  );
-                  if (!trace) {
-                    return insertNewStreamingTrace(base, {
-                      id: traceIdResolved,
-                      type: "trace",
-                      steps: [toolStep],
-                      status: "streaming",
-                      totalDurationSec: undefined,
-                      collapsed: false,
-                    });
-                  }
-                  return base.map((msg) =>
-                    msg.type === "trace" && msg.id === traceIdResolved
-                      ? { ...msg, status: "streaming", steps: [...msg.steps, toolStep] }
-                      : msg
-                  );
+                  return upsertTraceWithStep(base, traceIdResolved, toolStep);
                 });
               } else if (data.type === "tool-result") {
                 openThinkingStepId = null;
@@ -472,20 +462,18 @@ export function useChatStream(deps: UseChatStreamDeps) {
                   })
                 );
               } else if (data.type === "text-delta") {
-                finalizeThinkingStep(currentTraceId, openThinkingStepId);
-                openThinkingStepId = null;
-                if (currentTraceId) {
-                  finalizeTrace(currentTraceId, true);
-                  currentTraceId = null;
-                  // 从头脑风暴切到正文时布局剧变，避免 scrollTop 钳位被误判为上滑而停止跟滚
-                  autoFollowMainRef.current = true;
-                }
+                // 统一策略：text-delta 永远写入顶层 assistant 气泡。
+                // 若当前还有未 finalize 的 trace，先 sealCurrentTraceBeforeText 将其
+                // 结案（保持展开 collapsed=false）并分配新的 continuation 气泡 id。
+                // 这样 think / 非 think 模式都不会出现"先在 trace 内增长再蹦出"的现象，
+                // 也不会出现"先出现在正文又被收回 trace"的反向闪烁。
+                sealCurrentTraceBeforeText();
                 const piece =
                   typeof data.textDelta === "string" ? data.textDelta : "";
-                assistantReplyAccum += piece;
+                setGenState("typing");
                 if (!hasAssistantMsg) {
                   hasAssistantMsg = true;
-                  setGenState("typing");
+                  assistantReplyAccum = piece;
                   setMessages((prev) => [
                     ...prev,
                     {
@@ -497,13 +485,13 @@ export function useChatStream(deps: UseChatStreamDeps) {
                     },
                   ]);
                 } else {
-                  setGenState("typing");
+                  assistantReplyAccum += piece;
                   setMessages((prev) =>
                     prev.map((msg) =>
                       msg.type === "message" && msg.id === currentAssistantMsgId
                         ? { ...msg, content: (msg.content || "") + piece }
-                        : msg
-                    )
+                        : msg,
+                    ),
                   );
                 }
               } else if (data.type === "widget") {
@@ -573,6 +561,7 @@ export function useChatStream(deps: UseChatStreamDeps) {
                 finalizeThinkingStep(currentTraceId, openThinkingStepId);
                 openThinkingStepId = null;
                 if (currentTraceId) {
+                  markRunningToolsAborted(currentTraceId, "error");
                   finalizeTrace(currentTraceId, false);
                   currentTraceId = null;
                 }
@@ -614,6 +603,7 @@ export function useChatStream(deps: UseChatStreamDeps) {
         }
 
         finalizeThinkingStep(currentTraceId, openThinkingStepId);
+        // 流正常结束：保持 trace 展开（杂乱样式），用户能看到工具调用列表
         if (currentTraceId) finalizeTrace(currentTraceId, false);
 
         if (
@@ -653,7 +643,10 @@ export function useChatStream(deps: UseChatStreamDeps) {
         if (!isLikelyUserAbort(error, abortController.signal)) {
           console.error("Chat error:", error);
           finalizeThinkingStep(currentTraceId, openThinkingStepId);
-          if (currentTraceId) finalizeTrace(currentTraceId, false);
+          if (currentTraceId) {
+            markRunningToolsAborted(currentTraceId, "error");
+            finalizeTrace(currentTraceId, false);
+          }
           thinkingStepStartedAt.current = {};
           traceStartedAt.current = {};
           setMessages((prev) => [
@@ -670,7 +663,10 @@ export function useChatStream(deps: UseChatStreamDeps) {
       } finally {
         if (abortController.signal.aborted) {
           finalizeThinkingStep(currentTraceId, openThinkingStepId);
-          if (currentTraceId) finalizeTrace(currentTraceId, false);
+          if (currentTraceId) {
+            markRunningToolsAborted(currentTraceId, "aborted");
+            finalizeTrace(currentTraceId, false);
+          }
           setMessages((prev) => {
             const lastAi = [...prev]
               .reverse()
@@ -724,6 +720,7 @@ export function useChatStream(deps: UseChatStreamDeps) {
       autoFollowMainRef,
       finalizeThinkingStep,
       finalizeTrace,
+      markRunningToolsAborted,
       refreshServerConversations,
       getPreferredGroupForNewConversation,
       resetFollowUpSuggestions,

@@ -29,18 +29,68 @@ export function sumThinkingDurations(steps: BrainstormStep[]): number | undefine
   return total > 0 ? total : undefined;
 }
 
-export function groupMessagesIntoTraces(items: FlatMessage[]): Message[] {
+/** 解析 ISO 时间字符串为毫秒；失败返回 null */
+function parseIsoMs(iso?: string | null): number | null {
+  if (!iso) return null;
+  const t = Date.parse(iso);
+  return Number.isFinite(t) ? t : null;
+}
+
+/** 用 step 数组首末 createdAt 计算 trace 总时长（秒）；失败时回退 sumThinkingDurations。 */
+function computeTraceDuration(
+  steps: BrainstormStep[],
+  endIsoCandidate?: string,
+): number | undefined {
+  let firstMs: number | null = null;
+  let lastMs: number | null = null;
+  for (const s of steps) {
+    const t = parseIsoMs(s.createdAt);
+    if (t == null) continue;
+    if (firstMs == null) firstMs = t;
+    lastMs = t;
+  }
+  const endMs = parseIsoMs(endIsoCandidate);
+  if (endMs != null && (lastMs == null || endMs > lastMs)) lastMs = endMs;
+  if (firstMs != null && lastMs != null && lastMs >= firstMs) {
+    const sec = (lastMs - firstMs) / 1000;
+    if (sec > 0) return sec;
+  }
+  return sumThinkingDurations(steps);
+}
+
+/**
+ * 历史聚合（杂乱多 trace 多 bubble 样式）：
+ *   - 连续的 thinking / tool 项合并为一个 trace
+ *   - 遇到 assistant 时 flush trace（collapsed=false 保持展开，与流式结束行为一致）
+ *   - 遇到 user / widget 时 flush trace
+ * trace.totalDurationSec 用 step 首末 createdAt 计算（流式时已经在 finalizeTrace 里算过）。
+ *
+ * @param options.showTrace 默认 true；传 false 时彻底丢弃 thinking/tool 数据（保留向后兼容）
+ */
+export function groupMessagesIntoTraces(
+  items: FlatMessage[],
+  options: { showTrace?: boolean } = {},
+): Message[] {
+  const showTrace = options.showTrace !== false;
+  if (!showTrace) {
+    return items
+      .filter(
+        (m): m is Exclude<FlatMessage, { type: "thinking" } | { type: "tool" }> =>
+          m.type === "message" || m.type === "widget",
+      )
+      .map((m) => m as Message);
+  }
   const grouped: Message[] = [];
   let pendingSteps: BrainstormStep[] = [];
 
-  const flushPendingSteps = (collapsed: boolean) => {
+  const flushTrace = (collapsed: boolean, endIsoCandidate?: string) => {
     if (!pendingSteps.length) return;
     grouped.push({
       id: `trace-${pendingSteps[0].id}`,
       type: "trace",
       steps: pendingSteps,
       status: "done",
-      totalDurationSec: sumThinkingDurations(pendingSteps),
+      totalDurationSec: computeTraceDuration(pendingSteps, endIsoCandidate),
       collapsed,
     } satisfies TraceMessage);
     pendingSteps = [];
@@ -48,23 +98,24 @@ export function groupMessagesIntoTraces(items: FlatMessage[]): Message[] {
 
   for (const item of items) {
     if (item.type === "message") {
-      if (pendingSteps.length > 0) {
-        flushPendingSteps(item.role === "assistant");
-      }
+      // assistant / user 都终止当前 trace；assistant 后保持 trace 展开（与流式 sealCurrentTrace 一致）
+      const endIso = item.createdAt;
+      flushTrace(false, endIso);
       grouped.push(item);
       continue;
     }
     if (item.type === "widget") {
-      if (pendingSteps.length > 0) {
-        flushPendingSteps(true);
-      }
+      flushTrace(false);
       grouped.push(item);
       continue;
     }
-    pendingSteps.push(item);
+    if (item.type === "thinking" || item.type === "tool") {
+      pendingSteps.push(item);
+    }
   }
 
-  flushPendingSteps(true);
+  // 末尾残留：保持展开（折叠由用户手动操作）
+  flushTrace(false);
 
   // 历史加载：根据 widget 后紧跟的第一条用户消息推断答案状态，并将该用户消息从列表中移除
   // （widget 紧凑状态已展示答案，无需再显示用户气泡，与实时流体验保持一致）
@@ -141,6 +192,10 @@ export function parseUserMessageContent(raw: string): {
 }
 
 export function mapApiRowToMessage(msg: ApiMessageRow): FlatMessage {
+  const createdAt =
+    typeof msg.created_at === "string" && msg.created_at
+      ? msg.created_at
+      : undefined;
   if (msg.role === "thinking") {
     return {
       id: msg.id,
@@ -150,6 +205,7 @@ export function mapApiRowToMessage(msg: ApiMessageRow): FlatMessage {
         msg.duration_sec != null && msg.duration_sec >= 0
           ? msg.duration_sec
           : undefined,
+      createdAt,
     };
   }
   if (msg.role === "tool") {
@@ -159,6 +215,7 @@ export function mapApiRowToMessage(msg: ApiMessageRow): FlatMessage {
         mcpRemoteName?: string;
         runId?: string;
         status?: string;
+        aborted?: boolean;
         outputPreview?: string;
         input?: unknown;
       };
@@ -172,12 +229,14 @@ export function mapApiRowToMessage(msg: ApiMessageRow): FlatMessage {
             ? payload.mcpRemoteName
             : undefined,
         status: payload.status === "error" ? "error" : "success",
+        ...(payload.aborted === true ? { aborted: true } : {}),
         runId: typeof payload.runId === "string" ? payload.runId : undefined,
         inputPreview: toolIoToPreview(payload.input),
         outputPreview:
           typeof payload.outputPreview === "string" && payload.outputPreview
             ? payload.outputPreview
             : undefined,
+        createdAt,
       } satisfies ToolStep;
     } catch {
       return {
@@ -185,6 +244,7 @@ export function mapApiRowToMessage(msg: ApiMessageRow): FlatMessage {
         type: "tool",
         toolName: "tool",
         status: "success",
+        createdAt,
       } satisfies ToolStep;
     }
   }
@@ -223,6 +283,7 @@ export function mapApiRowToMessage(msg: ApiMessageRow): FlatMessage {
       type: "message",
       content: displayText,
       ...(imageUrls?.length ? { imageUrls } : {}),
+      ...(createdAt ? { createdAt } : {}),
     };
   }
 
@@ -239,13 +300,14 @@ export function mapApiRowToMessage(msg: ApiMessageRow): FlatMessage {
       const items = fus.filter((x): x is string => typeof x === "string" && x.trim().length > 0);
       return items.length > 0 ? { followUpSuggestions: items } : {};
     })(),
+    ...(createdAt ? { createdAt } : {}),
   };
 }
 
 /* ── 会话导出（Markdown）────────────────────────────────────────────────── */
 
 function traceStepsToMarkdown(steps: BrainstormStep[]): string {
-  const lines: string[] = ["## 头脑风暴"];
+  const lines: string[] = ["## 过程"];
   for (const step of steps) {
     if (step.type === "thinking") {
       const d =
@@ -257,24 +319,24 @@ function traceStepsToMarkdown(steps: BrainstormStep[]): string {
             }s`
           : null;
       lines.push("", `### 思考${d != null ? `（${d}）` : ""}`, "", step.content);
-    } else {
-      const st =
-        step.status === "running"
-          ? "进行中"
-          : step.status === "error"
-            ? "失败"
-            : "完成";
-      lines.push(
-        "",
-        `### 工具 · ${toolActionLabel(step.toolName, step.mcpRemoteName)}`,
-        "",
-        `- **状态**：${st}`
-      );
-      if (step.inputPreview?.trim())
-        lines.push("", "**参数**", "", "```", step.inputPreview.trim(), "```");
-      if (step.outputPreview?.trim())
-        lines.push("", "**结果摘要**", "", step.outputPreview.trim());
+      continue;
     }
+    const st =
+      step.status === "running"
+        ? "进行中"
+        : step.status === "error"
+          ? "失败"
+          : "完成";
+    lines.push(
+      "",
+      `### 工具 · ${toolActionLabel(step.toolName, step.mcpRemoteName)}`,
+      "",
+      `- **状态**：${st}`,
+    );
+    if (step.inputPreview?.trim())
+      lines.push("", "**参数**", "", "```", step.inputPreview.trim(), "```");
+    if (step.outputPreview?.trim())
+      lines.push("", "**结果摘要**", "", step.outputPreview.trim());
   }
   return lines.join("\n");
 }

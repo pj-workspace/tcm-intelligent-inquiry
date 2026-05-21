@@ -4,6 +4,8 @@ export type BrainstormStep =
       type: "thinking";
       content: string;
       durationSec?: number;
+      /** 后端 created_at ISO；用于历史聚合时还原 trace 总时长 */
+      createdAt?: string;
     }
   | {
       id: string;
@@ -13,10 +15,13 @@ export type BrainstormStep =
       mcpRemoteName?: string;
       runId?: string;
       status: "running" | "success" | "error";
+      /** true 表示终态由用户主动终止 / 超时收尾产生，区别于业务失败；UI 用「已终止」标签 */
+      aborted?: boolean;
       /** 工具入参摘要（SSE tool-call 或历史消息） */
       inputPreview?: string;
       /** 工具返回摘要（SSE tool-result 或历史消息） */
       outputPreview?: string;
+      createdAt?: string;
     };
 
 export interface BrainstormPanelProps {
