@@ -6,7 +6,7 @@ import hashlib
 from collections import OrderedDict
 
 from langgraph.graph.state import CompiledStateGraph
-from langgraph.prebuilt import create_react_agent
+from app.agent.react_graph import build_react_agent_graph
 
 from app.agent.prompts import (
     CHAT_ONLY_SYSTEM_PROMPT,
@@ -124,7 +124,7 @@ def get_default_graph() -> CompiledStateGraph:
         primary_tc,
         [t.name for t in tools],
     )
-    graph = create_react_agent(llm, tools, prompt=prompt)
+    graph = build_react_agent_graph(llm, tools, prompt=prompt)
     _default_graph_by_fp[fp] = graph
     while len(_default_graph_by_fp) > _MAX_DEFAULT_GRAPHS:
         _default_graph_by_fp.pop(next(iter(_default_graph_by_fp)))

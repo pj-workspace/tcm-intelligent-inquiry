@@ -4,6 +4,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from app.mcp.schema_tools import McpToolDef
+
 
 @pytest.mark.integration
 def test_mcp_register_list_delete_roundtrip(client, auth_headers):
@@ -11,7 +13,7 @@ def test_mcp_register_list_delete_roundtrip(client, auth_headers):
     with patch(
         "app.mcp.services.mcp_service.discover_tools_http",
         new_callable=AsyncMock,
-        return_value=["tool_a"],
+        return_value=[McpToolDef(name="tool_a")],
     ):
         r = client.post(
             "/api/mcp",
@@ -47,7 +49,7 @@ def test_mcp_private_url_rejected(client, auth_headers):
     with patch(
         "app.mcp.services.mcp_service.discover_tools_http",
         new_callable=AsyncMock,
-        return_value=["tool_a"],
+        return_value=[McpToolDef(name="tool_a")],
     ):
         r = client.post(
             "/api/mcp",
@@ -68,7 +70,7 @@ def test_mcp_stdio_register(client, auth_headers):
     with patch(
         "app.mcp.services.mcp_service.discover_tools_stdio",
         new_callable=AsyncMock,
-        return_value=["search_papers"],
+        return_value=[McpToolDef(name="search_papers")],
     ):
         r = client.post(
             "/api/mcp",
@@ -99,11 +101,11 @@ def test_mcp_import_cursor_config(client, auth_headers):
     with patch(
         "app.mcp.services.mcp_service.discover_tools_stdio",
         new_callable=AsyncMock,
-        return_value=["tool_x"],
+        return_value=[McpToolDef(name="tool_x")],
     ), patch(
         "app.mcp.services.mcp_service.discover_tools_http",
         new_callable=AsyncMock,
-        return_value=["tool_y"],
+        return_value=[McpToolDef(name="tool_y")],
     ):
         r = client.post(
             "/api/mcp/import",

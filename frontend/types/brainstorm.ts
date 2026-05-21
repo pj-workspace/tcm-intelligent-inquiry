@@ -9,6 +9,8 @@ export type BrainstormStep =
       id: string;
       type: "tool";
       toolName: string;
+      /** MCP 远端工具原名（SSE / 历史消息提供，优先于解析 LangChain 内部名） */
+      mcpRemoteName?: string;
       runId?: string;
       status: "running" | "success" | "error";
       /** 工具入参摘要（SSE tool-call 或历史消息） */

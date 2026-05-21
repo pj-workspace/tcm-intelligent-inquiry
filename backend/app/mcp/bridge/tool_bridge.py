@@ -6,11 +6,16 @@ import re
 from typing import Any
 
 from langchain_core.tools import StructuredTool
-from pydantic import BaseModel, Field
 
 from app.core.logging import get_logger
 from app.mcp.client.http import call_tool as call_tool_http
 from app.mcp.client.stdio import call_tool_stdio
+from app.mcp.schema_tools import (
+    McpToolDef,
+    build_mcp_args_schema,
+    normalize_mcp_tool_arguments,
+    sanitize_mcp_call_arguments,
+)
 
 logger = get_logger(__name__)
 
@@ -26,6 +31,21 @@ def get_mcp_tool_metadata(lc_name: str) -> dict[str, str] | None:
     """LangChain 工具名 → MCP 服务展示名 / 远端工具名 / transport。"""
     meta = _mcp_tool_meta.get(lc_name)
     return dict(meta) if meta else None
+
+
+def mcp_tool_sse_metadata(lc_name: str) -> dict[str, str]:
+    """供 SSE / 历史消息附带 MCP 远端工具名，避免前端解析 LangChain 内部名。"""
+    meta = get_mcp_tool_metadata(lc_name)
+    if not meta:
+        return {}
+    out: dict[str, str] = {}
+    remote = (meta.get("remote_tool_name") or "").strip()
+    if remote:
+        out["mcpRemoteName"] = remote
+    server = (meta.get("server_display_name") or "").strip()
+    if server:
+        out["mcpServer"] = server
+    return out
 
 
 def _sanitize_segment(name: str, max_len: int = 40) -> str:
@@ -48,13 +68,6 @@ def _unique_lc_name(base: str, taken: set[str]) -> str:
     return name
 
 
-class McpProxyArgs(BaseModel):
-    arguments: dict[str, Any] = Field(
-        default_factory=dict,
-        description="传给 MCP 工具的参数字典；无参数时传空对象 {}。",
-    )
-
-
 def _build_structured_tool(
     *,
     lc_name: str,
@@ -63,6 +76,7 @@ def _build_structured_tool(
     transport: str,
     server_url: str | None,
     remote_tool_name: str,
+    input_schema: dict[str, Any] | None = None,
     server_headers: dict[str, str] | None = None,
     stdio_config: dict[str, Any] | None = None,
 ) -> StructuredTool:
@@ -79,26 +93,40 @@ def _build_structured_tool(
         )
     _headers = dict(server_headers) if server_headers else None
     _stdio = dict(stdio_config) if stdio_config else None
+    _schema = input_schema
+    args_schema = build_mcp_args_schema(remote_tool_name, input_schema)
+    if isinstance(input_schema, dict):
+        req = input_schema.get("required")
+        if isinstance(req, list) and req:
+            desc += (
+                f" 必填：{', '.join(str(x) for x in req)}。"
+                "可选字符串参数勿传 null，不需要则省略该字段。"
+            )
 
-    async def _acall(arguments: dict[str, Any] | None = None) -> str:
-        args = dict(arguments or {})
-        if transport == "stdio":
-            if not _stdio:
-                return "MCP stdio 配置缺失"
-            return await call_tool_stdio(server_id, _stdio, remote_tool_name, args)
-        if not server_url:
-            return "MCP HTTP url 缺失"
-        return await call_tool_http(server_url, remote_tool_name, args, headers=_headers)
-
-    def _sync_stub(arguments: dict[str, Any] | None = None) -> str:
-        raise RuntimeError("MCP 工具仅支持异步调用")
+    async def _acall(**kwargs: Any) -> str:
+        try:
+            args = sanitize_mcp_call_arguments(
+                normalize_mcp_tool_arguments(kwargs),
+                _schema,
+            )
+            if transport == "stdio":
+                if not _stdio:
+                    return "MCP stdio 配置缺失"
+                return await call_tool_stdio(server_id, _stdio, remote_tool_name, args)
+            if not server_url:
+                return "MCP HTTP url 缺失"
+            return await call_tool_http(
+                server_url, remote_tool_name, args, headers=_headers
+            )
+        except Exception as exc:
+            logger.warning("MCP 工具执行异常 name=%s: %s", lc_name, exc)
+            return f"MCP 工具执行失败: {exc!s}"
 
     return StructuredTool.from_function(
         name=lc_name,
         description=desc,
-        func=_sync_stub,
         coroutine=_acall,
-        args_schema=McpProxyArgs,
+        args_schema=args_schema,
     )
 
 
@@ -110,6 +138,7 @@ def register_mcp_tools_for_server(
     remote_tool_names: list[str],
     headers: dict[str, str] | None = None,
     stdio_config: dict[str, Any] | None = None,
+    remote_tool_defs: list[McpToolDef] | None = None,
 ) -> list[str]:
     from app.agent.tools.registry import tool_registry
 
@@ -119,11 +148,15 @@ def register_mcp_tools_for_server(
     _mcp_server_url[server_id] = (server_url or "").rstrip("/")
     _mcp_stdio_config[server_id] = dict(stdio_config) if stdio_config else {}
 
+    schema_by_name = {
+        d.name: d.input_schema for d in (remote_tool_defs or []) if d.name
+    }
     taken = set(tool_registry.names())
     registered: list[str] = []
     for remote in remote_tool_names:
         if not (remote or "").strip():
             continue
+        remote = remote.strip()
         base = make_lc_tool_name(server_id, remote)
         lc_name = _unique_lc_name(base, taken)
         taken.add(lc_name)
@@ -133,7 +166,8 @@ def register_mcp_tools_for_server(
             server_display_name=server_display_name,
             transport=transport,
             server_url=_mcp_server_url.get(server_id) or None,
-            remote_tool_name=remote.strip(),
+            remote_tool_name=remote,
+            input_schema=schema_by_name.get(remote),
             server_headers=headers,
             stdio_config=stdio_config,
         )

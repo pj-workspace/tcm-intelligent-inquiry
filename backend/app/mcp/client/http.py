@@ -16,6 +16,7 @@ from mcp.client.streamable_http import streamable_http_client
 
 from app.core.logging import get_logger
 from app.mcp.policy.url_policy import assert_mcp_url_allowed
+from app.mcp.schema_tools import McpToolDef
 
 logger = get_logger(__name__)
 
@@ -85,8 +86,8 @@ async def _open_mcp_session(
     ) from last_exc
 
 
-async def _list_tool_names(session: ClientSession) -> list[str]:
-    names: list[str] = []
+async def _list_tools(session: ClientSession) -> list[McpToolDef]:
+    tools: list[McpToolDef] = []
     cursor: str | None = None
     while True:
         if cursor is None:
@@ -95,11 +96,17 @@ async def _list_tool_names(session: ClientSession) -> list[str]:
             result = await session.list_tools(
                 params=types.PaginatedRequestParams(cursor=cursor)
             )
-        names.extend(t.name for t in result.tools)
+        for t in result.tools:
+            schema = t.inputSchema if isinstance(t.inputSchema, dict) else None
+            tools.append(McpToolDef(name=t.name, input_schema=schema))
         if not result.nextCursor:
             break
         cursor = result.nextCursor
-    return names
+    return tools
+
+
+async def _list_tool_names(session: ClientSession) -> list[str]:
+    return [t.name for t in await _list_tools(session)]
 
 
 def _format_call_tool_result(result: types.CallToolResult) -> str:
@@ -122,24 +129,22 @@ def _format_call_tool_result(result: types.CallToolResult) -> str:
 async def discover_tools(
     server_url: str,
     headers: dict[str, str] | None = None,
-) -> list[str]:
-    """连接 MCP 服务并返回 tools/list 中的工具名。总超时 = 2×_TRANSPORT_TIMEOUT + 5s。"""
+) -> list[McpToolDef]:
+    """连接 MCP 服务并返回 tools/list（含 inputSchema）。总超时 = 2×_TRANSPORT_TIMEOUT + 5s。"""
     assert_mcp_url_allowed(server_url)
     total_timeout = _TRANSPORT_TIMEOUT * 2 + 5
 
-    async def _attempt() -> list[str]:
+    async def _attempt() -> list[McpToolDef]:
         async with _open_mcp_session(server_url, headers=headers) as session:
-            return await _list_tool_names(session)
+            return await _list_tools(session)
 
     try:
         return await asyncio.wait_for(_attempt(), timeout=total_timeout)
     except asyncio.TimeoutError:
         logger.warning("MCP discover_tools 超时(%ds) url=%s", total_timeout, server_url)
-        # 已等待整段超时，不再做 HTTP 降级探测，避免再卡十余秒并刷屏
         return []
     except Exception as exc:
         logger.warning("MCP discover_tools 失败 url=%s: %s", server_url, exc)
-    # 退化：仅 HTTP 探测，避免把普通站点误标为可用工具（超时路径不上此处）
     if await probe_server_reachable(server_url, headers=headers):
         logger.info("MCP 协议握手失败但 HTTP 可达: %s", server_url)
     return []

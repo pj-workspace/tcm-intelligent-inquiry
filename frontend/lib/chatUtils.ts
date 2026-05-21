@@ -156,6 +156,7 @@ export function mapApiRowToMessage(msg: ApiMessageRow): FlatMessage {
     try {
       const payload = JSON.parse(msg.content) as {
         name?: string;
+        mcpRemoteName?: string;
         runId?: string;
         status?: string;
         outputPreview?: string;
@@ -166,6 +167,10 @@ export function mapApiRowToMessage(msg: ApiMessageRow): FlatMessage {
         type: "tool",
         toolName:
           typeof payload.name === "string" && payload.name ? payload.name : "tool",
+        mcpRemoteName:
+          typeof payload.mcpRemoteName === "string" && payload.mcpRemoteName
+            ? payload.mcpRemoteName
+            : undefined,
         status: payload.status === "error" ? "error" : "success",
         runId: typeof payload.runId === "string" ? payload.runId : undefined,
         inputPreview: toolIoToPreview(payload.input),
@@ -259,7 +264,12 @@ function traceStepsToMarkdown(steps: BrainstormStep[]): string {
           : step.status === "error"
             ? "失败"
             : "完成";
-      lines.push("", `### 工具 · ${toolActionLabel(step.toolName)}`, "", `- **状态**：${st}`);
+      lines.push(
+        "",
+        `### 工具 · ${toolActionLabel(step.toolName, step.mcpRemoteName)}`,
+        "",
+        `- **状态**：${st}`
+      );
       if (step.inputPreview?.trim())
         lines.push("", "**参数**", "", "```", step.inputPreview.trim(), "```");
       if (step.outputPreview?.trim())

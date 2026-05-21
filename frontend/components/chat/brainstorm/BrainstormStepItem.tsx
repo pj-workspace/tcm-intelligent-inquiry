@@ -7,6 +7,7 @@ import type { BrainstormStep } from "@/types/brainstorm";
 import {
   runningToolLabel,
   toolFailureLabel,
+  toolSuccessLabel,
   parseWebResults,
   parseSummaryBlocks,
 } from "@/lib/brainstorm-utils";
@@ -55,14 +56,16 @@ export function BrainstormStepItem({
 
   const toolLine =
     step.status === "running"
-      ? runningToolLabel(step.toolName)
+      ? runningToolLabel(step.toolName, step.mcpRemoteName)
       : failed
-      ? toolFailureLabel(step.toolName)
-      : step.toolName === "searx_web_search"
-      ? `找到了 ${webResults.length} 篇相关资料`
-      : step.toolName === "formula_lookup"
-      ? `找到了 ${summaries.length > 0 ? summaries.length : 1} 处方剂`
-      : `知识库检索成功`;
+      ? toolFailureLabel(step.toolName, step.mcpRemoteName)
+      : toolSuccessLabel(
+          step.toolName,
+          step.outputPreview,
+          webResults,
+          summaries,
+          step.mcpRemoteName
+        );
 
   const lineClass = clsx(
     "relative flex w-fit max-w-full items-center gap-1.5 rounded-md px-1 py-0.5 text-left text-[13px] transition-colors",
@@ -96,13 +99,13 @@ export function BrainstormStepItem({
           type="button"
           className={lineClass}
           aria-expanded={expanded}
-          title={step.toolName}
+          title={step.mcpRemoteName ?? step.toolName}
           onClick={onToggle}
         >
           {lineInner}
         </button>
       ) : (
-        <div className={lineClass} title={step.toolName}>
+        <div className={lineClass} title={step.mcpRemoteName ?? step.toolName}>
           {lineInner}
         </div>
       )}

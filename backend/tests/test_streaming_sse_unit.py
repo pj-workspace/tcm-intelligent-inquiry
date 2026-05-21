@@ -8,6 +8,7 @@ from app.chat.services.streaming.sse import (
     json_safe_for_sse,
     sse,
     sse_done,
+    tool_output_indicates_error,
     truncate,
 )
 
@@ -82,7 +83,29 @@ def test_known_sse_types_roundtrip(payload: dict):
     assert parsed["type"] == payload["type"]
 
 
+def test_tool_output_indicates_error():
+    assert tool_output_indicates_error("工具执行报错: Input validation error")
+    assert tool_output_indicates_error("MCP 调用失败：无法完成协议握手")
+    assert not tool_output_indicates_error('{"paper_id": "1"}')
+    assert not tool_output_indicates_error("")
+
+
 def test_stream_chat_import_path():
     from app.chat.services.streaming import stream_chat
 
     assert callable(stream_chat)
+
+
+def test_sanitize_stream_error_message_empty():
+    from app.chat.services.streaming.stream_errors import sanitize_stream_error_message
+
+    assert sanitize_stream_error_message("") == "回复生成失败，请稍后重试。"
+    assert sanitize_stream_error_message("  ") == "回复生成失败，请稍后重试。"
+
+
+def test_assistant_error_content_for_storage_matches_frontend():
+    from app.chat.services.streaming.stream_errors import (
+        assistant_error_content_for_storage,
+    )
+
+    assert assistant_error_content_for_storage("internal boom") == "**Error:** internal boom"

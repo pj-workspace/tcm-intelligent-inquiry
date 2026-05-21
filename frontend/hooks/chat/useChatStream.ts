@@ -56,6 +56,8 @@ export type UseChatStreamDeps = {
   ) => void;
   refreshServerConversations: () => Promise<ServerConversation[] | null | void>;
   refreshConversationBillingTotals: (cid: string | null) => Promise<void>;
+  /** SSE 流式 error 后从服务端重载消息，与入库的错误助手气泡对齐 */
+  reloadConversationMessages: (conversationId: string) => Promise<void>;
 };
 
 export function useChatStream(deps: UseChatStreamDeps) {
@@ -87,6 +89,7 @@ export function useChatStream(deps: UseChatStreamDeps) {
     enqueueFollowUpsRequest,
     refreshServerConversations,
     refreshConversationBillingTotals,
+    reloadConversationMessages,
   } = deps;
 
   const finalizeThinkingStep = useCallback((traceId: string | null, stepId: string | null) => {
@@ -405,6 +408,7 @@ export function useChatStream(deps: UseChatStreamDeps) {
                     id: rowId,
                     type: "tool",
                     toolName: sseStr(data.name) || "tool",
+                    mcpRemoteName: sseStr((data as { mcpRemoteName?: unknown }).mcpRemoteName) || undefined,
                     status: "running",
                     runId: sseStr(data.runId) || runKey,
                     inputPreview: toolIoToPreview((data as { input?: unknown }).input),
@@ -628,6 +632,19 @@ export function useChatStream(deps: UseChatStreamDeps) {
         }
 
         await refreshServerConversations();
+        const cidAfterError = conversationIdRef.current;
+        if (
+          !abortController.signal.aborted &&
+          streamEndedWithSSEError &&
+          cidAfterError &&
+          token
+        ) {
+          try {
+            await reloadConversationMessages(cidAfterError);
+          } catch (e) {
+            console.error("Reload messages after stream error failed:", e);
+          }
+        }
         if (!abortController.signal.aborted) {
           setGenState("idle");
         }
@@ -712,6 +729,7 @@ export function useChatStream(deps: UseChatStreamDeps) {
       resetFollowUpSuggestions,
       enqueueFollowUpsRequest,
       refreshConversationBillingTotals,
+      reloadConversationMessages,
       router,
       chatAgentId,
     ]

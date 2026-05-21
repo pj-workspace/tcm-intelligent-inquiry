@@ -44,6 +44,21 @@ def json_safe_for_sse(obj: Any, max_str: int = TOOL_IO_MAX, depth: int = 0) -> A
     return truncate(str(obj), max_str)
 
 
+def tool_output_indicates_error(text: str) -> bool:
+    """MCP / 内置工具以字符串返回失败时，供 SSE 标记 status=error。"""
+    s = (text or "").strip()
+    if not s:
+        return False
+    prefixes = (
+        "工具执行报错",
+        "MCP 工具执行失败",
+        "MCP 调用失败",
+        "MCP stdio 配置缺失",
+        "MCP HTTP url 缺失",
+    )
+    return any(s.startswith(p) for p in prefixes)
+
+
 def serialize_tool_output(out: Any) -> str:
     """工具结束时的 output 预览（供前端展示，非全量日志）。"""
     if out is None:

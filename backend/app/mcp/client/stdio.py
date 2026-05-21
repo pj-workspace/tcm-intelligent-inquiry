@@ -12,6 +12,7 @@ from app.core.logging import get_logger
 from app.mcp.client.http import _format_call_tool_result
 from app.mcp.client.stdio_pool import stdio_pool
 from app.mcp.policy.stdio_policy import normalize_stdio_config
+from app.mcp.schema_tools import McpToolDef
 
 logger = get_logger(__name__)
 
@@ -19,8 +20,8 @@ _DISCOVER_TIMEOUT = 60
 _CALL_TIMEOUT = 120
 
 
-async def _list_tool_names(session: ClientSession) -> list[str]:
-    names: list[str] = []
+async def _list_tools(session: ClientSession) -> list[McpToolDef]:
+    tools: list[McpToolDef] = []
     cursor: str | None = None
     while True:
         if cursor is None:
@@ -29,25 +30,31 @@ async def _list_tool_names(session: ClientSession) -> list[str]:
             result = await session.list_tools(
                 params=types.PaginatedRequestParams(cursor=cursor)
             )
-        names.extend(t.name for t in result.tools)
+        for t in result.tools:
+            schema = t.inputSchema if isinstance(t.inputSchema, dict) else None
+            tools.append(McpToolDef(name=t.name, input_schema=schema))
         if not result.nextCursor:
             break
         cursor = result.nextCursor
-    return names
+    return tools
+
+
+async def _list_tool_names(session: ClientSession) -> list[str]:
+    return [t.name for t in await _list_tools(session)]
 
 
 async def discover_tools_stdio(
     stdio_config: dict[str, Any],
     *,
     server_id: str | None = None,
-) -> list[str]:
-    """连接 stdio MCP 并返回 tools/list 工具名。"""
+) -> list[McpToolDef]:
+    """连接 stdio MCP 并返回 tools/list（含 inputSchema）。"""
     config = normalize_stdio_config(stdio_config)
     sid = server_id or "__discover__"
 
-    async def _attempt() -> list[str]:
-        async def _fn(session: ClientSession) -> list[str]:
-            return await _list_tool_names(session)
+    async def _attempt() -> list[McpToolDef]:
+        async def _fn(session: ClientSession) -> list[McpToolDef]:
+            return await _list_tools(session)
 
         return await stdio_pool.run(sid, config, _fn)
 

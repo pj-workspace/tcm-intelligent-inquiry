@@ -567,6 +567,16 @@ export function useChat(opts: {
   }, [token]);
 
   // ── Thinking / trace finalization ──────────────────────────────────────────
+  const reloadConversationMessages = useCallback(
+    async (convId: string) => {
+      if (!token) return;
+      const id = convId.trim();
+      if (!id) return;
+      await loadMessagesWithToken(id, token);
+    },
+    [token, loadMessagesWithToken]
+  );
+
   const { runChatStream } = useChatStream({
     token,
     conversationId,
@@ -595,6 +605,7 @@ export function useChat(opts: {
     enqueueFollowUpsRequest,
     refreshServerConversations,
     refreshConversationBillingTotals,
+    reloadConversationMessages,
   });
 
 

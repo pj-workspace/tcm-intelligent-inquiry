@@ -1,4 +1,4 @@
-import { displayToolNameZh } from "@/lib/tool-labels";
+import { isMcpToolName, toolDisplayName } from "@/lib/tool-labels";
 import type { EdgeFadeState, WebResultItem } from "@/types/brainstorm";
 
 export const INTERNAL_SCROLL_THRESHOLD = 72;
@@ -20,21 +20,56 @@ export function getEdgeFadeState(el: HTMLDivElement | null): EdgeFadeState {
   };
 }
 
-export function toolActionLabel(toolName: string): string {
-  if (toolName === "searx_web_search") return "联网搜索";
-  if (toolName === "search_tcm_knowledge") return "检索知识库";
-  if (toolName === "formula_lookup") return "查询方剂";
-  if (toolName === "recommend_formulas") return "推荐方剂";
-  return displayToolNameZh(toolName);
+export function toolActionLabel(
+  toolName: string,
+  mcpRemoteName?: string | null
+): string {
+  return toolDisplayName(toolName, mcpRemoteName);
 }
 
-export function runningToolLabel(toolName: string): string {
-  const action = toolActionLabel(toolName);
-  return action.startsWith("正在") ? `${action}...` : `正在${action}...`;
+export function toolSuccessLabel(
+  toolName: string,
+  outputPreview?: string,
+  webResults?: WebResultItem[],
+  summaries?: string[],
+  mcpRemoteName?: string | null
+): string {
+  if (toolName === "searx_web_search") {
+    const n = webResults?.length ?? parseWebResults(outputPreview).length;
+    return n > 0 ? `找到了 ${n} 篇相关资料` : "联网搜索完成";
+  }
+  if (toolName === "formula_lookup") {
+    const n = summaries?.length ?? parseSummaryBlocks(outputPreview).length;
+    return `找到了 ${n > 0 ? n : 1} 个方剂`;
+  }
+  if (toolName === "search_tcm_knowledge") {
+    return "知识库检索成功";
+  }
+  const name = toolDisplayName(toolName, mcpRemoteName);
+  if (isMcpToolName(toolName) || mcpRemoteName) {
+    return `${name} 完成`;
+  }
+  return `${name} 完成`;
 }
 
-export function toolFailureLabel(toolName: string): string {
-  return `${toolActionLabel(toolName)}失败(>﹏<)`;
+export function runningToolLabel(
+  toolName: string,
+  mcpRemoteName?: string | null
+): string {
+  const name = toolDisplayName(toolName, mcpRemoteName);
+  if (isMcpToolName(toolName) || mcpRemoteName) {
+    return `正在调用 ${name}...`;
+  }
+  if (name.startsWith("正在")) return `${name}...`;
+  return `正在${name}...`;
+}
+
+export function toolFailureLabel(
+  toolName: string,
+  mcpRemoteName?: string | null
+): string {
+  const name = toolDisplayName(toolName, mcpRemoteName);
+  return `${name} 失败(>﹏<)`;
 }
 
 export function parseWebResults(raw?: string): WebResultItem[] {

@@ -12,6 +12,7 @@ from langchain_core.messages import ToolMessage
 from sqlalchemy import delete, select
 
 from app.agent.executor import build_agent_graph_for_chat_request
+from app.mcp.bridge.tool_bridge import mcp_tool_sse_metadata
 from app.chat.images.vl_sanitize import (
     collect_unique_image_urls_from_messages,
     ensure_urls_probed,
@@ -39,7 +40,12 @@ from app.chat.services.streaming.sse import (
     serialize_tool_output,
     sse,
     sse_done,
+    tool_output_indicates_error,
     truncate,
+)
+from app.chat.services.streaming.stream_errors import (
+    persist_stream_failure_assistant,
+    sanitize_stream_error_message,
 )
 from app.chat.services.streaming.title import generate_title_async, meta_chat_model_label
 from app.core.ai_chat_trace import (
@@ -133,6 +139,8 @@ async def stream_chat(
     chat_trace = False
     trace_visible_parts: list[str] = []
     trace_thinking_parts: list[str] = []
+    flush_thinking_fn = None
+    flush_assistant_fn = None
 
     try:
         yield sse({"type": "notice", "safetyNotice": STREAM_SAFETY_NOTICE})
@@ -344,7 +352,14 @@ async def stream_chat(
                 )
                 await session.commit()
 
-        async for event in graph.astream_events({"messages": lc_messages}, version="v2"):
+        flush_thinking_fn = flush_thinking_segment
+        flush_assistant_fn = flush_assistant_segment
+
+        async for event in graph.astream_events(
+            {"messages": lc_messages},
+            version="v2",
+            config={"recursion_limit": 40},
+        ):
             if title_task and not title_yielded and title_task.done():
                 title_yielded = True
                 try:
@@ -471,6 +486,7 @@ async def stream_chat(
                     "type": "tool-call",
                     "name": name,
                 }
+                payload.update(mcp_tool_sse_metadata(name))
                 if run_id is not None:
                     payload["runId"] = run_id
                 if raw_in is not None:
@@ -516,6 +532,8 @@ async def stream_chat(
                 tool_status: str = "success"
                 if isinstance(out, ToolMessage):
                     tool_status = out.status or "success"
+                if _raw_out_str and tool_output_indicates_error(_raw_out_str):
+                    tool_status = "error"
                 run_key = str(run_id) if run_id is not None else None
                 start_meta: dict[str, Any] | None = None
                 if run_key is not None and run_key in tool_pending_by_run:
@@ -574,6 +592,7 @@ async def stream_chat(
                     _break_after_widget = True
 
                 rec: dict[str, Any] = {"name": tr_name, "outputPreview": preview}
+                rec.update(mcp_tool_sse_metadata(tr_name))
                 if tr_input is not None:
                     rec["input"] = tr_input
                 if run_key:
@@ -639,22 +658,27 @@ async def stream_chat(
                     "conversationId": conv_id,
                 }
             )
+        safe_err = sanitize_stream_error_message(str(exc))
         if conv_id:
+            if flush_thinking_fn is not None:
+                try:
+                    await flush_thinking_fn()
+                except Exception:
+                    logger.exception("流式失败时 flush thinking 失败")
+            if flush_assistant_fn is not None:
+                try:
+                    await flush_assistant_fn()
+                except Exception:
+                    logger.exception("流式失败时 flush assistant 失败")
             try:
-                async with async_session_factory() as session:
-                    session.add(
-                        MessageRecord(
-                            id=str(uuid.uuid4()),
-                            conversation_id=conv_id,
-                            role="assistant",
-                            content="（回复生成中断，请稍后重试。）",
-                            model_name=meta_chat_model_label(resolved),
-                        )
-                    )
-                    await session.commit()
+                await persist_stream_failure_assistant(
+                    conv_id,
+                    error_message=safe_err,
+                    model_label=meta_chat_model_label(resolved),
+                )
             except Exception:
-                logger.exception("写入中断占位消息失败")
-        yield sse({"type": "error", "message": str(exc)})
+                logger.exception("写入流式错误助手消息失败")
+        yield sse({"type": "error", "message": safe_err})
         yield sse_done()
     finally:
         if kb_ctx_token is not None:

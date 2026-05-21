@@ -37,7 +37,7 @@ export function BrainstormPanel({
     for (let i = steps.length - 1; i >= 0; i--) {
       const step = steps[i];
       if (step.type === "tool" && step.status === "running") {
-        return runningToolLabel(step.toolName);
+        return runningToolLabel(step.toolName, step.mcpRemoteName);
       }
     }
     return "头脑风暴中...";

@@ -10,7 +10,7 @@ import {
   Star,
   Trash2,
 } from "lucide-react";
-import { displayToolNameZh } from "@/lib/tool-labels";
+import { toolDisplayName } from "@/lib/tool-labels";
 import type { Agent, KnowledgeBaseLite } from "@/types/agent";
 import type { BuiltinToolInfo } from "@/types/tool";
 
@@ -96,8 +96,9 @@ export function AgentCard({
                       ? "bg-violet-400"
                       : "bg-gray-400";
                     const label =
+                      info?.mcp_remote_name ??
                       info?.label ??
-                      (isMcp ? t.replace(/^mcp_[^_]+_/, "") : displayToolNameZh(t));
+                      toolDisplayName(t);
                     return (
                       <span
                         key={t}

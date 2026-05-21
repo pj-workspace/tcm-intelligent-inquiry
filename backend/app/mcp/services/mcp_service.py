@@ -18,6 +18,7 @@ from app.mcp.client.stdio_pool import stdio_pool
 from app.mcp.models import McpServerRecord
 from app.mcp.policy.stdio_policy import normalize_stdio_config, parse_cursor_mcp_entry
 from app.mcp.policy.url_policy import assert_mcp_url_allowed
+from app.mcp.schema_tools import McpToolDef
 from app.mcp.schemas import (
     McpImportRequest,
     McpImportResponse,
@@ -103,33 +104,34 @@ def _to_response(row: McpServerRecord) -> McpServerResponse:
     )
 
 
-async def _discover_for_row(row: McpServerRecord) -> tuple[list[str], str | None]:
+async def _discover_for_row(row: McpServerRecord) -> tuple[list[McpToolDef], str | None]:
     transport = (row.transport or "http").strip() or "http"
     probe_error: str | None = None
-    tool_names: list[str] = []
+    tool_defs: list[McpToolDef] = []
     try:
         if transport == "stdio":
             cfg = _row_stdio(row)
             if not cfg:
                 raise ValidationError("stdio 配置无效或缺失")
-            tool_names = await discover_tools_stdio(cfg, server_id=row.id)
+            tool_defs = await discover_tools_stdio(cfg, server_id=row.id)
         else:
             if not row.url:
                 raise ValidationError("HTTP MCP 缺少 url")
             safe_url = assert_mcp_url_allowed(row.url)
             row.url = safe_url
             hdrs = _row_headers(row) or None
-            tool_names = await discover_tools_http(safe_url, headers=hdrs)
-        if not tool_names:
+            tool_defs = await discover_tools_http(safe_url, headers=hdrs)
+        if not tool_defs:
             probe_error = "协议握手成功但未发现任何工具"
     except Exception as exc:
-        tool_names = []
+        tool_defs = []
         probe_error = str(exc)[:500]
-    return tool_names, probe_error
+    return tool_defs, probe_error
 
 
-def _register_langchain(row: McpServerRecord, tool_names: list[str]) -> None:
+def _register_langchain(row: McpServerRecord, tool_defs: list[McpToolDef]) -> None:
     transport = (row.transport or "http").strip() or "http"
+    tool_names = [d.name for d in tool_defs]
     if not row.enabled or not tool_names:
         register_mcp_tools_for_server(
             row.id,
@@ -149,6 +151,7 @@ def _register_langchain(row: McpServerRecord, tool_names: list[str]) -> None:
         tool_names,
         headers=_row_headers(row) or None,
         stdio_config=_row_stdio(row),
+        remote_tool_defs=tool_defs,
     )
 
 
@@ -195,20 +198,20 @@ class McpService:
         self._session.add(row)
         await self._session.flush()
 
-        tool_names, probe_error = await _discover_for_row(row)
-        row.tool_names = tool_names
+        tool_defs, probe_error = await _discover_for_row(row)
+        row.tool_names = [d.name for d in tool_defs]
         row.last_probe_at = datetime.now(timezone.utc)
         row.last_probe_error = probe_error
 
-        if req.enabled and tool_names:
-            _register_langchain(row, tool_names)
+        if req.enabled and tool_defs:
+            _register_langchain(row, tool_defs)
 
         logger.info(
             "注册 MCP 服务 id=%s name=%s transport=%s tools=%s",
             server_id,
             req.name,
             transport,
-            tool_names,
+            row.tool_names,
         )
         return _to_response(row)
 
@@ -244,13 +247,13 @@ class McpService:
         row = await self._session.get(McpServerRecord, server_id)
         if row is None:
             raise NotFoundError(f"MCP 服务 '{server_id}' 不存在")
-        tool_names, probe_error = await _discover_for_row(row)
-        row.tool_names = tool_names
+        tool_defs, probe_error = await _discover_for_row(row)
+        row.tool_names = [d.name for d in tool_defs]
         row.last_probe_at = datetime.now(timezone.utc)
         row.last_probe_error = probe_error
         await self._session.flush()
-        _register_langchain(row, tool_names if row.enabled else [])
-        logger.info("刷新 MCP 工具 id=%s tools=%s", server_id, tool_names)
+        _register_langchain(row, tool_defs if row.enabled else [])
+        logger.info("刷新 MCP 工具 id=%s tools=%s", server_id, row.tool_names)
         return _to_response(row)
 
 
@@ -266,12 +269,12 @@ async def probe_enabled_mcp_servers(session: AsyncSession) -> None:
     async def _probe_row(row: McpServerRecord) -> None:
         async with sem:
             try:
-                tool_names, probe_error = await _discover_for_row(row)
-                row.tool_names = tool_names
+                tool_defs, probe_error = await _discover_for_row(row)
+                row.tool_names = [d.name for d in tool_defs]
                 row.last_probe_at = now
                 row.last_probe_error = probe_error
-                _register_langchain(row, tool_names)
-                logger.info("MCP 周期探测 id=%s tools=%s", row.id, tool_names)
+                _register_langchain(row, tool_defs)
+                logger.info("MCP 周期探测 id=%s tools=%s", row.id, row.tool_names)
             except Exception as exc:
                 row.last_probe_at = now
                 row.last_probe_error = str(exc)[:2000]
@@ -286,18 +289,16 @@ async def restore_mcp_tool_registrations(session: AsyncSession) -> None:
     for row in rows:
         if not row.enabled:
             continue
-        tool_names = row.tool_names if isinstance(row.tool_names, list) else []
-        if not tool_names:
-            tool_names, _ = await _discover_for_row(row)
-            row.tool_names = tool_names
-            if not tool_names:
-                logger.warning("启动时未能为 MCP id=%s 发现工具，跳过挂载", row.id)
-                continue
-        _register_langchain(row, tool_names)
+        tool_defs, _ = await _discover_for_row(row)
+        row.tool_names = [d.name for d in tool_defs]
+        if not tool_defs:
+            logger.warning("启动时未能为 MCP id=%s 发现工具，跳过挂载", row.id)
+            continue
+        _register_langchain(row, tool_defs)
         logger.info(
             "启动恢复 MCP 工具 id=%s name=%s transport=%s tools=%s",
             row.id,
             row.name,
             row.transport,
-            len(tool_names),
+            len(tool_defs),
         )

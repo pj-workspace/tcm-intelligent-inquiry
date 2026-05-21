@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Literal
 
 from langgraph.graph.state import CompiledStateGraph
-from langgraph.prebuilt import create_react_agent
+from app.agent.react_graph import build_react_agent_graph
 
 from app.agent.graph_cache import (
     get_default_graph,
@@ -85,7 +85,7 @@ async def build_agent_graph(agent_id: str | None) -> CompiledStateGraph:
                 row.name,
                 [t.name for t in tools],
             )
-            graph = create_react_agent(llm, tools, prompt=prompt)
+            graph = build_react_agent_graph(llm, tools, prompt=prompt)
         else:
             tools = []
             prompt = CHAT_ONLY_SYSTEM_PROMPT
@@ -94,7 +94,7 @@ async def build_agent_graph(agent_id: str | None) -> CompiledStateGraph:
                 row.id,
                 row.name,
             )
-            graph = create_react_agent(llm, tools, prompt=prompt)
+            graph = build_react_agent_graph(llm, tools, prompt=prompt)
 
         set_named_agent_graph(agent_id, graph)
         return graph
@@ -142,7 +142,7 @@ async def _build_ephemeral_agent_graph(
                 effective_web_search,
                 [t.name for t in tools],
             )
-        return create_react_agent(llm, tools, prompt=prompt)
+        return build_react_agent_graph(llm, tools, prompt=prompt)
 
     from app.agent.models import AgentRecord
 
@@ -171,7 +171,7 @@ async def _build_ephemeral_agent_graph(
                 chat_model_override=mid,
                 llm_provider=llm_provider,
             )
-            return create_react_agent(llm, tools, prompt=prompt)
+            return build_react_agent_graph(llm, tools, prompt=prompt)
 
         if not effective_tool_calling:
             tools = []
@@ -188,7 +188,7 @@ async def _build_ephemeral_agent_graph(
                 row.name,
                 effective_deep_think,
             )
-            return create_react_agent(llm, tools, prompt=prompt)
+            return build_react_agent_graph(llm, tools, prompt=prompt)
 
         ensure_tools_loaded()
         names = row.tool_names or []
@@ -222,7 +222,7 @@ async def _build_ephemeral_agent_graph(
             effective_web_search,
             mid,
         )
-        return create_react_agent(llm, tools, prompt=prompt)
+        return build_react_agent_graph(llm, tools, prompt=prompt)
 
 
 async def build_agent_graph_for_chat_request(
