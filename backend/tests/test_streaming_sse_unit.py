@@ -30,6 +30,24 @@ SSE_EVENT_TYPES = frozenset(
 )
 
 
+# 持久化 role 集合：与前端 mapApiRowToMessage 识别集对齐
+PERSISTED_ROLES = frozenset(
+    {
+        "user",
+        "assistant",
+        "thinking",
+        "tool",
+        "widget",
+        "summary-mark",
+    }
+)
+
+
+def test_summary_mark_role_in_persisted_set():
+    """summary-mark 是持久化 role 的一员；前后端解析都依赖它。"""
+    assert "summary-mark" in PERSISTED_ROLES
+
+
 def test_sse_frame_format():
     line = sse({"type": "meta", "conversationId": "c1"})
     assert line.startswith("data: ")

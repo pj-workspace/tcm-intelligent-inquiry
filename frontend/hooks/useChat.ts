@@ -61,6 +61,8 @@ export function useChat(opts: {
   chatPathname?: string;
   /** `handleNewChat` 清空会话后导航到空白工作台 */
   onNavigateToNewChatSurface?: () => void;
+  /** 用户消息追加到 messages 后回调（带 userMsgId）：上层据此把气泡滚到 viewport 顶部 */
+  onUserMessageAppended?: (userMsgId: string) => void;
 }) {
   const {
     autoFollowMainRef,
@@ -68,6 +70,7 @@ export function useChat(opts: {
     getPreferredGroupForNewConversation,
     chatPathname = "",
     onNavigateToNewChatSurface,
+    onUserMessageAppended,
   } = opts;
   const router = useRouter();
   const { token, loading: authLoading } = useAuth();
@@ -403,12 +406,19 @@ export function useChat(opts: {
     return null;
   }, [messages]);
 
-  /** 输入区用量提示：生成中用 SSE「本轮」；空闲时优先本轮残留，否则用库内「本会话」累计 */
+  /** 输入区用量提示：
+   *  - 生成中且已收到本轮 SSE token → 显示「本轮」
+   *  - 生成中但本轮 token 尚未到达（首字延迟期间）→ 回落到「本会话」累计，避免 chip 闪没
+   *  - 空闲时同样优先本轮残留，否则用库内「本会话」累计
+   */
   const inputBarUsageHint = useMemo(() => {
     const round = roundTokensUsage && roundTokensUsage.total > 0 ? roundTokensUsage : null;
     const streaming = genState !== "idle";
     if (streaming) {
-      return round ? { usage: round, variant: "round" as const } : null;
+      if (round) return { usage: round, variant: "round" as const };
+      const db = conversationUsageFromDb;
+      if (db && db.total > 0) return { usage: db, variant: "conversation" as const };
+      return null;
     }
     if (round) return { usage: round, variant: "round" as const };
     const db = conversationUsageFromDb;
@@ -609,6 +619,7 @@ export function useChat(opts: {
     refreshServerConversations,
     refreshConversationBillingTotals,
     reloadConversationMessages,
+    onUserMessageAppended,
   });
 
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { preprocessAssistantMarkdown } from "@/lib/markdown-utils";
@@ -126,19 +127,71 @@ interface ThinkingMarkdownProps {
   active?: boolean;
 }
 
+/** 软截断阈值（px）：~6 行 × 1.4rem × 16px ≈ 134px，留点余量到 144。
+ *  对中文 / markdown 混排比 line-clamp 稳定（line-clamp 对中文换行表现差）。 */
+const SOFT_MAX_HEIGHT_PX = 144;
+/** 内容溢出判断的容差，避免恰好等高时也显示 Show more 按钮 */
+const SOFT_MAX_OVERFLOW_BUFFER_PX = 24;
+
 export function ThinkingMarkdown({
   content,
   active: _activeUnused = false,
 }: ThinkingMarkdownProps) {
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [needClamp, setNeedClamp] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  // 流式内容会不断追加；用 layoutEffect 在每次 paint 前重新量高度
+  useLayoutEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    // 临时去掉 maxHeight 来测真实高度
+    const prevMaxHeight = el.style.maxHeight;
+    el.style.maxHeight = "none";
+    const overflow = el.scrollHeight > SOFT_MAX_HEIGHT_PX + SOFT_MAX_OVERFLOW_BUFFER_PX;
+    el.style.maxHeight = prevMaxHeight;
+    setNeedClamp(overflow);
+  }, [content]);
+
+  // 内容缩短到不再溢出时把 expanded 状态复位（少见但稳妥）
+  useEffect(() => {
+    if (!needClamp && expanded) setExpanded(false);
+  }, [needClamp, expanded]);
+
+  const clampActive = needClamp && !expanded;
+
   return (
     <div
       // 统一 leading-[1.4rem]：与 TimelineNode top-[0.15rem] 配合让图标视觉中心
       // 与首行中心同高（图标中心 = 1.4rem × 0.5 = 0.7rem）
       className="text-[13px] leading-[1.4rem] text-gray-500"
     >
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={thinkingComponents}>
-        {preprocessAssistantMarkdown(content)}
-      </ReactMarkdown>
+      <div
+        ref={contentRef}
+        style={{
+          maxHeight: clampActive ? SOFT_MAX_HEIGHT_PX : undefined,
+          overflow: clampActive ? "hidden" : undefined,
+          WebkitMaskImage: clampActive
+            ? "linear-gradient(to bottom, #000 70%, transparent)"
+            : undefined,
+          maskImage: clampActive
+            ? "linear-gradient(to bottom, #000 70%, transparent)"
+            : undefined,
+        }}
+      >
+        <ReactMarkdown remarkPlugins={[remarkGfm]} components={thinkingComponents}>
+          {preprocessAssistantMarkdown(content)}
+        </ReactMarkdown>
+      </div>
+      {needClamp && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="mt-1 text-[12px] text-gray-400 transition-colors hover:text-gray-600"
+        >
+          {expanded ? "Show less" : "Show more"}
+        </button>
+      )}
     </div>
   );
 }

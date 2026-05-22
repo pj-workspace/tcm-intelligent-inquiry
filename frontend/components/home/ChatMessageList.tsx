@@ -150,6 +150,7 @@ export function ChatMessageList({
           onUserEdit={
             msg.role === "user" ? onUserEdit : undefined
           }
+          messageId={msg.role === "user" ? msg.id : undefined}
         />
       </motion.div>
     );

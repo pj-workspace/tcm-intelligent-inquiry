@@ -20,12 +20,23 @@ export type ChatMessage = {
 export type ThinkingStep = Extract<BrainstormStep, { type: "thinking" }>;
 export type ToolStep = Extract<BrainstormStep, { type: "tool" }>;
 export type InterimTextStep = Extract<BrainstormStep, { type: "interim_text" }>;
+
+/** 历史里的"模型主动收口"标记；不渲染为独立消息，仅用于让前面的 trace
+ *  获得 summaryAcknowledged=true（footer 显示 ✓ 完成）。
+ *  对应后端 MessageRecord.role="summary-mark"。 */
+export type SummaryMarkMessage = {
+  id: string;
+  type: "summary-mark";
+  createdAt?: string;
+};
+
 export type FlatMessage =
   | ChatMessage
   | ThinkingStep
   | ToolStep
   | InterimTextStep
-  | WidgetMessage;
+  | WidgetMessage
+  | SummaryMarkMessage;
 
 export type TraceMessage = {
   id: string;

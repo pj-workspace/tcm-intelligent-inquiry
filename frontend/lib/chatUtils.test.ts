@@ -30,6 +30,11 @@ const toolStep = (id: string): FlatMessage => ({
   outputPreview: "ok",
 });
 
+const summaryMark = (id: string): FlatMessage => ({
+  id,
+  type: "summary-mark",
+});
+
 describe("groupMessagesIntoTraces", () => {
   it("renders no trace for plain user+assistant", () => {
     const out = groupMessagesIntoTraces([
@@ -246,8 +251,9 @@ describe("groupMessagesIntoTraces", () => {
     expect(trace.aborted).toBeUndefined();
   });
 
-  it("historical traces have no summaryAcknowledged (footer 不显示 完成)", () => {
-    // 后端目前不持久化 mark_summary 信号，刷新历史时 summaryAcknowledged 一律 undefined
+  it("historical traces without summary-mark have no summaryAcknowledged", () => {
+    // 没有 summary-mark 记录的会话历史（非 think 模式 / 模型未调用 mark_summary）
+    // → trace.summaryAcknowledged 应为 undefined，footer 不显示「完成」
     const out = groupMessagesIntoTraces([
       userMsg("u1"),
       thinkingStep("t1"),
@@ -257,6 +263,61 @@ describe("groupMessagesIntoTraces", () => {
     const trace = out[1];
     if (trace.type !== "trace") throw new Error("expected trace");
     expect(trace.summaryAcknowledged).toBeUndefined();
+  });
+
+  it("summary-mark before flush attaches to in-progress trace", () => {
+    // think 模式典型回放：thinking → tool → summary-mark → assistant 最终答
+    const out = groupMessagesIntoTraces([
+      userMsg("u1"),
+      thinkingStep("t1"),
+      toolStep("to1"),
+      summaryMark("sm1"),
+      assistantMsg("a1", "最终答案"),
+    ]);
+    expect(out.map((m) => m.type)).toEqual(["message", "trace", "message"]);
+    const trace = out[1];
+    if (trace.type !== "trace") throw new Error("expected trace");
+    expect(trace.summaryAcknowledged).toBe(true);
+  });
+
+  it("summary-mark after trace flush retroactively marks last trace", () => {
+    // 罕见 case：mark_summary 之后又有新的 thinking/tool（模型抽风），summary-mark
+    // 出现在 trace 已 flush 之后，应回写到 grouped 数组里最近一个 trace 上
+    const out = groupMessagesIntoTraces([
+      userMsg("u1"),
+      thinkingStep("t1"),
+      assistantMsg("a1", "中间过渡"),
+      summaryMark("sm1"),
+    ]);
+    expect(out.map((m) => m.type)).toEqual(["message", "trace", "message"]);
+    const trace = out[1];
+    if (trace.type !== "trace") throw new Error("expected trace");
+    expect(trace.summaryAcknowledged).toBe(true);
+  });
+
+  it("summary-mark never appears as a standalone message in grouped output", () => {
+    const out = groupMessagesIntoTraces([
+      userMsg("u1"),
+      thinkingStep("t1"),
+      summaryMark("sm1"),
+      assistantMsg("a1", "ans"),
+    ]);
+    // 不应出现 type:"summary-mark" 的顶层消息
+    expect(out.some((m) => (m as { type: string }).type === "summary-mark")).toBe(
+      false,
+    );
+  });
+
+  it("mapApiRowToMessage recognizes role=summary-mark and emits summary-mark", () => {
+    const row: ApiMessageRow = {
+      id: "sm-row-1",
+      role: "summary-mark",
+      content: "",
+      created_at: "2026-05-22T08:30:00Z",
+    };
+    const mapped = mapApiRowToMessage(row);
+    expect(mapped.type).toBe("summary-mark");
+    expect(mapped.id).toBe("sm-row-1");
   });
 
   it("normal failed tool record has no aborted flag set", () => {

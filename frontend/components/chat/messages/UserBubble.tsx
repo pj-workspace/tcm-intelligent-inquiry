@@ -11,6 +11,8 @@ interface UserBubbleProps {
   copied: boolean;
   onCopy: () => void;
   onEdit?: (text: string, imageUrls?: string[]) => void;
+  /** 消息 id；用于发送后把对应气泡滚到 viewport 顶部（HomePageClient 通过 querySelector 定位） */
+  messageId?: string;
 }
 
 /** 多图时气泡外横排缩略图格数；第 4 格叠「+N」表示其余张数 */
@@ -109,7 +111,7 @@ function UserBubbleAttachments({
   );
 }
 
-export function UserBubble({ content, imageUrls, copied, onCopy, onEdit }: UserBubbleProps) {
+export function UserBubble({ content, imageUrls, copied, onCopy, onEdit, messageId }: UserBubbleProps) {
   const hasImages = Boolean(imageUrls && imageUrls.length > 0);
   const text = content?.trim() ?? "";
   const hasText = Boolean(text);
@@ -120,6 +122,7 @@ export function UserBubble({ content, imageUrls, copied, onCopy, onEdit }: UserB
 
   return (
     <div
+      data-msg-id={messageId}
       className={clsx(
         "flex w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-auto py-4 px-4 sm:px-5 md:px-6 lg:px-8",
         "justify-end"

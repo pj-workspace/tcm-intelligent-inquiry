@@ -58,6 +58,8 @@ export type UseChatStreamDeps = {
   refreshConversationBillingTotals: (cid: string | null) => Promise<void>;
   /** SSE 流式 error 后从服务端重载消息，与入库的错误助手气泡对齐 */
   reloadConversationMessages: (conversationId: string) => Promise<void>;
+  /** 发送用户消息后回调（带新生成的 userMsgId），上层把对应气泡滚到 viewport 顶部 */
+  onUserMessageAppended?: (userMsgId: string) => void;
 };
 
 export function useChatStream(deps: UseChatStreamDeps) {
@@ -90,6 +92,7 @@ export function useChatStream(deps: UseChatStreamDeps) {
     refreshServerConversations,
     refreshConversationBillingTotals,
     reloadConversationMessages,
+    onUserMessageAppended,
   } = deps;
 
   const finalizeThinkingStep = useCallback((traceId: string | null, stepId: string | null) => {
@@ -185,6 +188,8 @@ export function useChatStream(deps: UseChatStreamDeps) {
             ...(imgs.length ? { imageUrls: imgs } : {}),
           },
         ]);
+        // 上层据此把这条用户气泡滚到 viewport 顶部，并关闭 auto-follow
+        onUserMessageAppended?.(userMsgId);
       }
 
       if (!conversationId) setIsGeneratingTitle(true);
@@ -344,7 +349,9 @@ export function useChatStream(deps: UseChatStreamDeps) {
                 steps: [step],
                 status: "streaming",
                 totalDurationSec: undefined,
-                collapsed: false,
+                // 默认折叠：发消息后用户主要关注最终答案，不需要看每一步思考；
+                // headline 仍会显示"思考中..." / "正在调用 X..."，用户可手动点开看 step。
+                collapsed: true,
               } satisfies TraceMessage,
             ];
           }
@@ -928,6 +935,7 @@ export function useChatStream(deps: UseChatStreamDeps) {
       enqueueFollowUpsRequest,
       refreshConversationBillingTotals,
       reloadConversationMessages,
+      onUserMessageAppended,
       router,
       chatAgentId,
     ]

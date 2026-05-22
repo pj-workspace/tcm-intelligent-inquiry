@@ -566,6 +566,19 @@ async def stream_chat(
                     # 信号前的 assistant 文本是真正的"过渡话术"，按 interim 入库
                     await flush_assistant_segment(interim=True)
                     in_summary_phase = True
+                    # 持久化"模型在此处主动收口"的信号；前端历史聚合用 role=summary-mark
+                    # 让对应 trace 显示 ✓ 完成 footer，刷新后仍可见。
+                    async with async_session_factory() as session:
+                        session.add(
+                            MessageRecord(
+                                id=str(uuid.uuid4()),
+                                conversation_id=conv_id,
+                                role="summary-mark",
+                                content="",
+                            )
+                        )
+                        await session.commit()
+                    logger.info("mark_summary 触发 → summary-start")
                     if chat_trace:
                         logger.info(
                             "\n%s",
@@ -819,6 +832,26 @@ async def stream_chat(
         yield sse({"type": "error", "message": safe_err})
         yield sse_done()
     finally:
+        # 客户端 abort 触发 CancelledError（不会被 try/except Exception 捕获），
+        # 会直接跳到 finally。这里 shield-flush 残余的思考缓冲与正文缓冲，
+        # 避免刷新历史时丢失 abort 当时还没写库的内容。
+        # 注意：flush_*_fn 内部各自管理自己的 buf；调用是幂等的（buf 为空时 no-op）。
+        if conv_id and flush_thinking_fn is not None:
+            try:
+                await asyncio.shield(flush_thinking_fn())
+            except asyncio.CancelledError:
+                pass
+            except Exception:
+                logger.exception("finally 中 flush thinking 失败")
+        if conv_id and flush_assistant_fn is not None:
+            try:
+                # interim=True：flush_assistant_segment 内部根据 in_summary_phase
+                # 自动选 role——summary 前为 thinking 过渡段，summary 后为 assistant 最终答
+                await asyncio.shield(flush_assistant_fn(interim=True))
+            except asyncio.CancelledError:
+                pass
+            except Exception:
+                logger.exception("finally 中 flush assistant 失败")
         # 中止/异常时仍有 pending 的工具：写一条「已终止」工具记录，
         # 避免刷新历史后该工具气泡消失。使用 shield 防止 SSE 取消打断写库。
         if conv_id and (tool_pending_by_run or tool_pending_fifo):

@@ -75,6 +75,7 @@ export function HomePageClient() {
     showScrollToBottom,
     updateScrollState,
     scrollToBottom,
+    scrollUserMsgToTop,
     resetScrollState,
   } = useScrollBehavior(hasStartedRef);
 
@@ -88,12 +89,21 @@ export function HomePageClient() {
     else router.push(chatPathFolder(sidebarFilter));
   }, [router, sidebarFilter]);
 
+  /** 用户发完消息：把对应气泡滚到 viewport 顶部并关 auto-follow，给最终答案留出"下方空白"。 */
+  const handleUserMessageAppended = useCallback(
+    (userMsgId: string) => {
+      scrollUserMsgToTop(userMsgId, 24);
+    },
+    [scrollUserMsgToTop],
+  );
+
   const chat = useChat({
     autoFollowMainRef,
     onNewChatScrollReset: resetScrollState,
     getPreferredGroupForNewConversation,
     chatPathname: pathname,
     onNavigateToNewChatSurface,
+    onUserMessageAppended: handleUserMessageAppended,
   });
 
   const {
@@ -528,7 +538,9 @@ export function HomePageClient() {
     [token]
   );
 
-  // 监听消息与追问占位变化，延迟一帧滚底以配合布局完成后高度，减弱「整块上闪」观感
+  // 自动跟随：仅当用户**手动滚回底部**（updateScrollState 把 autoFollowMainRef
+  // 重新置 true）时才追随。新发送的用户气泡由 onUserMessageAppended → scrollUserMsgToTop
+  // 处理（滚到顶部并同步关 auto-follow），不会被本 effect 抢跑。
   useEffect(() => {
     if (!hasStarted) return;
     if (!autoFollowMainRef.current) return;

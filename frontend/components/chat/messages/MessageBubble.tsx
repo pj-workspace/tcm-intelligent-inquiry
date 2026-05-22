@@ -31,6 +31,8 @@ interface MessageBubbleProps {
   assistantToolbarReserve?: boolean;
   /** 同一轮里工具调用会把正文拆成多条助手消息；仅在「最后一段」展示工具栏 */
   suppressAssistantToolbar?: boolean;
+  /** 消息 id：用户气泡用作 data-msg-id，让发送后的滚动定位精确到这条消息 */
+  messageId?: string;
 }
 
 export function MessageBubble({
@@ -48,6 +50,7 @@ export function MessageBubble({
   interrupted,
   assistantToolbarReserve,
   suppressAssistantToolbar,
+  messageId,
 }: MessageBubbleProps) {
   const isUser = role === "user";
   const [menuOpen, setMenuOpen] = useState(false);
@@ -134,6 +137,7 @@ export function MessageBubble({
         copied={copied}
         onCopy={() => void handleCopy()}
         onEdit={onUserEdit}
+        messageId={messageId}
       />
     );
   }

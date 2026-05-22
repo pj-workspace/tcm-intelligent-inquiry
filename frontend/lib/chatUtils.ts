@@ -75,13 +75,17 @@ export function groupMessagesIntoTraces(
   if (!showTrace) {
     return items
       .filter(
-        (m): m is Exclude<FlatMessage, { type: "thinking" } | { type: "tool" }> =>
-          m.type === "message" || m.type === "widget",
+        (m): m is Exclude<
+          FlatMessage,
+          { type: "thinking" } | { type: "tool" } | { type: "summary-mark" }
+        > => m.type === "message" || m.type === "widget",
       )
       .map((m) => m as Message);
   }
   const grouped: Message[] = [];
   let pendingSteps: BrainstormStep[] = [];
+  /** 当前积累 step 期间是否遇到过 summary-mark：flush 时把 trace 打 summaryAcknowledged。 */
+  let pendingSummaryAcknowledged = false;
 
   const flushTrace = (collapsed: boolean, endIsoCandidate?: string) => {
     if (!pendingSteps.length) return;
@@ -96,11 +100,35 @@ export function groupMessagesIntoTraces(
       totalDurationSec: computeTraceDuration(pendingSteps, endIsoCandidate),
       collapsed,
       ...(hasAbortedTool ? { aborted: true } : {}),
+      ...(pendingSummaryAcknowledged ? { summaryAcknowledged: true } : {}),
     } satisfies TraceMessage);
     pendingSteps = [];
+    pendingSummaryAcknowledged = false;
+  };
+
+  /** 把 summaryAcknowledged 信号附加到「最近一个 trace」上：
+   *  - 优先标记 pendingSteps（还未 flush 的 trace）—— 典型 think 模式回放路径
+   *  - 否则向后扫 grouped 找最近一个 trace 回写——少见 case（mark_summary
+   *    之后又产生新消息但同轮没出新 trace，例如旧数据迁移） */
+  const markSummaryAcknowledged = () => {
+    if (pendingSteps.length > 0) {
+      pendingSummaryAcknowledged = true;
+      return;
+    }
+    for (let i = grouped.length - 1; i >= 0; i--) {
+      const m = grouped[i];
+      if (m.type === "trace") {
+        grouped[i] = { ...m, summaryAcknowledged: true };
+        return;
+      }
+    }
   };
 
   for (const item of items) {
+    if (item.type === "summary-mark") {
+      markSummaryAcknowledged();
+      continue;
+    }
     if (item.type === "message") {
       // assistant / user 都终止当前 trace；与流式 finalizeTrace 行为一致，默认折叠
       const endIso = item.createdAt;
@@ -210,6 +238,13 @@ export function mapApiRowToMessage(msg: ApiMessageRow): FlatMessage {
           ? msg.duration_sec
           : undefined,
       createdAt,
+    };
+  }
+  if (msg.role === "summary-mark") {
+    return {
+      id: msg.id,
+      type: "summary-mark",
+      ...(createdAt ? { createdAt } : {}),
     };
   }
   if (msg.role === "tool") {
