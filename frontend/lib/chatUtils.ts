@@ -161,6 +161,34 @@ export function groupMessagesIntoTraces(
     });
   };
 
+  const applyWidgetAnswerToTrace = (
+    widgetId: string,
+    answer: string | null,
+    dismissed: boolean,
+  ) => {
+    for (let i = grouped.length - 1; i >= 0; i--) {
+      const m = grouped[i];
+      if (m.type !== "trace") continue;
+      const hasStep = m.steps.some(
+        (step) => step.type === "user_input" && step.widgetId === widgetId,
+      );
+      if (!hasStep) continue;
+      grouped[i] = {
+        ...m,
+        steps: m.steps.map((step) =>
+          step.type === "user_input" && step.widgetId === widgetId
+            ? {
+                ...step,
+                status: dismissed ? "dismissed" : "answered",
+                answer: answer ?? undefined,
+              }
+            : step,
+        ),
+      };
+      return;
+    }
+  };
+
   for (const item of items) {
     if (item.type === "summary-mark") {
       markSummaryAcknowledged();
@@ -178,6 +206,21 @@ export function groupMessagesIntoTraces(
       continue;
     }
     if (item.type === "widget") {
+      if (pendingSteps.length > 0) {
+        const traceId = `trace-${pendingSteps[0].id}`;
+        pendingSteps.push({
+          id: `user-input-${item.id}`,
+          type: "user_input",
+          widgetId: item.id,
+          question: item.question,
+          choices: item.choices,
+          allowFreeText: item.allowFreeText,
+          status: "waiting",
+        });
+        flushTrace(true);
+        grouped.push({ ...item, traceId });
+        continue;
+      }
       flushTrace(true);
       grouped.push(item);
       continue;
@@ -193,6 +236,7 @@ export function groupMessagesIntoTraces(
   // 历史加载：根据 widget 后紧跟的第一条用户消息推断答案状态，并将该用户消息从列表中移除
   // （widget 紧凑状态已展示答案，无需再显示用户气泡，与实时流体验保持一致）
   const widgetAnswerIndices = new Set<number>();
+  const resumedTraceIndices = new Set<number>();
   for (let i = 0; i < grouped.length; i++) {
     const cur = grouped[i];
     if (cur.type !== "widget" || cur.answer !== undefined || cur.dismissed) continue;
@@ -202,17 +246,46 @@ export function groupMessagesIntoTraces(
       if (next.type === "trace") continue;
       if (next.type === "message" && next.role === "user") {
         grouped[i] = { ...cur, answer: next.content };
+        applyWidgetAnswerToTrace(cur.id, next.content, false);
         widgetAnswerIndices.add(j);
+        if (cur.traceId) {
+          for (let k = j + 1; k < grouped.length; k++) {
+            const maybeTrace = grouped[k];
+            if (maybeTrace.type === "widget") break;
+            if (maybeTrace.type === "message" && maybeTrace.role === "user") break;
+            if (maybeTrace.type !== "trace") continue;
+            const targetIdx = grouped.findIndex(
+              (m) => m.type === "trace" && m.id === cur.traceId,
+            );
+            if (targetIdx !== -1 && targetIdx !== k) {
+              const target = grouped[targetIdx] as TraceMessage;
+              grouped[targetIdx] = {
+                ...target,
+                steps: [...target.steps, ...maybeTrace.steps],
+                totalDurationSec:
+                  (target.totalDurationSec ?? 0) + (maybeTrace.totalDurationSec ?? 0) || undefined,
+                aborted: target.aborted || maybeTrace.aborted,
+                summaryAcknowledged:
+                  target.summaryAcknowledged || maybeTrace.summaryAcknowledged,
+              };
+              resumedTraceIndices.add(k);
+            }
+            break;
+          }
+        }
         found = true;
       }
       break;
     }
     if (!found) {
       grouped[i] = { ...cur, dismissed: true };
+      applyWidgetAnswerToTrace(cur.id, null, true);
     }
   }
 
-  return grouped.filter((_, idx) => !widgetAnswerIndices.has(idx));
+  return grouped.filter(
+    (_, idx) => !widgetAnswerIndices.has(idx) && !resumedTraceIndices.has(idx),
+  );
 }
 
 /** 仅从「最后一条」助手气泡取追问（与仅最新消息展示追问的 UI 一致）；无则返回 null */
@@ -406,6 +479,17 @@ function traceStepsToMarkdown(steps: BrainstormStep[]): string {
             }s`
           : null;
       lines.push("", `### 思考${d != null ? `（${d}）` : ""}`, "", step.content);
+      continue;
+    }
+    if (step.type === "user_input") {
+      lines.push("", "### 用户补充", "", step.question || "需要用户补充信息");
+      if (step.status === "answered" && step.answer?.trim()) {
+        lines.push("", `- **回答**：${step.answer.trim()}`);
+      } else if (step.status === "dismissed") {
+        lines.push("", "- **状态**：已跳过");
+      } else {
+        lines.push("", "- **状态**：等待用户回答");
+      }
       continue;
     }
     const st =

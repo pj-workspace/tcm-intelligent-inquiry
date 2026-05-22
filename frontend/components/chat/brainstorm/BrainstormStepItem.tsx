@@ -63,6 +63,35 @@ export function BrainstormStepItem({
     );
   }
 
+  if (step.type === "user_input") {
+    const answered = step.status === "answered" && !!step.answer?.trim();
+    const dismissed = step.status === "dismissed";
+    return (
+      <StepShell
+        kind={answered || dismissed ? "user_input_done" : "user_input"}
+        isFirst={isFirst}
+      >
+        <div className="text-[13px] leading-[1.4rem] text-gray-600">
+          <div className="font-medium text-amber-700/90">
+            {answered
+              ? "用户已补充"
+              : dismissed
+              ? "用户已跳过"
+              : "等待用户补充"}
+          </div>
+          {step.question.trim() ? (
+            <div className="mt-0.5 text-gray-500">{step.question}</div>
+          ) : null}
+          {answered ? (
+            <div className="mt-1 rounded-md bg-emerald-50/70 px-2.5 py-1.5 text-emerald-800">
+              {step.answer}
+            </div>
+          ) : null}
+        </div>
+      </StepShell>
+    );
+  }
+
   /* 工具行：极简一行 + 可展开 outputPreview */
   const failed = step.status === "error";
   const aborted = failed && step.aborted === true;

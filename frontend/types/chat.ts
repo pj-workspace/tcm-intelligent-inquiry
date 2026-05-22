@@ -74,6 +74,8 @@ export type WidgetMessage = {
   answer?: string;
   /** 用户点击跳过后为 true */
   dismissed?: boolean;
+  /** deep think 中该 widget 归属的 trace；存在时不再渲染为外部消息卡片 */
+  traceId?: string;
 };
 
 export type Message = ChatMessage | TraceMessage | WidgetMessage;

@@ -628,21 +628,43 @@ export function useChat(opts: {
   /** 用户回答 widget 选择框后调用：标记 widget 已作答并发送答案 */
   const handleWidgetAnswer = useCallback(
     (widgetId: string, answer: string | null) => {
+      const resumeTraceId =
+        messages.find(
+          (m): m is WidgetMessage => m.type === "widget" && m.id === widgetId,
+        )?.traceId ??
+        null;
       setMessages((prev) =>
-        prev.map((m) =>
-          m.type === "widget" && m.id === widgetId
-            ? { ...m, answer: answer ?? undefined, dismissed: answer === null }
-            : m
-        )
+        prev.map((m) => {
+          if (m.type === "widget" && m.id === widgetId) {
+            return { ...m, answer: answer ?? undefined, dismissed: answer === null };
+          }
+          if (m.type === "trace") {
+            return {
+              ...m,
+              steps: m.steps.map((step) =>
+                step.type === "user_input" && step.widgetId === widgetId
+                  ? {
+                      ...step,
+                      status: answer === null ? "dismissed" : "answered",
+                      answer: answer ?? undefined,
+                    }
+                  : step,
+              ),
+            };
+          }
+          return m;
+        })
       );
       if (answer !== null) {
         setHasStarted(true);
         autoFollowMainRef.current = true;
         // appendUserMessage=false：答案已显示在 widget 紧凑状态，不再额外显示用户气泡
-        runChatStream(answer, false, {});
+        runChatStream(answer, false, {
+          ...(resumeTraceId ? { resumeTraceId } : {}),
+        });
       }
     },
-    [autoFollowMainRef, runChatStream]
+    [messages, autoFollowMainRef, runChatStream]
   );
 
   const handleSend = useCallback(

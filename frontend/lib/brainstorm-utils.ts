@@ -93,6 +93,9 @@ export function toolAbortedLabel(
 export function streamingTraceHeadline(steps: BrainstormStep[]): string {
   for (let i = steps.length - 1; i >= 0; i--) {
     const step = steps[i];
+    if (step.type === "user_input" && step.status === "waiting") {
+      return "等待用户补充...";
+    }
     if (step.type === "tool" && step.status === "running") {
       return runningToolLabel(step.toolName, step.mcpRemoteName);
     }
@@ -115,12 +118,14 @@ export function summarizeTraceHeadline(
     (s): s is Extract<BrainstormStep, { type: "tool" }> => s.type === "tool",
   );
   const thinkings = steps.filter((s) => s.type === "thinking");
+  const userInputs = steps.filter((s) => s.type === "user_input");
   const dur =
     durationSec != null ? ` · ${formatDurationSec(durationSec)}` : "";
 
   if (steps.length === 0) return `完成${dur}`;
 
   if (tools.length === 0) {
+    if (userInputs.length > 0) return `用户补充了信息${dur}`;
     if (thinkings.length > 0) return `思考过程${dur}`;
     return `完成${dur}`;
   }

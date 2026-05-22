@@ -22,6 +22,17 @@ export type BrainstormStep =
       /** 工具返回摘要（SSE tool-result 或历史消息） */
       outputPreview?: string;
       createdAt?: string;
+    }
+  | {
+      id: string;
+      type: "user_input";
+      widgetId: string;
+      question: string;
+      choices?: string[];
+      allowFreeText?: boolean;
+      status: "waiting" | "answered" | "dismissed";
+      answer?: string;
+      createdAt?: string;
     };
 
 export interface BrainstormPanelProps {

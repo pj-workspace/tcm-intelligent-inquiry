@@ -219,6 +219,9 @@ export function ChatMessageList({
     );
   }
   if (msg.type === "widget") {
+    // deep think 中 ask_user 已归档为 trace 内 user_input 节点；
+    // 这里的 widget 只保留给底部 activeWidget 交互入口，不在消息流里重复渲染。
+    if (msg.traceId) return null;
     // 未回答的 widget 渲染到底部覆盖层（activeWidget），
     // scroll 区内只保留一个空 div 占位以维持滚动高度
     if (!msg.answer && !msg.dismissed) {

@@ -165,7 +165,11 @@ export function useChatStream(deps: UseChatStreamDeps) {
     async (
       userText: string,
       appendUserMessage: boolean,
-      streamOpts?: { regenerateLastReply?: boolean; imageUrls?: string[] }
+      streamOpts?: {
+        regenerateLastReply?: boolean;
+        imageUrls?: string[];
+        resumeTraceId?: string;
+      }
     ) => {
       if (!token) return;
 
@@ -198,7 +202,17 @@ export function useChatStream(deps: UseChatStreamDeps) {
 
       const startTime = Date.now();
       let currentAssistantMsgId = Date.now().toString() + "-msg";
-      let currentTraceId: string | null = null;
+      let currentTraceId: string | null = streamOpts?.resumeTraceId ?? null;
+      if (currentTraceId) {
+        traceStartedAt.current[currentTraceId] ??= Date.now();
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.type === "trace" && m.id === currentTraceId
+              ? { ...m, status: "streaming", collapsed: false }
+              : m,
+          ),
+        );
+      }
       let openThinkingStepId: string | null = null;
       let hasAssistantMsg = false;
       let streamEndedWithSSEError = false;
@@ -686,21 +700,61 @@ export function useChatStream(deps: UseChatStreamDeps) {
                 // 用户滑到底部时 updateScrollState 会自动恢复 autoFollow。
                 setGenState("typing");
               } else if (data.type === "widget") {
+                const widgetId = String(data.widgetId || `w-${Date.now()}`);
+                const widgetQuestion = String(data.question || "");
+                const widgetChoices = Array.isArray(data.choices) ? data.choices.map(String) : [];
+                const widgetAllowFreeText = data.allowFreeText !== false;
                 const widgetMsg: WidgetMessage = {
-                  id: String(data.widgetId || `w-${Date.now()}`),
+                  id: widgetId,
                   type: "widget",
                   widgetType: "choice",
-                  question: String(data.question || ""),
-                  choices: Array.isArray(data.choices) ? data.choices.map(String) : [],
-                  allowFreeText: data.allowFreeText !== false,
+                  question: widgetQuestion,
+                  choices: widgetChoices,
+                  allowFreeText: widgetAllowFreeText,
                 };
                 streamEndedWithWidget = true;
-                // think 模式：widget 前的最后一段 interim text 视为「提问前的说明」，
-                // 升级为正常 assistant 气泡（非 interrupted），让 widget 卡在它下方
                 if (isThinkMode) {
-                  promotePendingInterim(false);
-                  if (currentTraceId) finalizeTrace(currentTraceId, true);
-                  currentTraceId = null;
+                  const traceIdResolved = ensureCurrentTraceId();
+                  const stepSnap = openThinkingStepId;
+                  openThinkingStepId = null;
+                  const tracedWidgetMsg: WidgetMessage = {
+                    ...widgetMsg,
+                    traceId: traceIdResolved,
+                  };
+                  setMessages((prev) => {
+                    // 移除 insertNewStreamingTrace 在工具调用后插入的空 continuation 气泡，
+                    // ask_user 在 deep think 中只作为 trace 节点展示，不再拆出外部气泡。
+                    const cleaned = prev.filter(
+                      (m) =>
+                        !(
+                          m.type === "message" &&
+                          m.role === "assistant" &&
+                          m.id === currentAssistantMsgId &&
+                          !(m.content || "").trim()
+                        ),
+                    );
+                    const base = stepSnap
+                      ? applyFinalizeThinkingStepToMessages(
+                          cleaned,
+                          traceIdResolved,
+                          stepSnap,
+                          thinkingStepStartedAt.current,
+                        )
+                      : cleaned;
+                    return [
+                      ...upsertTraceWithStep(base, traceIdResolved, {
+                        id: `user-input-${widgetId}`,
+                        type: "user_input",
+                        widgetId,
+                        question: widgetQuestion,
+                        choices: widgetChoices,
+                        allowFreeText: widgetAllowFreeText,
+                        status: "waiting",
+                      }),
+                      tracedWidgetMsg,
+                    ];
+                  });
+                  continue;
                 }
                 setMessages((prev) => {
                   // 移除 insertNewStreamingTrace 在工具调用后插入的空 continuation 气泡，

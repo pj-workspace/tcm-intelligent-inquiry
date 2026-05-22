@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { Check, Clock, Loader2, Wrench, XCircle } from "lucide-react";
+import { Check, Clock, Loader2, UserRound, Wrench, XCircle } from "lucide-react";
 
 export type TimelineNodeKind =
   | "thinking"
@@ -9,6 +9,8 @@ export type TimelineNodeKind =
   | "tool"
   | "tool_running"
   | "tool_error"
+  | "user_input"
+  | "user_input_done"
   /** trace 正常收口的尾节点；视觉为 ✓ */
   | "trace_done"
   /** trace 由 abort / 错误收口的尾节点；视觉为 ⊗ */
@@ -29,6 +31,8 @@ export function TimelineNode({ kind }: TimelineNodeProps) {
       ? XCircle
       : isTool
       ? Wrench
+      : kind === "user_input" || kind === "user_input_done"
+      ? UserRound
       : kind === "trace_done"
       ? Check
       : kind === "trace_aborted"
@@ -42,6 +46,8 @@ export function TimelineNode({ kind }: TimelineNodeProps) {
     kind === "tool" && "text-[#5b78ad]",
     kind === "tool_running" && "animate-spin text-[#5b78ad]/70",
     kind === "tool_error" && "text-red-400",
+    kind === "user_input" && "text-amber-500",
+    kind === "user_input_done" && "text-emerald-500",
     kind === "trace_done" && "text-emerald-500",
     kind === "trace_aborted" && "text-gray-400",
   );
@@ -55,8 +61,10 @@ export function TimelineNode({ kind }: TimelineNodeProps) {
         "absolute left-0 top-[0.15rem] flex h-[1.1rem] w-[1.1rem] items-center justify-center rounded-full bg-[#fdfdfc] ring-1",
         kind === "tool_error" || kind === "trace_aborted"
           ? "ring-red-200"
-          : kind === "trace_done"
+          : kind === "trace_done" || kind === "user_input_done"
             ? "ring-emerald-200"
+            : kind === "user_input"
+              ? "ring-amber-200"
             : "ring-[#e6ddd0]",
       )}
     >
