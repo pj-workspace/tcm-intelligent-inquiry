@@ -5,8 +5,10 @@ import { motion } from "framer-motion";
 export function ClaudeStar() {
   return (
     <motion.div
-      animate={{ rotate: 180 }}
-      transition={{ duration: 3.5, repeat: Infinity, ease: "linear" }}
+      // 八角星 4 条线在 0°/45°/90°/… 处对称，180° 后视觉与原位相同，
+      // 所以必须转一整圈（0→360）才能让用户感知到"持续旋转"。
+      animate={{ rotate: 360 }}
+      transition={{ duration: 4, repeat: Infinity, ease: "linear", repeatType: "loop" }}
       className="flex items-center justify-center w-7 h-7"
     >
       <svg

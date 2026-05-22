@@ -75,6 +75,7 @@ export function HomePageClient() {
     showScrollToBottom,
     updateScrollState,
     scrollToBottom,
+    markUserScrollIntent,
     resetScrollState,
   } = useScrollBehavior(hasStartedRef);
 
@@ -88,10 +89,18 @@ export function HomePageClient() {
     else router.push(chatPathFolder(sidebarFilter));
   }, [router, sidebarFilter]);
 
-  /** 用户发完消息：开启 auto-follow，让气泡自然落到输入栏正上方（与 ChatGPT/Claude 一致）。 */
-  const handleUserMessageAppended = useCallback(() => {
-    autoFollowMainRef.current = true;
-  }, [autoFollowMainRef]);
+  /** 用户发完消息：平滑贴到最新消息，之后默认跟随 AI 输出；用户手动滚动后再停止跟随。 */
+  const handleUserMessageAppended = useCallback(
+    () => {
+      autoFollowMainRef.current = true;
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          scrollToBottom(true);
+        });
+      });
+    },
+    [autoFollowMainRef, scrollToBottom],
+  );
 
   const chat = useChat({
     autoFollowMainRef,
@@ -535,10 +544,10 @@ export function HomePageClient() {
   );
 
   // 自动跟随：监听消息变化与追问占位，延迟一帧滚底以配合布局完成后的高度。
-  // - 发送瞬间：onUserMessageAppended 把 autoFollowMainRef 设回 true，让用户气泡
-  //   自然落在输入栏正上方（与 ChatGPT/Claude 一致）
-  // - 流式中：每个新 chunk 触发本 effect → 持续跟随到底
-  // - 用户手动上滚（updateScrollState 检测到）→ autoFollowMainRef=false → 本 effect 不再跟
+  // - 发送瞬间：onUserMessageAppended 打开 autoFollow 并贴到最新消息
+  // - 流式中：只要用户没有主动滚动，每个新 chunk 都自然跟随到底
+  // - 用户手动滑到底部（updateScrollState 检测 atBottom）→ autoFollow=true → 本 effect 恢复跟随
+  // - 用户手动上滚 → autoFollow=false → 本 effect 不再跟
   useEffect(() => {
     if (!hasStarted) return;
     if (!autoFollowMainRef.current) return;
@@ -813,14 +822,16 @@ export function HomePageClient() {
               <div
                 ref={scrollViewportRef}
                 onScroll={updateScrollState}
+                onWheel={markUserScrollIntent}
+                onTouchStart={markUserScrollIntent}
                 className={`chat-scroll-area no-scrollbar flex-1 overflow-y-auto ${
                   !viewingGroupLanding
                     ? [
                         showWelcomeHero ? "flex min-h-0 flex-col" : "",
-                        "pb-[clamp(7rem,11vh,9.5rem)] md:pb-[clamp(7.25rem,11.25vh,9.75rem)]",
                       ].join(" ")
                     : ""
                 }`}
+                style={{ overflowAnchor: "none" }}
               >
                 {showWelcomeHero && <WelcomeHero />}
                 {showConversationSkeleton && <ConversationSkeleton />}

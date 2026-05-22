@@ -28,7 +28,13 @@ export function useScrollBehavior(hasStartedRef: MutableRefObject<boolean>) {
     if (!el) return;
     const currentTop = el.scrollTop;
     const prevTop = lastMainScrollTopRef.current;
-    const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+    // distance 以 messagesEndRef 的 bottom 为锚，而非 `scrollHeight` 最底。
+    // messagesEndRef 紧跟最后一条消息，用它做锚点可以避开输入框 padding 对底部判断的干扰。
+    const endEl = messagesEndRef.current;
+    const usefulBottom = endEl
+      ? endEl.offsetTop + endEl.offsetHeight
+      : el.scrollHeight;
+    const distance = usefulBottom - currentTop - el.clientHeight;
     const userScrolledUp = currentTop < prevTop - 2;
     const atBottom = distance <= BOTTOM_LOCK_THRESHOLD;
     const isNearBottom = distance <= BOTTOM_SCROLL_THRESHOLD;
@@ -62,21 +68,33 @@ export function useScrollBehavior(hasStartedRef: MutableRefObject<boolean>) {
     }
   }, [hasStartedRef]);
 
+  /**
+   * 滚到最后一条消息后的稳定锚点，而不是滚到整个 scrollHeight。
+   * 底部安全距离只由 messagesEndRef 提供，避免再和滚动容器 padding-bottom 叠加出空白。
+   */
   const scrollToBottom = useCallback(
     (smooth: boolean) => {
-      const el = scrollViewportRef.current;
-      if (!el) {
-        messagesEndRef.current?.scrollIntoView({
+      const endEl = messagesEndRef.current;
+      if (endEl) {
+        endEl.scrollIntoView({
           behavior: smooth ? "smooth" : "auto",
           block: "end",
         });
+        requestAnimationFrame(updateScrollState);
         return;
       }
-      el.scrollTo({ top: el.scrollHeight, behavior: smooth ? "smooth" : "auto" });
-      requestAnimationFrame(updateScrollState);
+      const el = scrollViewportRef.current;
+      if (el) {
+        el.scrollTo({ top: el.scrollHeight, behavior: smooth ? "smooth" : "auto" });
+        requestAnimationFrame(updateScrollState);
+      }
     },
     [updateScrollState]
   );
+
+  const markUserScrollIntent = useCallback(() => {
+    autoFollowMainRef.current = false;
+  }, []);
 
   const resetScrollState = useCallback(() => {
     scrollFabVisibleRef.current = false;
@@ -94,6 +112,7 @@ export function useScrollBehavior(hasStartedRef: MutableRefObject<boolean>) {
     showScrollToBottom,
     updateScrollState,
     scrollToBottom,
+    markUserScrollIntent,
     resetScrollState,
   };
 }

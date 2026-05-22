@@ -858,6 +858,7 @@ export function useChat(opts: {
         break;
       }
       if (!userText || userIdx < 0) return;
+      autoFollowMainRef.current = true;
       setMessages((prev) => {
         const removed = prev.slice(userIdx + 1);
         for (const m of removed) {
@@ -875,7 +876,7 @@ export function useChat(opts: {
         ...(regenerateImageUrls?.length ? { imageUrls: regenerateImageUrls } : {}),
       });
     },
-    [genState, token, messages, runChatStream]
+    [genState, token, messages, autoFollowMainRef, runChatStream]
   );
 
   const handleNewChat = useCallback(

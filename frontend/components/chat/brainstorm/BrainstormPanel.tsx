@@ -116,21 +116,16 @@ export function BrainstormPanel({
                       />
                     ))}
                     {/* trace 收口节点：
-                        - aborted=true → ⊗ 已终止
                         - summaryAcknowledged=true（模型显式调用了 mark_summary） → ✓ 完成
-                        - 其他情况（模型未发出明确收口信号） → 不显示 footer，trace 静默收口 */}
-                    {!isStreaming && steps.length > 0 && (aborted || summaryAcknowledged) && (
+                        - aborted=true：被中止的 tool 行自己挂"XXX 已终止"，下方
+                          assistant 气泡又会附"输出已被终止" blockquote，footer 再加
+                          一条会和上面那条「调用工具的东西」视觉重复，干脆不显示。
+                        - 其他情况 → trace 静默收口 */}
+                    {!isStreaming && steps.length > 0 && summaryAcknowledged && !aborted && (
                       <div className="relative pl-7 mt-3">
-                        <TimelineNode
-                          kind={aborted ? "trace_aborted" : "trace_done"}
-                        />
-                        <div
-                          className={clsx(
-                            "text-[13px] leading-[1.4rem]",
-                            aborted ? "text-gray-400" : "text-emerald-600/90",
-                          )}
-                        >
-                          {aborted ? "已终止" : "完成"}
+                        <TimelineNode kind="trace_done" />
+                        <div className="text-[13px] leading-[1.4rem] text-emerald-600/90">
+                          完成
                         </div>
                       </div>
                     )}

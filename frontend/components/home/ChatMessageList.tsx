@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BrainstormPanel, ClaudeStar, MessageBubble } from "@/components/chat";
 import { WidgetCard } from "@/components/chat/messages/WidgetCard";
@@ -42,18 +42,30 @@ export type ChatMessageListProps = {
 };
 
 /**
- * 等待指示器秒数：waiting / tool / thinking 时计时；idle / typing 清零。
- * 等待 ≥3 秒时在 ClaudeStar 旁附 "Ns" 缓解"是否卡住"焦虑。
+ * 等待指示器秒数：从「首次离开 idle」开始计时，跨 thinking/tool/typing 等
+ * 非 idle 状态**持续累计**，直到回到 idle 才重置为 0。
+ *
+ * 之前实现里 typing 也会触发重置，导致 tool→typing→tool 切换时计数清零、
+ * "Ns" 标签忽闪忽现。改为只在 idle 重置后，时间标签从首达 3s 一直亮到流结束，
+ * 不再随中间状态来回闪烁。
  */
 function useWaitingElapsedSec(genState: GenerationState): number {
   const [elapsedSec, setElapsedSec] = useState(0);
+  const startRef = useRef<number | null>(null);
   useEffect(() => {
-    if (genState === "idle" || genState === "typing") {
+    if (genState === "idle") {
+      startRef.current = null;
       setElapsedSec(0);
       return;
     }
-    const start = Date.now();
-    setElapsedSec(0);
+    // 首次进入非 idle：记下起点；后续状态切换沿用同一个起点
+    if (startRef.current === null) {
+      startRef.current = Date.now();
+      setElapsedSec(0);
+    } else {
+      setElapsedSec(Math.floor((Date.now() - startRef.current) / 1000));
+    }
+    const start = startRef.current;
     const timer = setInterval(() => {
       setElapsedSec(Math.floor((Date.now() - start) / 1000));
     }, 500);
@@ -77,12 +89,22 @@ export function ChatMessageList({
   messagesEndRef,
 }: ChatMessageListProps) {
   const waitingElapsedSec = useWaitingElapsedSec(genState);
-  // 流式中只要不是逐字输出，就显示 ClaudeStar 等待指示（waiting / tool / thinking）。
-  // trace 卡片自身展示工具进度；ClaudeStar 只是底部"还在动"的兜底反馈。
-  const showWaitingIndicator =
-    genState === "waiting" || genState === "tool" || genState === "thinking";
+  // 双层结构：
+  // - 外层 streamActive（!== idle）控制 motion.div 的 mount/unmount——整个流式周期内常驻，
+  //   ClaudeStar 旋转动画不会随中间状态切换被重启。
+  // - 内层 indicatorVisible（仅 trace 阶段为 true）用 opacity 控制可见性——AI 输出正文
+  //   （typing）时星星 + 计时淡出，但底层组件依然挂载，旋转保持连贯。
+  // 这样既满足"只在 trace 阶段才看到星星和计时"，又避免 think 模式 thinking↔typing
+  // 频繁切换让星星 mount/unmount 抽搐。
+  const streamActive = genState !== "idle";
+  const hasStreamingTrace = messages.some(
+    (msg) => msg.type === "trace" && msg.status === "streaming",
+  );
+  const indicatorVisible =
+    hasStreamingTrace && (genState === "tool" || genState === "thinking");
+
   return (
-    <div className="relative pt-8 pb-4 md:pb-5">
+    <div className="relative pt-8">
       {showMessagesRefreshingOverlay ? (
         <div
           className="pointer-events-none absolute inset-0 z-10 bg-[#fdfdfc]/50"
@@ -224,22 +246,43 @@ export function ChatMessageList({
   return null;
 })}
       <AnimatePresence>
-        {showWaitingIndicator && (
+        {streamActive && (
           <motion.div
-            initial={{ opacity: 0, height: 0, scale: 0.5 }}
-            animate={{ opacity: 1, height: "auto", scale: 1 }}
-            exit={{ opacity: 0, height: 0, scale: 0.5, transition: { duration: 0 } }}
-            transition={{ duration: 0.15, ease: "easeOut" }}
-            className="w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-auto px-4 sm:px-5 md:px-6 lg:px-8 flex justify-start overflow-hidden"
+            key="claude-star-indicator"
+            initial={{ opacity: 0, scale: 0.85 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.85 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-auto px-4 sm:px-5 md:px-6 lg:px-8 flex justify-start"
             style={{ transformOrigin: "left center" }}
           >
-            <div className="flex items-center gap-2 pt-0 pb-3">
+            {/* 用 min-h 把这一行的高度先撑出来：星形 1.75rem + 行间距，避免
+                AnimatePresence 切换时高度跳变，进而避免外部 scroll 跟随抖动。
+                内层 opacity 控制 trace/typing 切换时的可见性，ClaudeStar 始终挂载 → 旋转连贯。 */}
+            <div
+              className="flex min-h-[2.5rem] items-center gap-2 pt-0 pb-3"
+              style={{
+                opacity: indicatorVisible ? 1 : 0,
+                transition: "opacity 220ms ease-out",
+                pointerEvents: indicatorVisible ? "auto" : "none",
+              }}
+              aria-hidden={!indicatorVisible}
+            >
               <ClaudeStar />
-              {waitingElapsedSec >= 3 && (
-                <span className="text-xs tabular-nums text-gray-400">
-                  {waitingElapsedSec}s
-                </span>
-              )}
+              <AnimatePresence>
+                {indicatorVisible && waitingElapsedSec >= 3 && (
+                  <motion.span
+                    key="elapsed"
+                    initial={{ opacity: 0, x: -4 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -4 }}
+                    transition={{ duration: 0.22, ease: "easeOut" }}
+                    className="text-xs tabular-nums text-gray-400"
+                  >
+                    {waitingElapsedSec}s
+                  </motion.span>
+                )}
+              </AnimatePresence>
             </div>
           </motion.div>
         )}
@@ -247,7 +290,7 @@ export function ChatMessageList({
 
       <div
         ref={messagesEndRef}
-        className="min-h-[min(10vh,5rem)] shrink-0 md:min-h-[min(9.5vh,5.5rem)]"
+        className="min-h-[clamp(10.5rem,22vh,14rem)] shrink-0 md:min-h-[clamp(11.5rem,22vh,15rem)]"
         aria-hidden
       />
     </div>

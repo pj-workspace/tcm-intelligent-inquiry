@@ -393,7 +393,9 @@ export function useChatStream(deps: UseChatStreamDeps) {
               hasAssistantMsg = false;
               assistantReplyAccum = "";
             }
-            autoFollowMainRef.current = true;
+            // 不再在这里强行打开 autoFollow：
+            // 用户在发送消息后期望停留在 user bubble 锚点（~12vh），由用户手动
+            // 滚到底部时再由 updateScrollState 自动恢复 autoFollow。
           }
         };
 
@@ -679,7 +681,9 @@ export function useChatStream(deps: UseChatStreamDeps) {
                   assistantReplyAccum = "";
                 }
                 inSummaryPhase = true;
-                autoFollowMainRef.current = true;
+                // 进入正文总结阶段不再强行打开 autoFollow：
+                // 让 user bubble 仍停在 ~12vh，AI 正文从其下方往下生长。
+                // 用户滑到底部时 updateScrollState 会自动恢复 autoFollow。
                 setGenState("typing");
               } else if (data.type === "widget") {
                 const widgetMsg: WidgetMessage = {
