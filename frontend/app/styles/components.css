@@ -6,10 +6,43 @@
   word-break: break-word;
 }
 
+/* 统一 Markdown 块级节奏，避免 trace 后接标题/段落/列表时出现不同的顶部空隙 */
+.ai-content > :first-child {
+  margin-top: 0 !important;
+}
+
+.ai-content > :last-child {
+  margin-bottom: 0.5rem !important;
+}
+
 .ai-content p {
-  @apply mb-4;
+  margin-top: 0;
+  margin-bottom: 0.9rem;
   max-width: 100%;
   overflow-wrap: anywhere;
+}
+
+.ai-content h1,
+.ai-content h2,
+.ai-content h3,
+.ai-content h4 {
+  margin-top: 1.05rem;
+  margin-bottom: 0.55rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.ai-content h1 {
+  font-size: 1.35em;
+}
+
+.ai-content h2 {
+  font-size: 1.22em;
+}
+
+.ai-content h3,
+.ai-content h4 {
+  font-size: 1.08em;
 }
 
 .ai-content strong {
@@ -21,18 +54,24 @@
 }
 
 .ai-content blockquote {
-  @apply border-l-4 border-muted pl-4 italic text-muted-foreground my-4;
+  @apply border-l-4 border-muted pl-4 italic text-muted-foreground;
+  margin-top: 0.9rem;
+  margin-bottom: 0.9rem;
 }
 
 .ai-content ul {
-  @apply list-disc list-outside mb-4 pl-6;
+  @apply list-disc list-outside pl-6;
+  margin-top: 0;
+  margin-bottom: 0.9rem;
 }
 
 /* 不用浏览器 outside marker：在 flex/overflow 等布局下 marker 常与正文错行；改为 li 内绝对定位编号 */
 .ai-content ol {
   list-style: none;
   counter-reset: ai-ol;
-  @apply mb-4 pl-0;
+  @apply pl-0;
+  margin-top: 0;
+  margin-bottom: 0.9rem;
   margin-left: 0;
 }
 

@@ -93,6 +93,9 @@ export function toolAbortedLabel(
 export function streamingTraceHeadline(steps: BrainstormStep[]): string {
   for (let i = steps.length - 1; i >= 0; i--) {
     const step = steps[i];
+    if (step.type === "user_input" && step.status === "preparing") {
+      return "准备询问用户...";
+    }
     if (step.type === "user_input" && step.status === "waiting") {
       return "等待用户补充...";
     }

@@ -10,18 +10,25 @@ import {
   Plus,
   Search,
   Settings,
-  Share2,
-  Pin,
   Pencil,
-  Download,
   Trash2,
   Loader2,
   CheckSquare,
 } from "lucide-react";
 import clsx from "clsx";
+import { useCallback, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
+import { buildSidebarConversationSections } from "@/lib/sidebarConversationGroups";
 import type { ConversationFolder, ServerConversation } from "@/types/chat";
-import { SidebarBatchBar, SidebarBatchRowCheck } from "./SidebarBatchBar";
+import { SidebarBatchBar } from "./SidebarBatchBar";
+import { SidebarConversationRow } from "./SidebarConversationRow";
+
+/** 非批量模式下，每段时间分组默认展示条数；超出显示「更多」 */
+const SECTION_PREVIEW_LIMIT = 8;
+
+/** 时间分段标题：比「聊天」区块标题更轻、更小 */
+const TIME_SECTION_LABEL_CLASS =
+  "px-2 pt-1 pb-1 text-[11px] font-medium text-gray-400/80";
 
 export type SidebarConversation = ServerConversation;
 
@@ -115,6 +122,67 @@ export function Sidebar({
     if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
     return 0;
   });
+
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(
+    () => new Set(),
+  );
+
+  const conversationSections = useMemo(
+    () => buildSidebarConversationSections(displayedConversations, pinnedIds),
+    [displayedConversations, pinnedIds],
+  );
+
+  const toggleSectionExpanded = useCallback((sectionId: string) => {
+    setExpandedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(sectionId)) next.delete(sectionId);
+      else next.add(sectionId);
+      return next;
+    });
+  }, []);
+
+  const resolveSectionItems = useCallback(
+    (sectionId: string, items: ServerConversation[]) => {
+      if (batchMode || expandedSections.has(sectionId)) return items;
+      const activeIdx = activeId
+        ? items.findIndex((c) => c.id === activeId)
+        : -1;
+      const limit =
+        activeIdx >= SECTION_PREVIEW_LIMIT ? activeIdx + 1 : SECTION_PREVIEW_LIMIT;
+      return items.slice(0, limit);
+    },
+    [activeId, batchMode, expandedSections],
+  );
+
+  const renderConversationRow = (c: ServerConversation) => {
+    const titleEmpty = !(c.title && c.title.trim());
+    const isGenerating =
+      activeId === c.id &&
+      (Boolean(isGeneratingTitle) || (streamBusy && titleEmpty));
+
+    return (
+      <SidebarConversationRow
+        key={c.id}
+        conversation={c}
+        folders={folders}
+        activeId={activeId}
+        pinnedIds={pinnedIds}
+        batchMode={batchMode}
+        selectedIds={selectedIds}
+        isGenerating={isGenerating}
+        movePendingId={movePendingId}
+        onSelect={onSelect}
+        onToggleSelect={onToggleSelect}
+        onToggleBatchMode={onToggleBatchMode}
+        onDelete={onDelete}
+        onRenameRequest={onRenameRequest}
+        onExportConversation={onExportConversation}
+        onTogglePin={onTogglePin}
+        onMoveToGroup={onMoveToGroup}
+        onPrefetchConversation={onPrefetchConversation}
+      />
+    );
+  };
 
   return (
     <div
@@ -232,7 +300,7 @@ export function Sidebar({
 
           {/* 聊天：仅未分组会话列表；分组内会话在分组区与主区工作台打开 */}
           <div className="flex-1 flex flex-col min-h-0">
-            <div className="flex items-center justify-between px-2 mb-1.5 gap-2">
+            <div className="mb-2.5 flex items-center justify-between gap-2 px-2">
               <span
                 className={clsx(
                   "text-xs font-semibold",
@@ -280,198 +348,44 @@ export function Sidebar({
             ) : conversationsFull.length === 0 && !showPendingNewChatSkeleton ? (
               <p className="px-2 text-sm text-gray-400 leading-relaxed">暂无会话。</p>
             ) : (
-              <div className="space-y-0.5 flex-1 min-h-0">
+              <div className="mt-1 flex min-h-0 flex-1 flex-col gap-2.5">
                 {showPendingNewChatSkeleton && (
-                  <div
-                    className="relative w-full flex min-h-[2.75rem] items-stretch px-3 py-2.5 text-sm rounded-xl bg-white shadow-sm border border-[#e5e5e5] pointer-events-none"
-                    aria-busy
-                  >
-                    <div className="flex flex-1 items-center min-w-0">
-                      <div className="skeleton-text-shimmer h-4 w-2/3 rounded-md" />
+                  <div className="space-y-0.5">
+                    <div className={TIME_SECTION_LABEL_CLASS}>今天</div>
+                    <div
+                      className="pointer-events-none relative flex min-h-[2.75rem] w-full items-stretch rounded-xl border border-[#e5e5e5] bg-white px-3 py-2.5 text-sm shadow-sm"
+                      aria-busy
+                    >
+                      <div className="flex min-w-0 flex-1 items-center">
+                        <div className="skeleton-text-shimmer h-4 w-2/3 rounded-md" />
+                      </div>
                     </div>
                   </div>
                 )}
-                {displayedConversations.map((c) => {
-                  const isActive = activeId === c.id;
-                  const titleEmpty = !(c.title && c.title.trim());
-                  const isGenerating =
-                    isActive &&
-                    (Boolean(isGeneratingTitle) || (streamBusy && titleEmpty));
-
-                  const isPinned = pinnedIds.includes(c.id);
+                {conversationSections.map((section) => {
+                  const visibleItems = resolveSectionItems(
+                    section.id,
+                    section.items,
+                  );
+                  const hiddenCount = section.items.length - visibleItems.length;
+                  const showMore =
+                    !batchMode &&
+                    hiddenCount > 0 &&
+                    !expandedSections.has(section.id);
 
                   return (
-                    <div
-                      key={c.id}
-                      className={clsx(
-                        "group relative w-full flex min-h-[2.65rem] items-center px-2 py-2 text-sm rounded-xl transition-colors",
-                        isActive
-                          ? "bg-white shadow-sm border border-[#e5e5e5] text-gray-900 font-medium"
-                          : "text-gray-600 hover:bg-gray-100/85 border border-transparent",
-                        batchMode && selectedIds.has(c.id) && "ring-1 ring-orange-300 bg-orange-50/50"
-                      )}
-                      onMouseEnter={
-                        !batchMode && onPrefetchConversation && !isGenerating
-                          ? () => onPrefetchConversation(c.id)
-                          : undefined
-                      }
-                      onClick={
-                        isGenerating
-                          ? undefined
-                          : batchMode
-                            ? () => onToggleSelect(c.id)
-                            : () => onSelect(c.id)
-                      }
-                      onKeyDown={(e) => {
-                        if (!batchMode || isGenerating) return;
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          onToggleSelect(c.id);
-                        }
-                      }}
-                      role={batchMode ? "checkbox" : "button"}
-                      aria-checked={batchMode ? selectedIds.has(c.id) : undefined}
-                      aria-label={
-                        batchMode
-                          ? `${selectedIds.has(c.id) ? "取消选择" : "选择"}会话：${c.title?.trim() || "新会话"}`
-                          : undefined
-                      }
-                      tabIndex={0}
-                    >
-                      {batchMode && <SidebarBatchRowCheck selected={selectedIds.has(c.id)} />}
-                      <div className="flex min-w-0 flex-1 items-center gap-1 pr-1 min-h-0">
-                        {isPinned && !batchMode && (
-                          <Pin className="w-3 h-3 shrink-0 text-orange-600/70" aria-hidden />
-                        )}
-                        <div className="min-w-0 flex-1">
-                          {isGenerating ? (
-                            <div className="skeleton-text-shimmer h-4 w-3/4 rounded-md" />
-                          ) : (
-                            <span
-                              className={clsx(
-                                "block truncate leading-snug",
-                                isActive && "sidebar-conv-title-sweep font-medium"
-                              )}
-                            >
-                              {c.title || "新会话"}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      {!batchMode && onDelete && !isGenerating && (
-                        <div className="flex shrink-0 items-center">
-                          <DropdownMenu.Root>
-                            <DropdownMenu.Trigger asChild>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                }}
-                                className={clsx(
-                                  "shrink-0 p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 transition-opacity",
-                                  "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100",
-                                  isActive && "opacity-100"
-                                )}
-                                aria-label="会话操作"
-                              >
-                                <MoreVertical className="w-3.5 h-3.5" />
-                              </button>
-                            </DropdownMenu.Trigger>
-                          <DropdownMenu.Portal>
-                            <DropdownMenu.Content
-                              className="ui-radix-floating z-[300] min-w-[13rem] rounded-lg border border-[#e5e5e5] bg-white py-1 text-sm shadow-lg"
-                              align="end"
-                              sideOffset={4}
-                              onCloseAutoFocus={(e) => e.preventDefault()}
-                            >
-                              <DropdownMenu.Item
-                                className="flex cursor-pointer items-center gap-2 px-3 py-2 outline-none hover:bg-gray-50"
-                                onSelect={(e) => {
-                                  e.preventDefault();
-                                  onToggleBatchMode();
-                                }}
-                              >
-                                <CheckSquare className="w-3.5 h-3.5" /> 批量操作
-                              </DropdownMenu.Item>
-                              <DropdownMenu.Sub>
-                                <DropdownMenu.SubTrigger className="flex cursor-default select-none items-center justify-between gap-2 px-3 py-2 outline-none hover:bg-gray-50 data-[state=open]:bg-gray-50 rounded-none">
-                                  <span className="flex items-center gap-2">
-                                    <Folder className="w-3.5 h-3.5" /> 移动到分组
-                                  </span>
-                                  <span className="text-gray-400 text-xs">›</span>
-                                </DropdownMenu.SubTrigger>
-                                <DropdownMenu.Portal>
-                                  <DropdownMenu.SubContent
-                                    className="ui-radix-floating z-[301] max-h-[min(60vh,16rem)] min-w-[10rem] overflow-y-auto rounded-lg border border-[#e5e5e5] bg-white py-1 text-sm shadow-lg"
-                                    sideOffset={4}
-                                  >
-                                    <DropdownMenu.Item
-                                      className="px-3 py-2 cursor-pointer outline-none hover:bg-gray-50"
-                                      disabled={movePendingId === c.id}
-                                      onSelect={() => void onMoveToGroup(c.id, null)}
-                                    >
-                                      移出分组
-                                    </DropdownMenu.Item>
-                                    {folders.map((gf) => (
-                                      <DropdownMenu.Item
-                                        key={gf.id}
-                                        className="px-3 py-2 cursor-pointer outline-none hover:bg-gray-50"
-                                        disabled={movePendingId === c.id || c.group_id === gf.id}
-                                        onSelect={() => void onMoveToGroup(c.id, gf.id)}
-                                      >
-                                        {gf.name}
-                                      </DropdownMenu.Item>
-                                    ))}
-                                  </DropdownMenu.SubContent>
-                                </DropdownMenu.Portal>
-                              </DropdownMenu.Sub>
-                              <DropdownMenu.Item
-                                className="flex cursor-pointer items-center gap-2 px-3 py-2 outline-none hover:bg-gray-50"
-                                onSelect={() =>
-                                  onRenameRequest(c.id, c.title || "新会话")
-                                }
-                              >
-                                <Pencil className="w-3.5 h-3.5" /> 编辑名称
-                              </DropdownMenu.Item>
-                              <DropdownMenu.Item
-                                className="flex cursor-pointer items-center gap-2 px-3 py-2 outline-none opacity-45 pointer-events-none"
-                                disabled
-                              >
-                                <Share2 className="w-3.5 h-3.5" /> 分享
-                              </DropdownMenu.Item>
-                              <DropdownMenu.Item
-                                className="flex cursor-pointer items-center gap-2 px-3 py-2 outline-none hover:bg-gray-50"
-                                onSelect={() => onTogglePin(c.id)}
-                              >
-                                <Pin className="w-3.5 h-3.5" />{" "}
-                                {isPinned ? "取消置顶" : "置顶"}
-                              </DropdownMenu.Item>
-                              <DropdownMenu.Item
-                                className="flex cursor-pointer items-center gap-2 px-3 py-2 outline-none hover:bg-gray-50"
-                                onSelect={() =>
-                                  void onExportConversation(c.id, c.title || "新会话")
-                                }
-                              >
-                                <Download className="w-3.5 h-3.5" /> 导出会话
-                              </DropdownMenu.Item>
-                              <DropdownMenu.Separator className="my-1 h-px bg-gray-100" />
-                              <DropdownMenu.Item
-                                className="flex cursor-pointer items-center gap-2 px-3 py-2 text-red-600 outline-none hover:bg-red-50"
-                                onSelect={() => onDelete(c.id)}
-                              >
-                                <Trash2 className="w-3.5 h-3.5" /> 删除会话
-                              </DropdownMenu.Item>
-                              {movePendingId === c.id && (
-                                <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-500">
-                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />{" "}
-                                  更新中…
-                                </div>
-                              )}
-                            </DropdownMenu.Content>
-                          </DropdownMenu.Portal>
-                        </DropdownMenu.Root>
-                        </div>
-                      )}
+                    <div key={section.id} className="space-y-0.5">
+                      <div className={TIME_SECTION_LABEL_CLASS}>{section.label}</div>
+                      {visibleItems.map((c) => renderConversationRow(c))}
+                      {showMore ? (
+                        <button
+                          type="button"
+                          onClick={() => toggleSectionExpanded(section.id)}
+                          className="w-full rounded-lg px-2 py-1.5 text-left text-xs text-gray-500 transition-colors hover:bg-gray-100/85 hover:text-gray-700"
+                        >
+                          更多 ({hiddenCount})
+                        </button>
+                      ) : null}
                     </div>
                   );
                 })}

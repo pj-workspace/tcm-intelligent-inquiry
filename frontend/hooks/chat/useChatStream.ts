@@ -167,8 +167,11 @@ export function useChatStream(deps: UseChatStreamDeps) {
       appendUserMessage: boolean,
       streamOpts?: {
         regenerateLastReply?: boolean;
+        regenerateFromUserId?: string;
         imageUrls?: string[];
         resumeTraceId?: string;
+        resumeWidgetId?: string;
+        resumeKind?: "ask_user";
       }
     ) => {
       if (!token) return;
@@ -305,13 +308,29 @@ export function useChatStream(deps: UseChatStreamDeps) {
           body: JSON.stringify({
             message: userText,
             conversation_id: conversationIdRef.current ?? conversationId,
-            regenerate_last_reply: streamOpts?.regenerateLastReply ?? false,
+            // ask_user 恢复是一次新的用户输入（但不渲染独立气泡），不能走 regenerate；
+            // 否则后端会拿它和最后一条已持久化 user 消息比较，触发“不一致”错误。
+            regenerate_last_reply: streamOpts?.resumeTraceId
+              ? false
+              : streamOpts?.regenerateLastReply ?? false,
+            ...(streamOpts?.regenerateFromUserId
+              ? { regenerate_from_user_id: streamOpts.regenerateFromUserId }
+              : {}),
             ...(agentIdForChatRequest(chatAgentId)
               ? { agent_id: agentIdForChatRequest(chatAgentId) }
               : {}),
             deep_think: deepThinkEnabled,
             web_search_enabled: webSearchEnabled,
             web_search_mode: webSearchMode,
+            ...(streamOpts?.resumeKind
+              ? { resume_kind: streamOpts.resumeKind }
+              : {}),
+            ...(streamOpts?.resumeWidgetId
+              ? { resume_widget_id: streamOpts.resumeWidgetId }
+              : {}),
+            ...(streamOpts?.resumeTraceId
+              ? { resume_trace_id: streamOpts.resumeTraceId }
+              : {}),
             ...(effectiveLlmPick
               ? {
                   llm_provider: effectiveLlmPick.llm_provider,
@@ -540,6 +559,37 @@ export function useChatStream(deps: UseChatStreamDeps) {
                     ),
                   );
                 }
+              } else if (data.type === "ask-user-start") {
+                const stepSnap = openThinkingStepId;
+                openThinkingStepId = null;
+                if (isThinkMode) {
+                  pendingInterimStepId = null;
+                  pendingInterimText = "";
+                }
+                const traceIdResolved = ensureCurrentTraceId();
+                const runKey =
+                  sseStr(data.runId) ||
+                  `run-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+                setGenState("tool");
+                setMessages((prev) => {
+                  const base = stepSnap
+                    ? applyFinalizeThinkingStepToMessages(
+                        prev,
+                        traceIdResolved,
+                        stepSnap,
+                        thinkingStepStartedAt.current,
+                      )
+                    : prev;
+                  return upsertTraceWithStep(base, traceIdResolved, {
+                    id: `user-input-preparing-${runKey}`,
+                    type: "user_input",
+                    widgetId: `pending-${runKey}`,
+                    question: "正在准备问题",
+                    choices: [],
+                    allowFreeText: true,
+                    status: "preparing",
+                  });
+                });
               } else if (data.type === "tool-call") {
                 const stepSnap = openThinkingStepId;
                 openThinkingStepId = null;
@@ -554,6 +604,7 @@ export function useChatStream(deps: UseChatStreamDeps) {
                   sseStr(data.runId) ||
                   `run-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
                 const rowId = `tool-${runKey}`;
+                const toolName = sseStr(data.name) || "tool";
                 setGenState("tool");
                 setMessages((prev) => {
                   let base = prev;
@@ -568,7 +619,7 @@ export function useChatStream(deps: UseChatStreamDeps) {
                   const toolStep: ToolStep = {
                     id: rowId,
                     type: "tool",
-                    toolName: sseStr(data.name) || "tool",
+                    toolName,
                     mcpRemoteName:
                       sseStr((data as { mcpRemoteName?: unknown }).mcpRemoteName) ||
                       undefined,
@@ -741,18 +792,54 @@ export function useChatStream(deps: UseChatStreamDeps) {
                           thinkingStepStartedAt.current,
                         )
                       : cleaned;
-                    return [
-                      ...upsertTraceWithStep(base, traceIdResolved, {
-                        id: `user-input-${widgetId}`,
-                        type: "user_input",
-                        widgetId,
-                        question: widgetQuestion,
-                        choices: widgetChoices,
-                        allowFreeText: widgetAllowFreeText,
-                        status: "waiting",
-                      }),
-                      tracedWidgetMsg,
-                    ];
+                    const existingIdx = base.findIndex(
+                      (m): m is TraceMessage =>
+                        m.type === "trace" &&
+                        m.id === traceIdResolved &&
+                        m.steps.some(
+                          (step) =>
+                            step.type === "user_input" &&
+                            step.status === "preparing",
+                        ),
+                    );
+                    const nextBase =
+                      existingIdx === -1
+                        ? upsertTraceWithStep(base, traceIdResolved, {
+                            id: `user-input-${widgetId}`,
+                            type: "user_input",
+                            widgetId,
+                            question: widgetQuestion,
+                            choices: widgetChoices,
+                            allowFreeText: widgetAllowFreeText,
+                            status: "waiting",
+                          })
+                        : base.map((m) => {
+                            if (m.type !== "trace" || m.id !== traceIdResolved) return m;
+                            let replaced = false;
+                            return {
+                              ...m,
+                              status: "streaming" as const,
+                              steps: m.steps.map((step) => {
+                                if (
+                                  replaced ||
+                                  step.type !== "user_input" ||
+                                  step.status !== "preparing"
+                                ) {
+                                  return step;
+                                }
+                                replaced = true;
+                                return {
+                                  ...step,
+                                  widgetId,
+                                  question: widgetQuestion,
+                                  choices: widgetChoices,
+                                  allowFreeText: widgetAllowFreeText,
+                                  status: "waiting" as const,
+                                };
+                              }),
+                            };
+                          });
+                    return [...nextBase, tracedWidgetMsg];
                   });
                   continue;
                 }
@@ -870,11 +957,14 @@ export function useChatStream(deps: UseChatStreamDeps) {
         finalizeThinkingStep(currentTraceId, openThinkingStepId);
         // think 模式：把最后那段 pending interim 升级为顶层 assistant 气泡
         // 作为「最终总结」
-        if (isThinkMode) {
+        if (isThinkMode && !streamEndedWithWidget) {
           promotePendingInterim(false);
         }
-        // 流正常结束：trace 自动折叠，只露一行 headline；用户可手动展开
-        if (currentTraceId) finalizeTrace(currentTraceId, true);
+        // ask_user 会以 widget 暂停本轮流，但这不是 trace 结束：
+        // 保持 status=streaming，让标题继续由 streamingTraceHeadline 显示
+        // 「等待用户补充...」。用户回答/跳过后会 resume 到同一个 trace，
+        // 最终 summary/text 到达时再真正 finalize。
+        if (currentTraceId && !streamEndedWithWidget) finalizeTrace(currentTraceId, true);
 
         if (
           !abortController.signal.aborted &&

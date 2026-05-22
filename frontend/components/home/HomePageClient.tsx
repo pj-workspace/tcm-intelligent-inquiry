@@ -170,6 +170,7 @@ export function HomePageClient() {
     deleteConversationsBulk,
     sseRouteAssignPending,
   } = chat;
+  const prevGenStateRef = useRef(genState);
 
   const { agents: agentCatalog, loading: agentsLoading } = useChatAgentsCatalog(token);
 
@@ -569,6 +570,35 @@ export function HomePageClient() {
     autoFollowMainRef,
     followUpLayoutKey,
   ]);
+
+  // 生成结束时 trace/指示器/工具栏会在不同帧收口；等动画稳定后再补一次贴底。
+  useEffect(() => {
+    const wasGenerating = prevGenStateRef.current !== "idle";
+    const isNowIdle = genState === "idle";
+    prevGenStateRef.current = genState;
+
+    if (!hasStarted || !wasGenerating || !isNowIdle) return;
+    if (!autoFollowMainRef.current) return;
+
+    let rafHandle1 = 0;
+    let rafHandle2 = 0;
+    const timeoutHandle = window.setTimeout(() => {
+      if (!autoFollowMainRef.current) return;
+      rafHandle1 = requestAnimationFrame(() => {
+        rafHandle2 = requestAnimationFrame(() => {
+          if (autoFollowMainRef.current) {
+            scrollToBottom(false);
+          }
+        });
+      });
+    }, 280);
+
+    return () => {
+      window.clearTimeout(timeoutHandle);
+      cancelAnimationFrame(rafHandle1);
+      cancelAnimationFrame(rafHandle2);
+    };
+  }, [genState, hasStarted, scrollToBottom, autoFollowMainRef]);
 
   // 从 sessionStorage 恢复未发送的草稿（首屏回填一次）
   useEffect(() => {

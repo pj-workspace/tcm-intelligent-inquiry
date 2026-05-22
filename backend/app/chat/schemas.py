@@ -34,6 +34,22 @@ class ChatRequest(BaseModel):
         description="为 True 时需带 conversation_id：删除该会话最后一条用户消息之后的 thinking/assistant，"
         "不重复写入用户消息，用于「重新生成」上一轮助手回复。",
     )
+    regenerate_from_user_id: str | None = Field(
+        default=None,
+        description="从指定 user 消息开始重新生成：删除该 user 之后的所有消息，不重复写入该 user。",
+    )
+    resume_kind: Literal["ask_user"] | None = Field(
+        default=None,
+        description="恢复一个被工具暂停的会话流程；目前仅支持 ask_user。",
+    )
+    resume_widget_id: str | None = Field(
+        default=None,
+        description="恢复 ask_user 时对应的 widget id，用于后端区分本轮不是重新生成。",
+    )
+    resume_trace_id: str | None = Field(
+        default=None,
+        description="前端 trace id，仅用于 SSE/日志关联；后端不依赖它做权限判断。",
+    )
     deep_think: bool = Field(
         default=False,
         description="为 True 时在系统提示中追加「深度思考」指令：逐步推理；若模型支持思考通道则展示推理过程。",

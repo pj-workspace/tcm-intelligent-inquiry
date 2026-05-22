@@ -66,6 +66,7 @@ export function BrainstormStepItem({
   if (step.type === "user_input") {
     const answered = step.status === "answered" && !!step.answer?.trim();
     const dismissed = step.status === "dismissed";
+    const preparing = step.status === "preparing";
     return (
       <StepShell
         kind={answered || dismissed ? "user_input_done" : "user_input"}
@@ -77,6 +78,8 @@ export function BrainstormStepItem({
               ? "用户已补充"
               : dismissed
               ? "用户已跳过"
+              : preparing
+              ? "准备询问用户"
               : "等待用户补充"}
           </div>
           {step.question.trim() ? (

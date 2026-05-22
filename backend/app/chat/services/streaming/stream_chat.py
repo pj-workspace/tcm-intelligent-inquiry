@@ -152,8 +152,12 @@ async def stream_chat(
     user: "UserRecord | None",
     anon_session_secret: str | None = None,
     regenerate_last_reply: bool = False,
+    regenerate_from_user_id: str | None = None,
     *,
     resolved: ResolvedChatTurn,
+    resume_kind: Literal["ask_user"] | None = None,
+    resume_widget_id: str | None = None,
+    resume_trace_id: str | None = None,
     web_search_mode: Literal["force", "auto"] = "force",
     group_id: str | None = None,
     image_urls: list[str] | None = None,
@@ -188,6 +192,14 @@ async def stream_chat(
         return
 
     persist_user_body = persist_user_turn_content(msg_in, urls)
+    # 恢复 ask_user 是一条新的用户输入，不是重新生成。这里在后端强制兜底，
+    # 避免客户端旧状态把 regenerate_last_reply=true 一起带上导致内容比对误报。
+    is_ask_user_resume = resume_kind == "ask_user" and bool(resume_widget_id)
+    if is_ask_user_resume:
+        regenerate_last_reply = False
+    regenerate_from_user_id = (regenerate_from_user_id or "").strip() or None
+    if regenerate_from_user_id:
+        regenerate_last_reply = True
     if regenerate_last_reply and not conversation_id:
         yield sse({"type": "error", "message": "重新生成需要已有会话（conversation_id）。"})
         yield sse_done()
@@ -244,31 +256,37 @@ async def stream_chat(
                         .order_by(MessageRecord.created_at)
                     )
                     rows = r.scalars().all()
-                    last_user_i = -1
-                    for i, m in enumerate(rows):
-                        if m.role == "user":
-                            last_user_i = i
-                    if last_user_i < 0:
+                    target_user_i = -1
+                    if regenerate_from_user_id:
+                        for i, m in enumerate(rows):
+                            if m.id == regenerate_from_user_id and m.role == "user":
+                                target_user_i = i
+                                break
+                    else:
+                        for i, m in enumerate(rows):
+                            if m.role == "user":
+                                target_user_i = i
+                    if target_user_i < 0:
                         yield sse(
                             {
                                 "type": "error",
-                                "message": "无法重新生成：会话中没有用户消息。",
+                                "message": "无法重新生成：未找到对应的用户消息。",
                             }
                         )
                         yield sse_done()
                         return
                     if user_message_text_for_regenerate_compare(
-                        rows[last_user_i].content
+                        rows[target_user_i].content
                     ) != msg_in:
                         yield sse(
                             {
                                 "type": "error",
-                                "message": "重新生成失败：内容与最后一条用户消息不一致。",
+                                "message": "重新生成失败：内容与目标用户消息不一致。",
                             }
                         )
                         yield sse_done()
                         return
-                    tail_ids = [m.id for m in rows[last_user_i + 1 :]]
+                    tail_ids = [m.id for m in rows[target_user_i + 1 :]]
                     if tail_ids:
                         await session.execute(
                             delete(MessageRecord).where(MessageRecord.id.in_(tail_ids))
@@ -345,6 +363,12 @@ async def stream_chat(
             "chatModel": meta_chat_model_label(resolved),
             "safetyNotice": STREAM_SAFETY_NOTICE,
         }
+        if is_ask_user_resume:
+            meta_out["resume"] = {
+                "kind": "ask_user",
+                "widgetId": resume_widget_id,
+                "traceId": resume_trace_id,
+            }
         if anon_sec:
             meta_out["anonSessionSecret"] = anon_sec
         yield sse(meta_out)
@@ -635,6 +659,17 @@ async def stream_chat(
                 raw_in = data.get("input")
                 if raw_in is None:
                     raw_in = data.get("tool_input")
+                if name == "ask_user":
+                    payload: dict[str, Any] = {
+                        "type": "ask-user-start",
+                        "name": name,
+                    }
+                    if run_id is not None:
+                        payload["runId"] = run_id
+                    if raw_in is not None:
+                        payload["input"] = json_safe_for_sse(raw_in)
+                    yield sse(payload)
+                    continue
                 if run_id is not None:
                     tool_pending_by_run[str(run_id)] = {
                         "name": name,
@@ -741,7 +776,6 @@ async def stream_chat(
                             },
                         ),
                     )
-                yield sse(tr)
                 if _widget_sse:
                     await flush_thinking_segment()
                     await flush_assistant_segment()
@@ -766,23 +800,25 @@ async def stream_chat(
                         await session.commit()
                     yield sse(_widget_sse)
                     _break_after_widget = True
+                else:
+                    yield sse(tr)
 
-                rec: dict[str, Any] = {"name": tr_name, "outputPreview": preview}
-                rec.update(mcp_tool_sse_metadata(tr_name))
-                if tr_input is not None:
-                    rec["input"] = tr_input
-                if run_key:
-                    rec["runId"] = run_key
-                async with async_session_factory() as session:
-                    session.add(
-                        MessageRecord(
-                            id=str(uuid.uuid4()),
-                            conversation_id=conv_id,
-                            role="tool",
-                            content=json.dumps(rec, ensure_ascii=False),
+                    rec: dict[str, Any] = {"name": tr_name, "outputPreview": preview}
+                    rec.update(mcp_tool_sse_metadata(tr_name))
+                    if tr_input is not None:
+                        rec["input"] = tr_input
+                    if run_key:
+                        rec["runId"] = run_key
+                    async with async_session_factory() as session:
+                        session.add(
+                            MessageRecord(
+                                id=str(uuid.uuid4()),
+                                conversation_id=conv_id,
+                                role="tool",
+                                content=json.dumps(rec, ensure_ascii=False),
+                            )
                         )
-                    )
-                    await session.commit()
+                        await session.commit()
 
             if _break_after_widget:
                 break

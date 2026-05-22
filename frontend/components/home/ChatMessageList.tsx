@@ -205,6 +205,9 @@ export function ChatMessageList({
           compactTopAfterAssistant={
             prevMsg?.type === "message" && prevMsg.role === "assistant"
           }
+          compactBottomBeforeAssistant={
+            nextMsg?.type === "message" && nextMsg.role === "assistant"
+          }
           onToggle={() =>
             setMessages((prev) =>
               prev.map((item) =>

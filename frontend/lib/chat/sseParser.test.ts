@@ -35,6 +35,7 @@ describe("KNOWN_SSE_EVENT_TYPES", () => {
       "meta",
       "text-delta",
       "thinking-delta",
+      "ask-user-start",
       "tool-call",
       "tool-result",
       "summary-start",
@@ -45,7 +46,7 @@ describe("KNOWN_SSE_EVENT_TYPES", () => {
     ]) {
       expect(isKnownSseEventType(t)).toBe(true);
     }
-    expect(KNOWN_SSE_EVENT_TYPES).toHaveLength(11);
+    expect(KNOWN_SSE_EVENT_TYPES).toHaveLength(12);
   });
 
   it("summary-start 是 think 模式 mark_summary 工具触发的内部信号", () => {

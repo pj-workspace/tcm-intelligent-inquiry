@@ -655,14 +655,15 @@ export function useChat(opts: {
           return m;
         })
       );
-      if (answer !== null) {
-        setHasStarted(true);
-        autoFollowMainRef.current = true;
-        // appendUserMessage=false：答案已显示在 widget 紧凑状态，不再额外显示用户气泡
-        runChatStream(answer, false, {
-          ...(resumeTraceId ? { resumeTraceId } : {}),
-        });
-      }
+      setHasStarted(true);
+      autoFollowMainRef.current = true;
+      // appendUserMessage=false：答案已显示在 widget/trace 紧凑状态，不再额外显示用户气泡。
+      // 跳过也要恢复模型，否则 ask_user 暂停后不会继续输出。
+      runChatStream(answer ?? "用户选择跳过此问题，请基于已有信息继续。", false, {
+        resumeKind: "ask_user",
+        resumeWidgetId: widgetId,
+        ...(resumeTraceId ? { resumeTraceId } : {}),
+      });
     },
     [messages, autoFollowMainRef, runChatStream]
   );
@@ -864,6 +865,7 @@ export function useChat(opts: {
       const idx = messages.findIndex((m) => m.id === assistantMsgId);
       if (idx <= 0) return;
       let userIdx = -1;
+      let userMsgId: string | null = null;
       let userText: string | null = null;
       let regenerateImageUrls: string[] | undefined;
       for (let i = idx - 1; i >= 0; i--) {
@@ -874,12 +876,13 @@ export function useChat(opts: {
         const hasPic = (um.imageUrls?.length ?? 0) > 0;
         if (!hasTxt && !hasPic) continue;
         userText = hasTxt ? um.content.trim() : "（附图）";
+        userMsgId = um.id;
         const raw = (um.imageUrls ?? []).map((u) => u.trim()).filter(Boolean);
         regenerateImageUrls = raw.length ? raw : undefined;
         userIdx = i;
         break;
       }
-      if (!userText || userIdx < 0) return;
+      if (!userText || !userMsgId || userIdx < 0) return;
       autoFollowMainRef.current = true;
       setMessages((prev) => {
         const removed = prev.slice(userIdx + 1);
@@ -895,6 +898,7 @@ export function useChat(opts: {
       });
       void runChatStream(userText, false, {
         regenerateLastReply: true,
+        regenerateFromUserId: userMsgId,
         ...(regenerateImageUrls?.length ? { imageUrls: regenerateImageUrls } : {}),
       });
     },

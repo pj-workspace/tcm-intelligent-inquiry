@@ -119,7 +119,6 @@ export function AssistantBubble({
         <div
           className={clsx(
             "text-[15px] leading-relaxed bg-transparent text-[#1a1a1a] ai-content w-full min-w-0 md:max-w-[68ch] lg:max-w-[80ch] xl:max-w-[96ch]",
-            "[&>*:last-child]:!mb-2",
           )}
         >
           <ReactMarkdown

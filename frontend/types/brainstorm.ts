@@ -30,7 +30,7 @@ export type BrainstormStep =
       question: string;
       choices?: string[];
       allowFreeText?: boolean;
-      status: "waiting" | "answered" | "dismissed";
+      status: "preparing" | "waiting" | "answered" | "dismissed";
       answer?: string;
       createdAt?: string;
     };
@@ -43,6 +43,8 @@ export interface BrainstormPanelProps {
   onToggle?: () => void;
   /** 紧跟在助手正文气泡后时使用，减小与上文的空隙 */
   compactTopAfterAssistant?: boolean;
+  /** 下一条为助手正文时使用，减小 trace 标题与正文之间的空隙 */
+  compactBottomBeforeAssistant?: boolean;
   /** true：trace 由 abort / 错误收口，footer 用「已终止」 */
   aborted?: boolean;
   /** true：模型显式调用了 mark_summary，footer 显示「完成」；否则 trace 不显示 footer */

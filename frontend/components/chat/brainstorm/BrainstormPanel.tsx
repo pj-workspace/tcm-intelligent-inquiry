@@ -23,6 +23,7 @@ export function BrainstormPanel({
   collapsed = false,
   onToggle,
   compactTopAfterAssistant = false,
+  compactBottomBeforeAssistant = false,
   aborted = false,
   summaryAcknowledged = false,
 }: BrainstormPanelProps) {
@@ -44,7 +45,8 @@ export function BrainstormPanel({
     <div
       className={clsx(
         "flex w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl justify-start px-4 sm:px-5 md:mx-auto md:px-6 lg:px-8",
-        compactTopAfterAssistant ? "pt-0 pb-4" : "pt-1.5 pb-4",
+        compactTopAfterAssistant ? "pt-0" : "pt-1.5",
+        compactBottomBeforeAssistant ? "pb-1" : "pb-4",
       )}
     >
       <div className="w-full max-w-full">
