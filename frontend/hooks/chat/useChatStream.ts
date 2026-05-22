@@ -58,7 +58,8 @@ export type UseChatStreamDeps = {
   refreshConversationBillingTotals: (cid: string | null) => Promise<void>;
   /** SSE 流式 error 后从服务端重载消息，与入库的错误助手气泡对齐 */
   reloadConversationMessages: (conversationId: string) => Promise<void>;
-  /** 发送用户消息后回调（带新生成的 userMsgId），上层把对应气泡滚到 viewport 顶部 */
+  /** 发送用户消息后回调（带新生成的 userMsgId）：上层据此开启 auto-follow，
+   *  让用户气泡自然落到输入栏正上方。 */
   onUserMessageAppended?: (userMsgId: string) => void;
 };
 
@@ -202,6 +203,9 @@ export function useChatStream(deps: UseChatStreamDeps) {
       let hasAssistantMsg = false;
       let streamEndedWithSSEError = false;
       let streamEndedWithWidget = false;
+      /** 本轮在内存里**新建**的 assistant 气泡 id 集合（含 promote/seal 切换出的所有 continuation id）。
+       *  abort 时只允许给这些 id 标 interrupted，避免误打到上一轮已完成的气泡。 */
+      const bubblesCreatedThisTurn = new Set<string>();
       /** 当前 assistant 气泡的累积文本（用于追问 follow-ups 与导出） */
       let assistantReplyAccum = "";
       // ── Think 模式：buffer-and-decide + mark_summary 边界信号 ────────────
@@ -267,6 +271,7 @@ export function useChatStream(deps: UseChatStreamDeps) {
           });
           return next;
         });
+        bubblesCreatedThisTurn.add(newMsgId);
         currentAssistantMsgId = newMsgId;
         hasAssistantMsg = true;
         assistantReplyAccum = content;
@@ -604,6 +609,7 @@ export function useChatStream(deps: UseChatStreamDeps) {
                   if (!hasAssistantMsg) {
                     hasAssistantMsg = true;
                     assistantReplyAccum = piece;
+                    bubblesCreatedThisTurn.add(currentAssistantMsgId);
                     setMessages((prev) => [
                       ...prev,
                       {
@@ -759,21 +765,28 @@ export function useChatStream(deps: UseChatStreamDeps) {
                   currentTraceId = null;
                 }
                 const errLine = `**Error:** ${data.message}`;
+                const newErrMsgId = `${Date.now()}-sse-err`;
                 setMessages((prev) => {
-                  let lastAiIdx = -1;
+                  // 只接在**本轮**已创建的 assistant 气泡尾部，避免把错误信息
+                  // 误粘到上一轮已完成的 AI 气泡上
+                  let targetIdx = -1;
                   for (let i = prev.length - 1; i >= 0; i--) {
                     const row = prev[i];
-                    if (row.type === "message" && row.role === "assistant") {
-                      lastAiIdx = i;
+                    if (
+                      row.type === "message" &&
+                      row.role === "assistant" &&
+                      bubblesCreatedThisTurn.has(row.id)
+                    ) {
+                      targetIdx = i;
                       break;
                     }
                   }
-                  if (lastAiIdx !== -1) {
-                    const row = prev[lastAiIdx] as ChatMessage;
+                  if (targetIdx !== -1) {
+                    const row = prev[targetIdx] as ChatMessage;
                     const prefix = (row.content || "").trim();
                     const nextContent = prefix ? `${prefix}\n\n${errLine}` : errLine;
                     return prev.map((x, i) =>
-                      i === lastAiIdx && x.type === "message"
+                      i === targetIdx && x.type === "message"
                         ? { ...(x as ChatMessage), content: nextContent }
                         : x
                     );
@@ -781,13 +794,14 @@ export function useChatStream(deps: UseChatStreamDeps) {
                   return [
                     ...prev,
                     {
-                      id: Date.now().toString(),
+                      id: newErrMsgId,
                       role: "assistant",
                       type: "message",
                       content: errLine,
                     },
                   ];
                 });
+                bubblesCreatedThisTurn.add(newErrMsgId);
               }
             } catch (e) {
               console.error("Error parsing SSE data", e);
@@ -850,10 +864,12 @@ export function useChatStream(deps: UseChatStreamDeps) {
           }
           thinkingStepStartedAt.current = {};
           traceStartedAt.current = {};
+          const netErrMsgId = `${Date.now()}-net-err`;
+          bubblesCreatedThisTurn.add(netErrMsgId);
           setMessages((prev) => [
             ...prev,
             {
-              id: Date.now().toString(),
+              id: netErrMsgId,
               role: "assistant",
               type: "message",
               content: "**网络错误**：无法连接到服务器，请确保后端服务已启动。",
@@ -875,39 +891,51 @@ export function useChatStream(deps: UseChatStreamDeps) {
           }
           // promote 已经把内容写成新的 assistant 气泡且自带 interrupted=true，
           // 无需下面的 lastAi 兜底逻辑（避免重复打标记或追加空气泡）
-          if (!promotedOnAbort) setMessages((prev) => {
-            const lastAi = [...prev]
-              .reverse()
-              .find((m): m is ChatMessage => m.type === "message" && m.role === "assistant");
-            if (lastAi) {
-              if (lastAi.interrupted) return prev;
-              return prev.map((m) =>
-                m.id === lastAi.id && m.type === "message" && m.role === "assistant"
-                  ? { ...m, interrupted: true }
-                  : m
-              );
-            }
-            const tail = prev[prev.length - 1];
-            if (
-              tail &&
-              tail.type === "message" &&
-              tail.role === "assistant" &&
-              tail.interrupted &&
-              !(tail.content || "").trim()
-            ) {
-              return prev;
-            }
-            return [
-              ...prev,
-              {
-                id: `${Date.now()}-interrupted`,
-                role: "assistant",
-                type: "message",
-                content: "",
-                interrupted: true,
-              },
-            ];
-          });
+          const newInterruptedMsgId = `${Date.now()}-interrupted`;
+          if (!promotedOnAbort) {
+            // 关键：只允许把 interrupted 打到**本轮**新建的 assistant 气泡上，
+            // 避免被错打到上一轮已完成的气泡尾部（典型场景：本轮 abort 时只有
+            // trace 没有 text-delta，回头找上一轮 assistant 误标）
+            bubblesCreatedThisTurn.add(newInterruptedMsgId);
+            setMessages((prev) => {
+              const lastAi = [...prev]
+                .reverse()
+                .find(
+                  (m): m is ChatMessage =>
+                    m.type === "message" &&
+                    m.role === "assistant" &&
+                    bubblesCreatedThisTurn.has(m.id),
+                );
+              if (lastAi) {
+                if (lastAi.interrupted) return prev;
+                return prev.map((m) =>
+                  m.id === lastAi.id && m.type === "message" && m.role === "assistant"
+                    ? { ...m, interrupted: true }
+                    : m
+                );
+              }
+              const tail = prev[prev.length - 1];
+              if (
+                tail &&
+                tail.type === "message" &&
+                tail.role === "assistant" &&
+                tail.interrupted &&
+                !(tail.content || "").trim()
+              ) {
+                return prev;
+              }
+              return [
+                ...prev,
+                {
+                  id: newInterruptedMsgId,
+                  role: "assistant",
+                  type: "message",
+                  content: "",
+                  interrupted: true,
+                },
+              ];
+            });
+          }
           setGenState("idle");
         }
         const cidFin = conversationIdRef.current;

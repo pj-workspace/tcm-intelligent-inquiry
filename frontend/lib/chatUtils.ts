@@ -77,7 +77,10 @@ export function groupMessagesIntoTraces(
       .filter(
         (m): m is Exclude<
           FlatMessage,
-          { type: "thinking" } | { type: "tool" } | { type: "summary-mark" }
+          | { type: "thinking" }
+          | { type: "tool" }
+          | { type: "summary-mark" }
+          | { type: "interrupt-mark" }
         > => m.type === "message" || m.type === "widget",
       )
       .map((m) => m as Message);
@@ -124,9 +127,47 @@ export function groupMessagesIntoTraces(
     }
   };
 
+  /** interrupt-mark：把**本轮**最近一条 assistant 消息标 interrupted。
+   *
+   *  关键边界：向前扫到 user / widget 即停（它们是"轮次分隔符"）。这避免把上一轮
+   *  已完成的 assistant 误标为 interrupted——典型场景是本轮 abort 时只有 trace
+   *  还没产生任何 assistant 文本。这时追加一条空 assistant 占位气泡承载「输出已被
+   *  终止」标识，与实时流 abort 时的 UI 一致。 */
+  const markLastAssistantInterrupted = (markerId: string) => {
+    // pendingSteps 不为空时，先 flush trace（让 interrupt-mark 之前的 trace 收口）
+    if (pendingSteps.length > 0) {
+      flushTrace(true);
+    }
+    for (let i = grouped.length - 1; i >= 0; i--) {
+      const m = grouped[i];
+      if (m.type === "message" && m.role === "assistant") {
+        if (!m.interrupted) {
+          grouped[i] = { ...m, interrupted: true };
+        }
+        return;
+      }
+      // 跨越轮次分隔符（user 消息 / widget 卡）就停止：interrupt-mark 只能影响本轮
+      if (m.type === "message" && m.role === "user") break;
+      if (m.type === "widget") break;
+      // trace 跳过继续往前找
+    }
+    // 本轮没找到 assistant 消息：追加占位气泡承载「已终止」尾巴
+    grouped.push({
+      id: `${markerId}-interrupted-placeholder`,
+      role: "assistant",
+      type: "message",
+      content: "",
+      interrupted: true,
+    });
+  };
+
   for (const item of items) {
     if (item.type === "summary-mark") {
       markSummaryAcknowledged();
+      continue;
+    }
+    if (item.type === "interrupt-mark") {
+      markLastAssistantInterrupted(item.id);
       continue;
     }
     if (item.type === "message") {
@@ -244,6 +285,13 @@ export function mapApiRowToMessage(msg: ApiMessageRow): FlatMessage {
     return {
       id: msg.id,
       type: "summary-mark",
+      ...(createdAt ? { createdAt } : {}),
+    };
+  }
+  if (msg.role === "interrupt-mark") {
+    return {
+      id: msg.id,
+      type: "interrupt-mark",
       ...(createdAt ? { createdAt } : {}),
     };
   }

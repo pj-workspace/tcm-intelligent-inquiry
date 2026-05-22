@@ -39,6 +39,7 @@ PERSISTED_ROLES = frozenset(
         "tool",
         "widget",
         "summary-mark",
+        "interrupt-mark",
     }
 )
 
@@ -46,6 +47,11 @@ PERSISTED_ROLES = frozenset(
 def test_summary_mark_role_in_persisted_set():
     """summary-mark 是持久化 role 的一员；前后端解析都依赖它。"""
     assert "summary-mark" in PERSISTED_ROLES
+
+
+def test_interrupt_mark_role_in_persisted_set():
+    """interrupt-mark 是持久化 role 的一员；abort 路径写库、前端聚合识别。"""
+    assert "interrupt-mark" in PERSISTED_ROLES
 
 
 def test_sse_frame_format():

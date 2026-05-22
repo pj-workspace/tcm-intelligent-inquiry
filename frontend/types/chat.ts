@@ -30,13 +30,23 @@ export type SummaryMarkMessage = {
   createdAt?: string;
 };
 
+/** 历史里的"用户中止"标记；不渲染为独立消息，仅用于让前面最近一条 assistant
+ *  消息获得 interrupted=true（content 末尾显示「输出已被终止」尾巴）。
+ *  对应后端 MessageRecord.role="interrupt-mark"。 */
+export type InterruptMarkMessage = {
+  id: string;
+  type: "interrupt-mark";
+  createdAt?: string;
+};
+
 export type FlatMessage =
   | ChatMessage
   | ThinkingStep
   | ToolStep
   | InterimTextStep
   | WidgetMessage
-  | SummaryMarkMessage;
+  | SummaryMarkMessage
+  | InterruptMarkMessage;
 
 export type TraceMessage = {
   id: string;

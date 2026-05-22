@@ -5,7 +5,11 @@ import type {
   WebResultItem,
 } from "@/types/brainstorm";
 
-export const INTERNAL_SCROLL_THRESHOLD = 72;
+/** 新 step 到达时，距 trace 内部底部 <= 该值则视为"仍在底部，可以跟随"。
+ *  之前的 72 太宽松——用户只上滑一点就会被新 step 拽回。压到 12 给一手势就能脱离跟随。 */
+export const INTERNAL_SCROLL_THRESHOLD = 12;
+/** onScroll 时距底部 <= 该值才视为"用户主动滚回底部" —— 实际未启用回弹（去掉了 rebound），
+ *  仅作向后兼容保留导出。 */
 export const INTERNAL_LOCK_THRESHOLD = 8;
 
 export function formatDurationSec(sec: number): string {

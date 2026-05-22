@@ -78,33 +78,6 @@ export function useScrollBehavior(hasStartedRef: MutableRefObject<boolean>) {
     [updateScrollState]
   );
 
-  /** 发送消息后把指定用户气泡滚到 viewport 顶部（留一点偏移避免贴顶）。
-   *  同时关掉 auto-follow，避免 AI 流式时把消息列表又顶下去——用户主动滚到底
-   *  时 updateScrollState 会自动重新打开 auto-follow。
-   *
-   *  关 auto-follow 必须**同步**完成，否则在 React 提交完 messages 那一帧、
-   *  `useEffect(() => scrollToBottom(false))` 会先于本 rAF 跑，造成"先到底再上跳到顶"的闪烁。
-   */
-  const scrollUserMsgToTop = useCallback(
-    (userMsgId: string, offsetPx: number = 24) => {
-      const el = scrollViewportRef.current;
-      // 同步关 auto-follow：本函数与 setMessages 在同一同步阶段调用
-      autoFollowMainRef.current = false;
-      if (!el) return;
-      // RAF 一次让 React 把 DOM 提交完，selector 才能找到节点
-      requestAnimationFrame(() => {
-        const target = el.querySelector<HTMLElement>(
-          `[data-msg-id="${userMsgId}"]`
-        );
-        if (!target) return;
-        const top = Math.max(0, target.offsetTop - offsetPx);
-        el.scrollTo({ top, behavior: "smooth" });
-        requestAnimationFrame(updateScrollState);
-      });
-    },
-    [updateScrollState]
-  );
-
   const resetScrollState = useCallback(() => {
     scrollFabVisibleRef.current = false;
     setShowScrollToBottom(false);
@@ -121,7 +94,6 @@ export function useScrollBehavior(hasStartedRef: MutableRefObject<boolean>) {
     showScrollToBottom,
     updateScrollState,
     scrollToBottom,
-    scrollUserMsgToTop,
     resetScrollState,
   };
 }

@@ -97,6 +97,27 @@ def _build_aborted_tool_record(
     return rec
 
 
+async def _persist_interrupt_mark(conv_id: str) -> None:
+    """写一条 role=interrupt-mark 的零内容标记记录。
+
+    前端 ``groupMessagesIntoTraces`` 按时间顺序处理消息时，遇到 interrupt-mark
+    会把它**前面最近一条** assistant 消息标为 ``interrupted=true``——刷新历史
+    时仍能看到「输出已被终止」尾巴；如果前面没有 assistant 消息（罕见：abort
+    发生在 trace 阶段还没产生任何 assistant 文本时），前端在该位置追加一条
+    interrupted 空气泡占位。
+    """
+    async with async_session_factory() as session:
+        session.add(
+            MessageRecord(
+                id=str(uuid.uuid4()),
+                conversation_id=conv_id,
+                role="interrupt-mark",
+                content="",
+            )
+        )
+        await session.commit()
+
+
 async def _persist_pending_tools_as_aborted(
     conv_id: str,
     pending_by_run: dict[str, dict[str, Any]],
@@ -201,6 +222,10 @@ async def stream_chat(
     # mark_summary 之后模型违反约束又调用的工具 run_id 集合，让 on_tool_end 跳过它们；
     # abort 路径也会忽略这些，不会写入"已终止"记录。
     ignored_post_summary_runs: set[str] = set()
+    # finally 阶段判断"客户端中止"用：流正常结束 / SSE 错误路径都会显式置位，
+    # 都没置位说明客户端断连（generator 被回收 → CancelledError → finally）。
+    stream_completed_normally: bool = False
+    stream_errored: bool = False
 
     try:
         yield sse({"type": "notice", "safetyNotice": STREAM_SAFETY_NOTICE})
@@ -787,6 +812,7 @@ async def stream_chat(
                     {"type": "title-updated", "title": fb, "conversationId": conv_id}
                 )
 
+        stream_completed_normally = True
         yield sse_done()
 
     except Exception as exc:
@@ -829,6 +855,7 @@ async def stream_chat(
                 )
             except Exception:
                 logger.exception("写入流式错误助手消息失败")
+        stream_errored = True
         yield sse({"type": "error", "message": safe_err})
         yield sse_done()
     finally:
@@ -872,6 +899,21 @@ async def stream_chat(
                 pass
             except Exception:
                 logger.exception("中止后写入工具终止状态失败")
+        # 客户端 abort：流既未正常完成、也未走 SSE 错误分支 → 视为用户主动中止。
+        # 写一条 role=interrupt-mark 的标记记录，前端历史聚合时把它前面最近一条
+        # assistant 消息标记为 interrupted（content 末尾自动追加 "输出已被终止"）。
+        if (
+            conv_id
+            and flush_assistant_fn is not None
+            and not stream_completed_normally
+            and not stream_errored
+        ):
+            try:
+                await asyncio.shield(_persist_interrupt_mark(conv_id))
+            except asyncio.CancelledError:
+                pass
+            except Exception:
+                logger.exception("写入 interrupt-mark 失败")
         if kb_ctx_token is not None:
             chat_agent_kb_id.reset(kb_ctx_token)
         chat_user_id.reset(ctx_token)

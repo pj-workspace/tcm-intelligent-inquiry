@@ -61,7 +61,8 @@ export function useChat(opts: {
   chatPathname?: string;
   /** `handleNewChat` 清空会话后导航到空白工作台 */
   onNavigateToNewChatSurface?: () => void;
-  /** 用户消息追加到 messages 后回调（带 userMsgId）：上层据此把气泡滚到 viewport 顶部 */
+  /** 用户消息追加到 messages 后回调（带 userMsgId）：上层据此开启 auto-follow，
+   *  让用户气泡自然落到输入栏正上方。 */
   onUserMessageAppended?: (userMsgId: string) => void;
 }) {
   const {

@@ -35,6 +35,11 @@ const summaryMark = (id: string): FlatMessage => ({
   type: "summary-mark",
 });
 
+const interruptMark = (id: string): FlatMessage => ({
+  id,
+  type: "interrupt-mark",
+});
+
 describe("groupMessagesIntoTraces", () => {
   it("renders no trace for plain user+assistant", () => {
     const out = groupMessagesIntoTraces([
@@ -318,6 +323,86 @@ describe("groupMessagesIntoTraces", () => {
     const mapped = mapApiRowToMessage(row);
     expect(mapped.type).toBe("summary-mark");
     expect(mapped.id).toBe("sm-row-1");
+  });
+
+  it("mapApiRowToMessage recognizes role=interrupt-mark and emits interrupt-mark", () => {
+    const row: ApiMessageRow = {
+      id: "im-row-1",
+      role: "interrupt-mark",
+      content: "",
+      created_at: "2026-05-22T08:30:05Z",
+    };
+    const mapped = mapApiRowToMessage(row);
+    expect(mapped.type).toBe("interrupt-mark");
+    expect(mapped.id).toBe("im-row-1");
+  });
+
+  it("interrupt-mark marks the previous assistant message interrupted", () => {
+    const out = groupMessagesIntoTraces([
+      userMsg("u1"),
+      thinkingStep("t1"),
+      assistantMsg("a1", "回答到一半..."),
+      interruptMark("im1"),
+    ]);
+    expect(out.map((m) => m.type)).toEqual(["message", "trace", "message"]);
+    const lastAi = out[2];
+    if (lastAi.type !== "message" || lastAi.role !== "assistant") {
+      throw new Error("expected assistant message");
+    }
+    expect(lastAi.interrupted).toBe(true);
+  });
+
+  it("interrupt-mark with no prior assistant adds an empty interrupted placeholder", () => {
+    // 罕见 case：abort 发生在 trace 阶段、还没产生任何 assistant 文本
+    const out = groupMessagesIntoTraces([
+      userMsg("u1"),
+      thinkingStep("t1"),
+      interruptMark("im1"),
+    ]);
+    // 末尾应该有一条 interrupted=true 的空 assistant 占位
+    const last = out[out.length - 1];
+    if (last.type !== "message" || last.role !== "assistant") {
+      throw new Error("expected interrupted placeholder bubble");
+    }
+    expect(last.interrupted).toBe(true);
+    expect(last.content).toBe("");
+  });
+
+  it("interrupt-mark never appears as a standalone message in grouped output", () => {
+    const out = groupMessagesIntoTraces([
+      userMsg("u1"),
+      assistantMsg("a1", "回答"),
+      interruptMark("im1"),
+    ]);
+    expect(out.some((m) => (m as { type: string }).type === "interrupt-mark")).toBe(
+      false,
+    );
+  });
+
+  it("interrupt-mark does NOT cross user boundary into prior round", () => {
+    // 多轮场景：第一轮成功，第二轮 abort 时只有 trace 没出文本
+    // → 上一轮的 a1 不应被标 interrupted；本轮应追加占位气泡
+    const out = groupMessagesIntoTraces([
+      userMsg("u1"),
+      assistantMsg("a1", "第一轮回答（完整）"),
+      userMsg("u2"),
+      thinkingStep("t1"),
+      interruptMark("im1"),
+    ]);
+    // 第一轮 a1 不应被标 interrupted（不能跨 user 边界）
+    const a1 = out.find(
+      (m) => m.type === "message" && m.role === "assistant" && m.id === "a1",
+    );
+    if (!a1 || a1.type !== "message") throw new Error("expected a1");
+    expect(a1.interrupted).toBeUndefined();
+    // 最后应该有一条新的 interrupted=true 空 assistant 占位
+    const last = out[out.length - 1];
+    if (last.type !== "message" || last.role !== "assistant") {
+      throw new Error("expected interrupted placeholder bubble at tail");
+    }
+    expect(last.interrupted).toBe(true);
+    expect(last.content).toBe("");
+    expect(last.id).not.toBe("a1");
   });
 
   it("normal failed tool record has no aborted flag set", () => {
