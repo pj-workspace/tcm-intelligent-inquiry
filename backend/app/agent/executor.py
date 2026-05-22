@@ -106,15 +106,16 @@ def _with_mark_summary(
     *,
     effective_deep_think: bool,
 ) -> list:
-    """Think + 有工具时，追加 ``mark_summary`` 内部信号工具到 tools 列表末尾。
+    """Think 模式下追加 ``mark_summary`` 内部信号工具到 tools 列表末尾。
 
     - 非 think 模式 → 原样返回（模型物理上无法看到此工具）
-    - 纯聊（``tools=[]``）→ 原样返回（不挂任何工具，包括 mark_summary）
     - 已含 mark_summary → 防御性跳过避免重复
+    - **tools 为空但仍处于 think 模式**（例如 Agent 只配了 searx_web_search 但用户
+      关掉了联网开关，过滤后 tools=[]）也要注入 mark_summary，否则深度思考的最终
+      答案边界信号就被跳过了。注意"纯聊"路径（effective_tool_calling=False）走
+      的是 `build_react_agent_graph(llm, [], prompt=prompt)`，**不经过本函数**。
     """
     if not effective_deep_think:
-        return tools
-    if not tools:
         return tools
     if any(getattr(t, "name", None) == "mark_summary" for t in tools):
         return tools

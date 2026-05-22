@@ -120,11 +120,16 @@ const thinkingComponents: Components = {
 
 interface ThinkingMarkdownProps {
   content: string;
-  /** 正在流式输入时显示光标 */
+  /** 历史保留参数：流式中是否激活。当前不再渲染竖线光标
+   *  （内容含表格/列表等块级元素时光标会被推到新行，体验差）；
+   *  正在流式的视觉信号由 TimelineNode 的 spinner + ClaudeStar 兜底。 */
   active?: boolean;
 }
 
-export function ThinkingMarkdown({ content, active = false }: ThinkingMarkdownProps) {
+export function ThinkingMarkdown({
+  content,
+  active: _activeUnused = false,
+}: ThinkingMarkdownProps) {
   return (
     <div
       // 统一 leading-[1.4rem]：与 TimelineNode top-[0.15rem] 配合让图标视觉中心
@@ -134,9 +139,6 @@ export function ThinkingMarkdown({ content, active = false }: ThinkingMarkdownPr
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={thinkingComponents}>
         {preprocessAssistantMarkdown(content)}
       </ReactMarkdown>
-      {active && (
-        <span className="ml-0.5 inline-block h-3.5 w-1 animate-pulse bg-gray-400 align-middle" />
-      )}
     </div>
   );
 }

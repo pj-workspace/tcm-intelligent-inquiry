@@ -619,8 +619,14 @@ export function useChatStream(deps: UseChatStreamDeps) {
                   }
                 };
                 if (inSummaryPhase) {
-                  // Summary 阶段：mark_summary 之后的最终答案，直接写顶层气泡，
-                  // 不经过 trace（trace 已在 summary-start 时收口、不再扩张）
+                  // Summary 阶段首个 text-delta 到达 → 真空期结束。
+                  // 这一刻才 finalize trace（status: streaming → done），让 headline
+                  // 从「整理回答中…」切到「用了 N 个工具 · Xs」，footer 显示 ✓ 完成。
+                  if (currentTraceId) {
+                    finalizeTrace(currentTraceId, true);
+                    currentTraceId = null;
+                  }
+                  // 之后所有 text-delta 都直接写 assistant 气泡，与非 think 路径一致
                   writeToAssistantBubble();
                 } else if (isThinkMode) {
                   // Think 模式 + 尚未收到 summary-start：写 trace 内 pending interim
@@ -631,26 +637,28 @@ export function useChatStream(deps: UseChatStreamDeps) {
                   writeToAssistantBubble();
                 }
               } else if (data.type === "summary-start") {
-                // think 模式专属：mark_summary 工具触发，trace 阶段结束。
-                // - 当前 pending interim 段已经在 trace 里作为 thinking step；
-                //   不再 promote，保留为"过渡话术"
-                // - trace 即刻 finalize（折叠 + summaryAcknowledged），footer 显示「完成」
-                // - 重置 assistant 气泡 id / 计数；后续 text-delta 走 writeToAssistantBubble
+                // think 模式专属：mark_summary 工具触发；进入"真空期"——模型已发
+                // 出最终答案的 tool_call，但首个 text-delta 还没到。此时：
+                // - 不立刻 finalize trace，让 trace.status 保持 "streaming"
+                // - 在 trace 上打 summaryAcknowledged=true + collapsed=true，
+                //   让 BrainstormPanel 的 headline 切到「整理回答中…」
+                // - currentTraceId **保留**，等下面首个 text-delta 到达时再 finalize
+                // - 当前 pending interim 段保留为 trace 内的 thinking step（不 promote）
+                // - 重置 assistant 气泡 id / 累计文本，让下面的首个 text-delta 开新气泡
                 finalizeThinkingStep(currentTraceId, openThinkingStepId);
                 openThinkingStepId = null;
                 pendingInterimStepId = null;
                 pendingInterimText = "";
                 if (currentTraceId) {
-                  const traceIdToFinalize = currentTraceId;
+                  const traceIdToMark = currentTraceId;
                   setMessages((prev) =>
                     prev.map((m) =>
-                      m.type === "trace" && m.id === traceIdToFinalize
-                        ? { ...m, summaryAcknowledged: true }
+                      m.type === "trace" && m.id === traceIdToMark
+                        ? { ...m, summaryAcknowledged: true, collapsed: true }
                         : m,
                     ),
                   );
-                  finalizeTrace(traceIdToFinalize, true);
-                  currentTraceId = null;
+                  // 注意：不调用 finalizeTrace，currentTraceId 也不清零
                 }
                 if (hasAssistantMsg) {
                   currentAssistantMsgId = `${Date.now()}-msg-${Math.random().toString(36).slice(2, 9)}`;

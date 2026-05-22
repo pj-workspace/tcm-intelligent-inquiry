@@ -7,6 +7,14 @@
 - 工具本身不参与持久化（``on_tool_end`` 也被短路），用户在前端看不到此调用。
 - 仅在 ``backend.app.agent.executor._build_ephemeral_agent_graph`` 内当
   ``effective_deep_think=True`` 时显式追加；非 think 模式下模型物理上看不到此工具。
+
+零参数设计：
+- 之前为了对 function calling 较弱的模型加保险，曾让 mark_summary 必填一个
+  ``answer_outline`` 字段。但这要求模型先生成一段 outline 文本，**显著拖慢**了
+  最终答案的首字延迟。
+- DeepSeek-V4-flash 及大多数主流模型的 function calling 已经足够稳定，零参数
+  不会出现"工具名被当字面文本输出"的问题。如果未来切换到弱模型再翻车，可以
+  把 outline 字段加回来。
 """
 
 from __future__ import annotations
@@ -21,11 +29,16 @@ MARK_SUMMARY_TOOL_NAME = "mark_summary"
 
 @tool
 async def mark_summary() -> str:
-    """在即将输出最终答案前调用此工具（无参数）。
+    """Internal signal tool — call this right before you write the final answer.
 
-    调用此工具后请**紧接着**写最终答案正文，不要再调用任何其他工具，
-    也不要输出额外说明性话术。这是一个内部边界信号，用户不会看到此调用。
+    No arguments. The user never sees this tool call.
+
+    After calling this tool, you MUST immediately write the final answer as
+    plain text. Do not call any other tool, do not emit any reasoning
+    content, do not write any transitional phrases like "好的现在我来回答".
     """
+    # 后端短路：on_tool_start 时已发 summary-start 信号；此函数体不会被实际执行。
+    # 兜底返回空字符串，保证 ReAct 路径若意外走到这里也不会崩。
     return ""
 
 

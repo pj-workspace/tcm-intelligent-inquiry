@@ -35,7 +35,9 @@ export function BrainstormPanel({
   }, []);
 
   const traceHeadline = isStreaming
-    ? streamingTraceHeadline(steps)
+    ? summaryAcknowledged
+      ? "整理回答中…"
+      : streamingTraceHeadline(steps)
     : summarizeTraceHeadline(steps, durationSec);
 
   return (
