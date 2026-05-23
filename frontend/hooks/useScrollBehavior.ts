@@ -2,6 +2,7 @@
 
 import type { MutableRefObject } from "react";
 import { useRef, useState, useCallback, startTransition } from "react";
+import { useTransientScrollbar } from "@/hooks/useTransientScrollbar";
 
 /** 生成中：距底部小于该值则恢复自动跟随（略宽松，避免正文开始时跟丢） */
 const BOTTOM_SCROLL_THRESHOLD = 200;
@@ -22,11 +23,17 @@ export function useScrollBehavior(hasStartedRef: MutableRefObject<boolean>) {
   /** 与 React state 同步，用于 FAB 滞回带内保持上一帧可见性 */
   const scrollFabVisibleRef = useRef(false);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const {
+    scrollbar: mainScrollbar,
+    refreshScrollbar: refreshMainScrollbar,
+    hideScrollbar: hideMainScrollbar,
+  } = useTransientScrollbar(scrollViewportRef);
 
   const updateScrollState = useCallback(() => {
     const el = scrollViewportRef.current;
     if (!el) return;
     const currentTop = el.scrollTop;
+    refreshMainScrollbar();
     const prevTop = lastMainScrollTopRef.current;
     // distance 以 messagesEndRef 的 bottom 为锚，而非 `scrollHeight` 最底。
     // messagesEndRef 紧跟最后一条消息，用它做锚点可以避开输入框 padding 对底部判断的干扰。
@@ -66,7 +73,7 @@ export function useScrollBehavior(hasStartedRef: MutableRefObject<boolean>) {
         setShowScrollToBottom(false);
       }
     }
-  }, [hasStartedRef]);
+  }, [hasStartedRef, refreshMainScrollbar]);
 
   /**
    * 滚到最后一条消息后的稳定锚点，而不是滚到整个 scrollHeight。
@@ -99,16 +106,18 @@ export function useScrollBehavior(hasStartedRef: MutableRefObject<boolean>) {
   const resetScrollState = useCallback(() => {
     scrollFabVisibleRef.current = false;
     setShowScrollToBottom(false);
+    hideMainScrollbar();
     autoFollowMainRef.current = true;
     isNearBottomRef.current = true;
     lastMainScrollTopRef.current = 0;
-  }, []);
+  }, [hideMainScrollbar]);
 
   return {
     scrollViewportRef,
     messagesEndRef,
     autoFollowMainRef,
     isNearBottomRef,
+    mainScrollbar,
     showScrollToBottom,
     updateScrollState,
     scrollToBottom,

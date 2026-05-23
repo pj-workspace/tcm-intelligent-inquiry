@@ -10,6 +10,10 @@ import {
 import type { WheelEvent, RefObject } from "react";
 import type { BrainstormStep, EdgeFadeState } from "@/types/brainstorm";
 import { getEdgeFadeState } from "@/lib/brainstorm-utils";
+import {
+  useTransientScrollbar,
+  type TransientScrollbarState,
+} from "@/hooks/useTransientScrollbar";
 
 interface UseBrainstormScrollOptions {
   steps: BrainstormStep[];
@@ -20,6 +24,7 @@ interface UseBrainstormScrollOptions {
 interface UseBrainstormScrollReturn {
   scrollRef: RefObject<HTMLDivElement | null>;
   edgeFade: EdgeFadeState;
+  scrollbar: TransientScrollbarState;
   onScroll: () => void;
   onWheel: (e: WheelEvent<HTMLDivElement>) => void;
 }
@@ -38,6 +43,9 @@ export function useBrainstormScroll({
     top: false,
     bottom: false,
   });
+  const { scrollbar, refreshScrollbar } = useTransientScrollbar(scrollRef, {
+    minThumbHeight: 22,
+  });
 
   const scrollToEnd = useCallback(() => {
     const el = scrollRef.current;
@@ -45,7 +53,8 @@ export function useBrainstormScroll({
     el.scrollTop = el.scrollHeight;
     lastScrollTopRef.current = el.scrollTop;
     setEdgeFade(getEdgeFadeState(el));
-  }, []);
+    refreshScrollbar();
+  }, [refreshScrollbar]);
 
   const scrollToStart = useCallback(() => {
     const el = scrollRef.current;
@@ -53,12 +62,14 @@ export function useBrainstormScroll({
     el.scrollTop = 0;
     lastScrollTopRef.current = 0;
     setEdgeFade(getEdgeFadeState(el));
-  }, []);
+    refreshScrollbar();
+  }, [refreshScrollbar]);
 
   const onScroll = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
     const currentTop = el.scrollTop;
+    refreshScrollbar();
     const prevTop = lastScrollTopRef.current;
     const userScrolledUp = currentTop < prevTop - 2;
     if (userScrolledUp) {
@@ -73,7 +84,7 @@ export function useBrainstormScroll({
         ? prev
         : nextFade
     );
-  }, []);
+  }, [refreshScrollbar]);
 
   const onWheel = useCallback((e: WheelEvent<HTMLDivElement>) => {
     const el = scrollRef.current;
@@ -119,16 +130,18 @@ export function useBrainstormScroll({
     if (isStreaming && autoFollowRef.current) {
       el.scrollTop = el.scrollHeight;
       lastScrollTopRef.current = el.scrollTop;
+      refreshScrollbar();
     }
     setEdgeFade(getEdgeFadeState(el));
-  }, [steps, isOpen, isStreaming]);
+  }, [steps, isOpen, isStreaming, refreshScrollbar]);
 
   useEffect(() => {
     if (!isOpen) return;
     const el = scrollRef.current;
     if (!el) return;
     setEdgeFade(getEdgeFadeState(el));
-  }, [isOpen]);
+    refreshScrollbar(false);
+  }, [isOpen, refreshScrollbar]);
 
-  return { scrollRef, edgeFade, onScroll, onWheel };
+  return { scrollRef, edgeFade, scrollbar, onScroll, onWheel };
 }

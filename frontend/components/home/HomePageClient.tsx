@@ -72,6 +72,7 @@ export function HomePageClient() {
     scrollViewportRef,
     messagesEndRef,
     autoFollowMainRef,
+    mainScrollbar,
     showScrollToBottom,
     updateScrollState,
     scrollToBottom,
@@ -179,7 +180,9 @@ export function HomePageClient() {
     [agentCatalog],
   );
 
-  hasStartedRef.current = hasStarted;
+  useEffect(() => {
+    hasStartedRef.current = hasStarted;
+  }, [hasStarted]);
 
   const [historyAnimUnlocked, setHistoryAnimUnlocked] = useState(false);
   useEffect(() => {
@@ -889,6 +892,19 @@ export function HomePageClient() {
                   />
                 ) : null}
                 </div>
+
+              {mainScrollbar.thumbHeight > 0 ? (
+                <span
+                  aria-hidden
+                  className={`pointer-events-none absolute right-1.5 top-0 z-30 w-1 rounded-full bg-gray-400/35 transition-opacity duration-200 ${
+                    mainScrollbar.visible ? "opacity-100" : "opacity-0"
+                  }`}
+                  style={{
+                    height: mainScrollbar.thumbHeight,
+                    transform: `translateY(${mainScrollbar.thumbTop}px)`,
+                  }}
+                />
+              ) : null}
 
               <AnimatePresence>
                 {showScrollToBottom && hasStarted && !viewingGroupLanding && (

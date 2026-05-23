@@ -29,7 +29,7 @@ export function BrainstormPanel({
 }: BrainstormPanelProps) {
   const isOpen = !collapsed;
   const [toolIoExpanded, setToolIoExpanded] = useState<Record<string, boolean>>({});
-  const { scrollRef, edgeFade, onScroll, onWheel } = useBrainstormScroll({
+  const { scrollRef, edgeFade, scrollbar, onScroll, onWheel } = useBrainstormScroll({
     steps,
     isOpen,
     isStreaming,
@@ -145,6 +145,19 @@ export function BrainstormPanel({
                   aria-hidden
                   className={clsx("scroll-fade-bottom", edgeFade.bottom && "is-visible")}
                 />
+                {scrollbar.thumbHeight > 0 ? (
+                  <span
+                    aria-hidden
+                    className={clsx(
+                      "pointer-events-none absolute right-1 top-0 z-[3] w-1 rounded-full bg-gray-400/35 transition-opacity duration-200",
+                      scrollbar.visible ? "opacity-100" : "opacity-0",
+                    )}
+                    style={{
+                      height: scrollbar.thumbHeight,
+                      transform: `translateY(${scrollbar.thumbTop}px)`,
+                    }}
+                  />
+                ) : null}
               </div>
             </motion.div>
           )}
