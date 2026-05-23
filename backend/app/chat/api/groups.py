@@ -27,6 +27,7 @@ async def chat_groups_list(
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[UserRecord, Depends(get_current_user)],
 ):
+    """Chat groups list。"""
     return await list_groups(session, user)
 
 
@@ -40,6 +41,7 @@ async def chat_groups_create(
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[UserRecord, Depends(get_current_user)],
 ):
+    """Chat groups create。"""
     return await create_group(session, user, req.name)
 
 
@@ -53,6 +55,7 @@ async def chat_groups_rename(
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[UserRecord, Depends(get_current_user)],
 ):
+    """Chat groups rename。"""
     await rename_group(session, user, group_id, req.name)
     return {"success": True}
 
@@ -66,5 +69,6 @@ async def chat_groups_delete(
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[UserRecord, Depends(get_current_user)],
 ):
+    """Chat groups delete。"""
     await delete_group(session, user, group_id)
     return {"success": True}

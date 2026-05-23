@@ -22,6 +22,7 @@ def catalog_provider_ids() -> frozenset[str]:
 
 
 def provider_has_credentials(s: Settings, provider_id: str) -> bool:
+    """Provider has credentials (``s``, ``provider_id``)."""
     pid = (provider_id or "").strip().lower()
     if pid == "qwen":
         return bool((s.dashscope_api_key or "").strip())
@@ -54,6 +55,7 @@ def normalize_requested_llm_provider(
 
 
 def _capability_blurb_zh(cap: dict[str, Any]) -> str:
+    """Internal helper: capability blurb zh."""
     parts: list[str] = []
     inp = cap.get("input")
     if isinstance(inp, list) and "image" in inp:
@@ -72,6 +74,7 @@ def _capability_blurb_zh(cap: dict[str, Any]) -> str:
 
 
 def _qwen_model_description(row: QwenChatModelOptionRow) -> str:
+    """Internal helper: qwen model description."""
     base = (
         "DashScope OpenAI 兼容对话。"
         "附图快捷话术、追问建议等能力与 llm_provider=qwen 时的独立配置相关。"
@@ -80,6 +83,7 @@ def _qwen_model_description(row: QwenChatModelOptionRow) -> str:
 
 
 def _openai_infer_capabilities(model_id: str) -> dict[str, Any]:
+    """Internal helper: openai infer capabilities."""
     m = (model_id or "").lower()
     has_image = (
         "gpt-4o" in m
@@ -95,6 +99,7 @@ def _openai_infer_capabilities(model_id: str) -> dict[str, Any]:
 
 
 def _glm_infer_capabilities(_model_id: str) -> dict[str, Any]:
+    """Internal helper: glm infer capabilities."""
     return {
         "input": ["text"],
         "supports_tool_calling": True,
@@ -103,6 +108,7 @@ def _glm_infer_capabilities(_model_id: str) -> dict[str, Any]:
 
 
 def _anthropic_infer_capabilities(_model_id: str) -> dict[str, Any]:
+    """Internal helper: anthropic infer capabilities."""
     return {
         "input": ["text"],
         "supports_tool_calling": True,
@@ -130,6 +136,7 @@ def _catalog_model_dict(
     capabilities: dict[str, Any],
     description: str,
 ) -> dict[str, Any]:
+    """Internal helper: _catalog_model_dict."""
     sl = (source_label or "").strip() or model_id
     return {
         "id": model_id,

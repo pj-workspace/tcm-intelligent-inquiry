@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 知识库 Tab：列表、抽屉详情与 CRUD 对话框。
+ */
 "use client";
 
 import { useState } from "react";
@@ -9,6 +12,7 @@ import { useKnowledge } from "@/hooks/useKnowledge";
 import { KnowledgeBaseCard } from "./KnowledgeBaseCard";
 import { KnowledgeDrawer } from "./KnowledgeDrawer";
 
+/** 知识库管理主 Tab。 */
 export function KnowledgeTab() {
   const { token } = useAuth();
   const k = useKnowledge(token);

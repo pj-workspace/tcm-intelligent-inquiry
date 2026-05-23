@@ -23,6 +23,7 @@ def sanitize_usage_for_json(obj: Any, *, max_bytes: int = 16000) -> Any:
 
 
 def _as_int(v: Any) -> int | None:
+    """Internal helper: as int."""
     if v is None:
         return None
     if isinstance(v, bool):
@@ -37,6 +38,7 @@ def _as_int(v: Any) -> int | None:
 
 
 def _pick_int(d: dict[str, Any], *keys: str) -> int | None:
+    """Internal helper: pick int."""
     for k in keys:
         if k in d:
             n = _as_int(d.get(k))

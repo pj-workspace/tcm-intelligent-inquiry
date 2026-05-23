@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 内置工具试调用模态：根据 schema 渲染参数表单并展示 JSON 结果。
+ */
 "use client";
 
 import { forwardRef, useState } from "react";
@@ -34,6 +37,7 @@ interface ToolInvokeModalProps {
   onClose: () => void;
 }
 
+/** 单工具调试调用弹窗。 */
 export const ToolInvokeModal = forwardRef<HTMLDivElement, ToolInvokeModalProps>(
   function ToolInvokeModal({ tool, onClose }, ref) {
   const { token } = useAuth();

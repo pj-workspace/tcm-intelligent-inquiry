@@ -1,3 +1,7 @@
+/**
+ * @fileoverview 聊天附件上传约束常量（与后端 VL/OSS 校验对齐）。
+ */
+
 /** 单次发送前，待附带图片（及将来本地文件）合计上限 */
 export const CHAT_PENDING_ATTACHMENT_MAX = 8;
 

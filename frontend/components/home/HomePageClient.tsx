@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 对话主工作台 Client 壳：侧栏、消息区、输入栏与 SSE 流式聊天状态编排。
+ */
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
@@ -33,6 +36,7 @@ import {
   parseChatPathname,
 } from "@/lib/chatRoutes";
 
+/** 对话首页：路由解析、会话列表、流式生成与各类工作台弹窗的聚合入口。 */
 export function HomePageClient() {
   const { token, loading: authLoading, logout } = useAuth();
   const router = useRouter();
@@ -80,11 +84,13 @@ export function HomePageClient() {
     resetScrollState,
   } = useScrollBehavior(hasStartedRef);
 
+  /** 新建会话时继承当前侧栏分组（未分组则为 null）。 */
   const getPreferredGroupForNewConversation = useCallback((): string | null => {
     if (sidebarFilter === "__ungrouped__") return null;
     return sidebarFilter;
   }, [sidebarFilter]);
 
+  /** 导航至「新对话」路由（未分组或当前分组文件夹）。 */
   const onNavigateToNewChatSurface = useCallback(() => {
     if (sidebarFilter === "__ungrouped__") router.push(chatPathNew());
     else router.push(chatPathFolder(sidebarFilter));
@@ -428,6 +434,7 @@ export function HomePageClient() {
     }
   }, [pathname, authLoading, token, conversationId, serverConversations, setChatAgentId]);
 
+  /** 侧栏 hover 预取会话页，减轻切换延迟。 */
   const prefetchConversationRoute = useCallback(
     (id: string) => {
       try {
@@ -439,10 +446,12 @@ export function HomePageClient() {
     [router]
   );
 
+  /** 清空批量选中集合。 */
   const handleClearSidebarSelection = useCallback(() => {
     setSidebarSelectedIds(new Set());
   }, []);
 
+  /** 切换侧栏批量模式；退出时清空选中。 */
   const handleToggleSidebarBatchMode = useCallback(() => {
     setSidebarBatchMode((prev) => {
       if (prev) {
@@ -453,6 +462,7 @@ export function HomePageClient() {
     });
   }, []);
 
+  /** 批量模式下切换单条会话选中态。 */
   const handleToggleSidebarSelect = useCallback((id: string) => {
     setSidebarSelectedIds((prev) => {
       const n = new Set(prev);
@@ -462,10 +472,12 @@ export function HomePageClient() {
     });
   }, []);
 
+  /** 批量模式：选中当前筛选列表全部会话。 */
   const handleSelectAllDisplayed = useCallback(() => {
     setSidebarSelectedIds(new Set(displayedSidebarConversations.map((c) => c.id)));
   }, [displayedSidebarConversations]);
 
+  /** 确认批量删除已选会话并退出批量模式。 */
   const runBulkDelete = useCallback(async () => {
     const ids = Array.from(sidebarSelectedIds);
     if (ids.length === 0) {
@@ -478,6 +490,7 @@ export function HomePageClient() {
     setSidebarBatchMode(false);
   }, [sidebarSelectedIds, deleteConversationsBulk]);
 
+  /** 侧栏重命名会话：PUT title 后刷新列表。 */
   const handleSaveSidebarRename = useCallback(async () => {
     const m = renameConvModal;
     if (!m || !token || !m.draft.trim()) {
@@ -500,6 +513,7 @@ export function HomePageClient() {
     setRenameConvModal(null);
   }, [renameConvModal, token, refreshServerConversations]);
 
+  /** 创建新分组并导航至该分组工作台。 */
   const submitNewGroup = useCallback(async () => {
     if (!newGroupNameDraft.trim()) {
       setNewGroupModalOpen(false);
@@ -514,6 +528,7 @@ export function HomePageClient() {
     }
   }, [newGroupNameDraft, createFolder, router]);
 
+  /** 重命名侧栏文件夹。 */
   const submitRenameFolder = useCallback(async () => {
     const m = renameFolderModal;
     if (!m?.draft.trim()) {
@@ -524,6 +539,7 @@ export function HomePageClient() {
     setRenameFolderModal(null);
   }, [renameFolderModal, renameFolder]);
 
+  /** 删除文件夹；若正在该分组则回到未分组新对话。 */
   const confirmDeleteFolder = useCallback(async () => {
     const t = deleteFolderConfirm;
     if (!t) return;
@@ -535,6 +551,7 @@ export function HomePageClient() {
     setDeleteFolderConfirm(null);
   }, [deleteFolderConfirm, deleteFolder, sidebarFilter, router]);
 
+  /** 侧栏 ⋮ 导出单会话 Markdown。 */
   const handleExportSidebarConversation = useCallback(
     async (id: string, title: string) => {
       if (!token) return;
@@ -635,6 +652,7 @@ export function HomePageClient() {
     return () => document.removeEventListener("mousedown", close);
   }, [headerMenuOpen]);
 
+  /** 发送输入框内容与 pending 附件。 */
   const handleSend = useCallback(async () => {
     await chat.handleSend(input, setInput);
   }, [chat, input]);
@@ -647,6 +665,7 @@ export function HomePageClient() {
     [chat],
   );
 
+  /** Enter 发送（Shift+Enter 换行）。 */
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -654,6 +673,7 @@ export function HomePageClient() {
     }
   };
 
+  /** 顶栏菜单：导出当前会话为 Markdown 文件。 */
   const handleExportHistory = () => {
     setHeaderMenuOpen(false);
     if (!messages.length) return;
@@ -671,6 +691,7 @@ export function HomePageClient() {
     URL.revokeObjectURL(url);
   };
 
+  /** 顶栏内联编辑会话标题并持久化。 */
   const handleSaveTitle = async () => {
     if (!conversationId || !token || !editTitleValue.trim()) {
       setIsEditingTitle(false);

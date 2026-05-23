@@ -1,5 +1,10 @@
+/**
+ * @fileoverview Agent 工具选择器分组、模糊搜索与过滤。
+ */
+
 import type { BuiltinToolInfo } from "@/types/tool";
 
+/** 工具选择器中的一组（内置分类或 MCP 服务）。 */
 export type ToolPickerGroup = {
   id: string;
   title: string;
@@ -31,6 +36,7 @@ export function fuzzyMatch(query: string, text: string): boolean {
   return true;
 }
 
+/** 拼接工具的可搜索字段为单一 haystack 字符串。 */
 export function toolSearchHaystack(tool: BuiltinToolInfo): string {
   return [
     tool.name,
@@ -44,11 +50,13 @@ export function toolSearchHaystack(tool: BuiltinToolInfo): string {
     .join(" ");
 }
 
+/** 判断工具是否匹配查询串（空查询恒为 true）。 */
 export function toolMatchesQuery(tool: BuiltinToolInfo, query: string): boolean {
   if (!query.trim()) return true;
   return fuzzyMatch(query, toolSearchHaystack(tool));
 }
 
+/** 将工具列表按内置 category 与 MCP server 分组排序。 */
 export function buildToolPickerGroups(tools: BuiltinToolInfo[]): ToolPickerGroup[] {
   const groups: ToolPickerGroup[] = [];
 
@@ -108,6 +116,7 @@ export function buildToolPickerGroups(tools: BuiltinToolInfo[]): ToolPickerGroup
   return groups;
 }
 
+/** 按查询串过滤各组内工具并移除空组。 */
 export function filterToolPickerGroups(
   groups: ToolPickerGroup[],
   query: string

@@ -17,6 +17,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    """Apply schema changes."""
     op.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm")
     # 供 similarity / % 使用；表达式与 service 中拼接字段一致
     op.execute(
@@ -32,5 +33,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Revert schema changes."""
     op.execute("DROP INDEX IF EXISTS ix_formulas_trgm_search_blob")
     # 不 DROP EXTENSION pg_trgm，以免同库其他对象依赖

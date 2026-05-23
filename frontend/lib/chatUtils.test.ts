@@ -1,3 +1,6 @@
+/**
+ * @fileoverview `chatUtils` 单元测试：消息分组、API 行映射与引用来源归一化。
+ */
 import { describe, expect, it } from "vitest";
 import {
   groupMessagesIntoTraces,
@@ -6,6 +9,7 @@ import {
 } from "@/lib/chatUtils";
 import type { ApiMessageRow, FlatMessage } from "@/types/chat";
 
+/** 构造测试用用户消息。 */
 const userMsg = (id: string, content = "hi"): FlatMessage => ({
   id,
   role: "user",
@@ -13,6 +17,7 @@ const userMsg = (id: string, content = "hi"): FlatMessage => ({
   content,
 });
 
+/** 构造测试用助手消息。 */
 const assistantMsg = (id: string, content: string): FlatMessage => ({
   id,
   role: "assistant",
@@ -20,12 +25,14 @@ const assistantMsg = (id: string, content: string): FlatMessage => ({
   content,
 });
 
+/** 构造测试用 thinking 步骤。 */
 const thinkingStep = (id: string, content = "think"): FlatMessage => ({
   id,
   type: "thinking",
   content,
 });
 
+/** 构造测试用 tool 步骤。 */
 const toolStep = (id: string): FlatMessage => ({
   id,
   type: "tool",
@@ -34,11 +41,13 @@ const toolStep = (id: string): FlatMessage => ({
   outputPreview: "ok",
 });
 
+/** 构造测试用 summary-mark 步骤。 */
 const summaryMark = (id: string): FlatMessage => ({
   id,
   type: "summary-mark",
 });
 
+/** 构造测试用 interrupt-mark 步骤。 */
 const interruptMark = (id: string): FlatMessage => ({
   id,
   type: "interrupt-mark",

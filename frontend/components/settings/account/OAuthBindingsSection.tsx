@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 账户 Tab 内第三方 OAuth 绑定列表与解绑入口。
+ */
 "use client";
 
 import { Link2, Shield } from "lucide-react";
@@ -15,6 +18,7 @@ type OAuthBindingsSectionProps = {
   onUnbind: (provider: string) => void;
 };
 
+/** 已绑定 GitHub/Gitee 等第三方账号列表。 */
 export function OAuthBindingsSection({
   loading,
   bindings,

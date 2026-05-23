@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 用户消息图片全屏 Lightbox（Portal、键盘左右/Esc）。
+ */
 "use client";
 
 import { useEffect, useRef } from "react";
@@ -12,6 +15,7 @@ type ImagePreviewLightboxProps = {
   onIndexChange: (i: number) => void;
 };
 
+/** 全屏图片预览；`index` 为 null 时关闭。 */
 export function ImagePreviewLightbox({
   urls,
   index,

@@ -1,5 +1,11 @@
+/**
+ * @fileoverview MCP 配置 JSON 粘贴解析（Cursor/Claude Desktop 片段兼容）。
+ */
+
+/** MCP 传输类型（与 types/mcp 对齐的解析层别名）。 */
 export type McpTransport = "http" | "stdio";
 
+/** `parseMcpJson` 解析出的单条或批量导入结构。 */
 export type McpParseResult = {
   bulkImport?: Record<string, Record<string, unknown>>;
   name?: string;
@@ -12,6 +18,7 @@ export type McpParseResult = {
   authToken?: string;
 };
 
+/** 将 args 字段（数组或空）转为多行文本供表单编辑。 */
 function argsToText(args: unknown): string {
   if (Array.isArray(args)) {
     return args.map(String).join("\n");
@@ -19,6 +26,7 @@ function argsToText(args: unknown): string {
   return "";
 }
 
+/** 将 env 对象转为缩进 JSON 字符串供表单编辑。 */
 function envToText(env: unknown): string {
   if (env && typeof env === "object" && !Array.isArray(env)) {
     return JSON.stringify(env, null, 2);
@@ -26,6 +34,7 @@ function envToText(env: unknown): string {
   return "";
 }
 
+/** 解析 stdio args 文本：JSON 字符串数组或逐行非空字符串。 */
 export function parseArgsText(text: string): string[] {
   const trimmed = text.trim();
   if (!trimmed) return [];
@@ -42,6 +51,7 @@ export function parseArgsText(text: string): string[] {
     .filter(Boolean);
 }
 
+/** 解析 env JSON 对象为 string 键值对。 */
 export function parseEnvText(text: string): Record<string, string> {
   const trimmed = text.trim();
   if (!trimmed) return {};
@@ -77,6 +87,7 @@ export function normalizeMcpPasteText(text: string): string {
   return t;
 }
 
+/** 从单条 server 配置对象构建 McpParseResult。 */
 function entryFromConf(
   name: string,
   c: Record<string, unknown>
@@ -110,6 +121,7 @@ function entryFromConf(
   return null;
 }
 
+/** 判断顶层对象是否形如 `{ "name": { command|url } }` 的 servers map。 */
 function asMcpServersMap(
   obj: Record<string, unknown>
 ): Record<string, Record<string, unknown>> | null {
@@ -126,6 +138,7 @@ function asMcpServersMap(
   return ok ? (obj as Record<string, Record<string, unknown>>) : null;
 }
 
+/** 解析粘贴的 MCP JSON（单条、裸 command/url 或 bulkImport）。 */
 export function parseMcpJson(text: string): McpParseResult | null {
   try {
     const obj = JSON.parse(normalizeMcpPasteText(text)) as Record<string, unknown>;
@@ -181,6 +194,7 @@ export function parseMcpJson(text: string): McpParseResult | null {
   }
 }
 
+/** 将解析结果合并进 MCP 添加表单 state。 */
 export function applyMcpParseResult<T extends {
   name: string;
   transport: McpTransport;

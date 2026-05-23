@@ -1,3 +1,7 @@
+/**
+ * @fileoverview OSS 聊天图片上传（XHR + 可选进度回调）。
+ */
+
 import { API_BASE } from "@/lib/api";
 
 /** 上传单张聊天图片至后端 OSS，返回签名 GET URL（供 VL 拉图）。支持上传进度回调（ XMLHttpRequest ，单文件维度 0~1）。 */

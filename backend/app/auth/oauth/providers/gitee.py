@@ -9,9 +9,11 @@ from app.core.config import get_settings
 
 
 class GiteeOAuthProvider:
+    """Gitee OAuth Provider."""
     provider = "gitee"
 
     def authorize_url(self, *, state: str, redirect_uri: str) -> str:
+        """Authorize url."""
         s = get_settings()
         cid = (s.gitee_client_id or "").strip()
         if not cid:
@@ -25,6 +27,7 @@ class GiteeOAuthProvider:
         )
 
     async def exchange_and_profile(self, *, code: str, redirect_uri: str) -> OAuthUserProfile:
+        """Exchange and profile."""
         s = get_settings()
         async with httpx.AsyncClient(timeout=25.0) as client:
             tok = await client.post(

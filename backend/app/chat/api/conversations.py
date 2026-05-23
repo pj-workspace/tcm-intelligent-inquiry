@@ -30,6 +30,7 @@ router = APIRouter()
     summary="可选对话模型目录（全厂商分组；未配置 Key 的厂商 configured=false）",
 )
 async def chat_model_options():
+    """Chat model options."""
     from app.chat.catalog import build_chat_model_catalog
 
     return build_chat_model_catalog()
@@ -44,6 +45,7 @@ async def conversations(
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[UserRecord, Depends(get_current_user)],
 ):
+    """Conversations。"""
     return await list_my_conversations(session, user)
 
 
@@ -58,6 +60,7 @@ async def conversation_messages(
     user: Annotated[UserRecord | None, Depends(get_current_user_optional)],
     x_anon_session: Annotated[str | None, Header(alias="X-Anonymous-Session")] = None,
 ):
+    """Conversation messages。"""
     return await list_messages_for_conversation(
         session, conversation_id, user, x_anon_session
     )
@@ -73,6 +76,7 @@ async def update_conversation_group_route(
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[UserRecord, Depends(get_current_user)],
 ):
+    """Update conversation group。"""
     await update_conversation_group(session, user, conversation_id, req.group_id)
     return {"success": True}
 
@@ -87,6 +91,7 @@ async def delete_conversation_route(
     user: Annotated[UserRecord | None, Depends(get_current_user_optional)],
     x_anon_session: Annotated[str | None, Header(alias="X-Anonymous-Session")] = None,
 ):
+    """Delete conversation。"""
     await delete_conversation(session, conversation_id, user, x_anon_session)
     return {"success": True}
 
@@ -102,5 +107,6 @@ async def update_conversation_title_route(
     user: Annotated[UserRecord | None, Depends(get_current_user_optional)],
     x_anon_session: Annotated[str | None, Header(alias="X-Anonymous-Session")] = None,
 ):
+    """Update conversation title。"""
     await update_conversation_title(session, conversation_id, req.title, user, x_anon_session)
     return {"success": True}

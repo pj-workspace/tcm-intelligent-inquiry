@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 对话工作台各类确认/重命名弹窗的集中挂载点（与 HomePageClient 状态解耦展示）。
+ */
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
@@ -32,6 +35,7 @@ type Props = {
   onSaveRenameFolder: () => void;
 };
 
+/** 删除、批量删除、分组与重命名等模态框集合。 */
 export function ChatWorkspaceModals({
   deleteTargetId,
   deletePending,

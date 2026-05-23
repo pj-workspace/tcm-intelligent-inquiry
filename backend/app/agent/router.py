@@ -26,6 +26,7 @@ router = APIRouter(prefix="/api/agents", tags=["agents"])
 
 
 def _svc(session: AsyncSession = Depends(get_session)) -> AgentService:
+    """FastAPI 依赖：构造带会话的 AgentService。"""
     return AgentService(session)
 
 
@@ -34,6 +35,7 @@ async def list_agents(
     _: Annotated[UserRecord, Depends(require_api_user)],
     svc: AgentService = Depends(_svc),
 ):
+    """GET /api/agents — 列出所有 Agent。"""
     return await svc.list_agents()
 
 
@@ -43,6 +45,7 @@ async def create_agent(
     user: Annotated[UserRecord, Depends(require_api_user)],
     svc: AgentService = Depends(_svc),
 ):
+    """POST /api/agents — 创建 Agent。"""
     return await svc.create_agent(req, user.id)
 
 
@@ -51,6 +54,7 @@ async def list_tools(
     _: Annotated[UserRecord, Depends(require_api_user)],
     svc: AgentService = Depends(_svc),
 ):
+    """GET /api/agents/tools — 列出可用工具及参数 schema。"""
     return await svc.list_available_tools()
 
 
@@ -65,6 +69,7 @@ async def invoke_tool(
     user: Annotated[UserRecord, Depends(require_api_user)],
     svc: AgentService = Depends(_svc),
 ):
+    """POST /api/agents/tools/{tool_name}/invoke — 在线试用工具。"""
     return await svc.invoke_tool(tool_name, req.args, user.id)
 
 
@@ -74,6 +79,7 @@ async def get_agent(
     _: Annotated[UserRecord, Depends(require_api_user)],
     svc: AgentService = Depends(_svc),
 ):
+    """GET /api/agents/{agent_id} — 获取 Agent 详情。"""
     return await svc.get_agent(agent_id)
 
 
@@ -84,6 +90,7 @@ async def update_agent(
     user: Annotated[UserRecord, Depends(require_api_user)],
     svc: AgentService = Depends(_svc),
 ):
+    """PATCH /api/agents/{agent_id} — 部分更新 Agent 配置。"""
     return await svc.update_agent(agent_id, req, user.id)
 
 
@@ -93,4 +100,5 @@ async def delete_agent(
     _: Annotated[UserRecord, Depends(require_api_user)],
     svc: AgentService = Depends(_svc),
 ):
+    """DELETE /api/agents/{agent_id} — 删除 Agent。"""
     await svc.delete_agent(agent_id)

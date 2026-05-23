@@ -1,3 +1,7 @@
+/**
+ * @fileoverview 后端 REST API 客户端：基址、鉴权头、错误解析与计费相关 fetch 封装。
+ */
+
 import type {
   BalanceSnapshotJson,
   ConversationBillingTotalsResponse,
@@ -5,9 +9,11 @@ import type {
   UsageSummaryResponse,
 } from "@/types/billing";
 
+/** 后端 API 根 URL；默认本地开发 8001 端口。 */
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8001";
 
+/** localStorage 中 JWT access token 的键名。 */
 export const TOKEN_KEY = "tcm_access_token";
 
 /**
@@ -23,10 +29,12 @@ export function apiHeaders(token: string | null): Record<string, string> {
   return h;
 }
 
+/** 带 `Content-Type: application/json` 的 API 请求头。 */
 export function apiJsonHeaders(token: string | null): Record<string, string> {
   return { ...apiHeaders(token), "Content-Type": "application/json" };
 }
 
+/** 从 FastAPI 错误响应中提取人类可读 message/detail。 */
 export async function parseApiError(res: Response): Promise<string> {
   try {
     const j = (await res.json()) as {
@@ -45,6 +53,7 @@ export async function parseApiError(res: Response): Promise<string> {
   return res.statusText || "请求失败";
 }
 
+/** GET /api/chat/billing/usage-summary */
 export async function fetchBillingUsageSummary(
   token: string,
   opts?: { days?: number; providerId?: string | null },
@@ -60,6 +69,7 @@ export async function fetchBillingUsageSummary(
   return (await res.json()) as UsageSummaryResponse;
 }
 
+/** GET /api/chat/billing/usage-events */
 export async function fetchBillingUsageEvents(
   token: string,
   opts?: { limit?: number; offset?: number; providerId?: string | null },
@@ -78,6 +88,7 @@ export async function fetchBillingUsageEvents(
   return (await res.json()) as UsageEventsResponse;
 }
 
+/** GET /api/chat/providers/{id}/balance */
 export async function fetchProviderBalance(
   token: string,
   providerId: string,
@@ -90,6 +101,7 @@ export async function fetchProviderBalance(
   return (await res.json()) as BalanceSnapshotJson;
 }
 
+/** GET /api/chat/conversations/{id}/billing/usage-summary */
 export async function fetchConversationBillingTotals(
   token: string,
   conversationId: string,

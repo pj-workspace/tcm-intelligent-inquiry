@@ -49,17 +49,20 @@ def mcp_tool_sse_metadata(lc_name: str) -> dict[str, str]:
 
 
 def _sanitize_segment(name: str, max_len: int = 40) -> str:
+    """Internal helper: sanitize segment."""
     s = re.sub(r"[^a-zA-Z0-9_-]+", "_", (name or "").strip())
     s = s.strip("_") or "tool"
     return s[:max_len]
 
 
 def make_lc_tool_name(server_id: str, remote_tool_name: str) -> str:
+    """Make lc tool name (``server_id``, ``remote_tool_name``)."""
     sid = server_id.replace("-", "")[:8]
     return f"mcp_{sid}_{_sanitize_segment(remote_tool_name)}"
 
 
 def _unique_lc_name(base: str, taken: set[str]) -> str:
+    """Internal helper: unique lc name."""
     name = base
     n = 2
     while name in taken:
@@ -80,6 +83,7 @@ def _build_structured_tool(
     server_headers: dict[str, str] | None = None,
     stdio_config: dict[str, Any] | None = None,
 ) -> StructuredTool:
+    """Internal helper: _build_structured_tool."""
     if transport == "stdio":
         cmd = (stdio_config or {}).get("command", "?")
         desc = (
@@ -104,6 +108,7 @@ def _build_structured_tool(
             )
 
     async def _acall(**kwargs: Any) -> str:
+        """Internal helper: acall."""
         try:
             args = sanitize_mcp_call_arguments(
                 normalize_mcp_tool_arguments(kwargs),
@@ -140,6 +145,7 @@ def register_mcp_tools_for_server(
     stdio_config: dict[str, Any] | None = None,
     remote_tool_defs: list[McpToolDef] | None = None,
 ) -> list[str]:
+    """Register mcp tools for server。"""
     from app.agent.tools.registry import tool_registry
 
     unregister_mcp_tools_for_server(server_id)
@@ -188,6 +194,7 @@ def register_mcp_tools_for_server(
 
 
 def unregister_mcp_tools_for_server(server_id: str) -> None:
+    """Unregister mcp tools for server (``server_id``)."""
     from app.agent.executor import invalidate_default_graph_cache
     from app.agent.tools.registry import tool_registry
 
@@ -205,4 +212,5 @@ def unregister_mcp_tools_for_server(server_id: str) -> None:
 
 
 def get_registered_lc_names(server_id: str) -> list[str]:
+    """Get registered lc names (``server_id``)."""
     return list(_mcp_registered_lc_names.get(server_id, []))

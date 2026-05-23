@@ -19,6 +19,7 @@ def test_balance_catalog_provider_without_fetcher_returns_501(client, auth_heade
 
 
 def _count_where(table: str, clause: str = "") -> int:
+    """Test count where."""
     url = get_settings().database_url_sync()
     eng = create_engine(url)
     sql = f"SELECT COUNT(*) FROM {table}"
@@ -35,6 +36,7 @@ def _count_where(table: str, clause: str = "") -> int:
     reason="需要配置 DEEPSEEK_API_KEY",
 )
 def test_deepseek_balance_live_inserts_snapshot(client, auth_headers):
+    """Test deepseek balance live inserts snapshot."""
     before = _count_where("provider_balance_snapshots", "provider_id = 'deepseek'")
     r = client.get("/api/chat/providers/deepseek/balance", headers=auth_headers)
     assert r.status_code == 200, r.text
@@ -46,6 +48,7 @@ def test_deepseek_balance_live_inserts_snapshot(client, auth_headers):
 
 
 def test_deepseek_unknown_balance_provider_404(client, auth_headers):
+    """Test deepseek unknown balance provider 404."""
     r = client.get("/api/chat/providers/not-a-provider/balance", headers=auth_headers)
     assert r.status_code == 404
 
@@ -56,6 +59,7 @@ def test_deepseek_unknown_balance_provider_404(client, auth_headers):
     reason="需要配置 DEEPSEEK_API_KEY",
 )
 def test_deepseek_chat_sse_llm_usage_live(client, auth_headers):
+    """Test deepseek chat sse llm usage live."""
     mid = primary_deepseek_chat_model_id(settings=get_settings())
     before = _count_where("llm_usage_events", "provider_id = 'deepseek'")
 

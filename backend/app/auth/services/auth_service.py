@@ -41,10 +41,13 @@ _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 class AuthService:
+    """Auth Service."""
     def __init__(self, session: AsyncSession):
+        """Initialize instance."""
         self._session = session
 
     async def register(self, req: RegisterRequest) -> UserPublic:
+        """Register (``req``)."""
         r = await self._session.execute(
             select(UserRecord).where(UserRecord.username == req.username.strip())
         )
@@ -86,6 +89,7 @@ class AuthService:
         )
 
     async def login(self, req: LoginRequest) -> TokenResponse:
+        """Login (``req``)."""
         raw = req.username.strip()
         if not raw:
             raise UnauthorizedError("用户名或密码错误")
@@ -112,6 +116,7 @@ class AuthService:
         return TokenResponse(access_token=token, expires_in=expires_in)
 
     async def send_email_login_code(self, email: str) -> MessageOut:
+        """Send email login code (``email``)."""
         if not email or not email.strip():
             raise ValidationError("邮箱不能为空")
         em = email.strip().lower()
@@ -124,6 +129,7 @@ class AuthService:
         return MessageOut(message="验证码已发送")
 
     async def login_with_email_code(self, body: EmailCodeLoginIn) -> TokenResponse:
+        """Login with email code (``body``)."""
         em = body.email.strip().lower()
         if not _EMAIL_RE.match(em):
             raise ValidationError("邮箱格式不正确")
@@ -140,6 +146,7 @@ class AuthService:
         return TokenResponse(access_token=token, expires_in=expires_in)
 
     async def send_register_code(self, email: str) -> MessageOut:
+        """Send register code (``email``)."""
         if not email or not email.strip():
             raise ValidationError("邮箱不能为空")
         em = email.strip().lower()
@@ -149,6 +156,7 @@ class AuthService:
         return MessageOut(message="验证码已发送，请查收邮件")
 
     async def send_forgot_code(self, email: str) -> MessageOut:
+        """Send forgot code (``email``)."""
         if not email or not email.strip():
             raise ValidationError("邮箱不能为空")
         em = email.strip().lower()
@@ -159,6 +167,7 @@ class AuthService:
         return MessageOut(message="验证码已发送")
 
     async def reset_forgotten_password(self, body: ForgotResetIn) -> MessageOut:
+        """Reset forgotten password (``body``)."""
         em = body.email.strip().lower()
         r = await self._session.execute(select(UserRecord).where(UserRecord.email == em))
         row = r.scalar_one_or_none()
@@ -172,17 +181,20 @@ class AuthService:
         return MessageOut(message="密码已重置")
 
     async def send_change_password_code(self, user: UserRecord) -> MessageOut:
+        """Send change password code (``user``)."""
         if not user.email:
             raise ValidationError("请先绑定邮箱后再修改密码（个人资料中填写邮箱）")
         await ensure_send_change_password(user.email.strip().lower())
         return MessageOut(message="验证码已发送")
 
     async def check_password(self, user: UserRecord, body: CheckPasswordIn) -> MessageOut:
+        """Check password (``user``, ``body``)."""
         if not verify_password(body.password, user.password_hash):
             raise UnauthorizedError("当前密码错误")
         return MessageOut(message="密码正确")
 
     async def change_password(self, user: UserRecord, body: ChangePasswordIn) -> MessageOut:
+        """Change password (``user``, ``body``)."""
         if not user.email:
             raise ValidationError("请先绑定邮箱")
         em = user.email.strip().lower()

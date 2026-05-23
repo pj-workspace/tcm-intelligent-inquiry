@@ -1,3 +1,6 @@
+/**
+ * @fileoverview MCP 服务 Tab：列表、添加表单与删除确认。
+ */
 "use client";
 
 import { Plus, Plug } from "lucide-react";
@@ -7,6 +10,7 @@ import { useMcp } from "@/hooks/useMcp";
 import { McpAddForm } from "./McpAddForm";
 import { McpServerCard } from "./McpServerCard";
 
+/** MCP 服务器管理 Tab。 */
 export function McpTab() {
   const { token } = useAuth();
   const {

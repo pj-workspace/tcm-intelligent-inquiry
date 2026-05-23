@@ -1,3 +1,6 @@
+/**
+ * @fileoverview Markdown 引用预处理与纯文本提取单元测试。
+ */
 import { describe, expect, it } from "vitest";
 import { injectCitationMarkdownLinks, markdownToPlainText } from "./markdown-utils";
 

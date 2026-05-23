@@ -58,6 +58,7 @@ def _parse_docstring_arg_descs(docstring: str) -> dict[str, str]:
 
 
 def _parse_tool_args(tool: BaseTool) -> list[ToolArgInfo]:
+    """从 LangChain 工具的 JSON schema 与 docstring 解析参数元数据。"""
     if tool.args_schema is None:
         return []
     try:
@@ -84,6 +85,7 @@ def _parse_tool_args(tool: BaseTool) -> list[ToolArgInfo]:
 
 
 def _to_response(row: AgentRecord) -> AgentResponse:
+    """将 ORM 行映射为 API 响应模型。"""
     names = row.tool_names if isinstance(row.tool_names, list) else []
     return AgentResponse(
         id=row.id,
@@ -96,27 +98,34 @@ def _to_response(row: AgentRecord) -> AgentResponse:
 
 
 async def _ensure_kb_owned_by_user(session: AsyncSession, kb_id: str, user_id: str) -> None:
+    """校验知识库存在且归属当前用户，否则抛出 ValidationError。"""
     row = await session.get(KnowledgeBaseRecord, kb_id)
     if row is None or row.owner_id != user_id:
         raise ValidationError("知识库不存在或不属于当前用户，无法绑定为默认知识库。")
 
 
 class AgentService:
+    """Agent 配置的 CRUD 与工具元数据查询。"""
+
     def __init__(self, session: AsyncSession):
+        """绑定异步数据库会话。"""
         self._session = session
 
     async def list_agents(self) -> AgentListResponse:
+        """列出全部 Agent，按名称排序。"""
         r = await self._session.execute(select(AgentRecord).order_by(AgentRecord.name))
         rows = r.scalars().all()
         return AgentListResponse(agents=[_to_response(x) for x in rows], total=len(rows))
 
     async def get_agent(self, agent_id: str) -> AgentResponse:
+        """按 ID 获取 Agent；不存在时抛出 NotFoundError。"""
         row = await self._session.get(AgentRecord, agent_id)
         if row is None:
             raise NotFoundError(f"Agent '{agent_id}' 不存在")
         return _to_response(row)
 
     async def create_agent(self, req: AgentCreateRequest, user_id: str) -> AgentResponse:
+        """创建 Agent 并校验工具名与默认知识库归属。"""
         ensure_tools_loaded()
         available = set(tool_registry.names())
         names = req.tool_names or []
@@ -146,6 +155,7 @@ class AgentService:
         return _to_response(row)
 
     async def update_agent(self, agent_id: str, req: AgentUpdateRequest, user_id: str) -> AgentResponse:
+        """部分更新 Agent 配置；更新后使对应编译图缓存失效。"""
         row = await self._session.get(AgentRecord, agent_id)
         if row is None:
             raise NotFoundError(f"Agent '{agent_id}' 不存在")
@@ -183,6 +193,7 @@ class AgentService:
         return _to_response(row)
 
     async def delete_agent(self, agent_id: str) -> None:
+        """删除 Agent 并清除其编译图缓存。"""
         row = await self._session.get(AgentRecord, agent_id)
         if row is None:
             raise NotFoundError(f"Agent '{agent_id}' 不存在")
@@ -191,6 +202,7 @@ class AgentService:
         logger.info("删除 Agent id=%s", agent_id)
 
     async def list_available_tools(self) -> ToolListResponse:
+        """列出注册表内全部工具的结构化元数据及被引用次数。"""
         ensure_tools_loaded()
         r = await self._session.execute(select(AgentRecord))
         agents = r.scalars().all()
@@ -233,6 +245,7 @@ class AgentService:
         args: dict[str, Any],
         user_id: str,
     ) -> ToolInvokeResponse:
+        """在线试运行指定工具，并在请求上下文中注入用户 ID。"""
         ensure_tools_loaded()
         tool = tool_registry._tools.get(tool_name)
         if tool is None:

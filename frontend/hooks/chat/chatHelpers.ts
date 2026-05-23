@@ -1,12 +1,21 @@
+/**
+ * @fileoverview 聊天客户端共享常量与 localStorage 工具：模型选择、Agent ID、用量与 thinking 收尾。
+ */
 import type { Message } from "@/types/chat";
 import type { ChatModelCatalogResponse } from "@/types/models";
 
+/** localStorage 键：侧栏置顶会话 id 列表。 */
 export const PINNED_IDS_KEY = "tcm_pinned_conversation_ids";
+/** sessionStorage 键：未登录时暂存输入草稿。 */
 export const PENDING_CHAT_DRAFT_KEY = "tcm_pending_chat_draft";
+/** localStorage 键：默认 Agent id。 */
 export const DEFAULT_AGENT_LS_KEY = "tcm_default_agent_id";
+/** localStorage 键（遗留）：仅模型 id，无 provider。 */
 export const CHAT_MODEL_LS_KEY = "tcm_chat_model";
+/** localStorage 键：provider + model 组合选择。 */
 export const CHAT_PICK_LS_KEY = "tcm_chat_pick";
 
+/** 读取 localStorage 中的默认 Agent id。 */
 export function readStoredDefaultAgentId(): string | null {
   try {
     const raw = localStorage.getItem(DEFAULT_AGENT_LS_KEY)?.trim();
@@ -16,11 +25,13 @@ export function readStoredDefaultAgentId(): string | null {
   }
 }
 
+/** 将 UI 选中的 Agent id 转为 SSE 请求体字段（空则 omit）。 */
 export function agentIdForChatRequest(chatAgentId: string | null): string | undefined {
   const id = chatAgentId?.trim();
   return id ? id : undefined;
 }
 
+/** 读取持久化的 provider/model 选择。 */
 export function readStoredPick(): { providerId: string; modelId: string } | null {
   try {
     const raw = localStorage.getItem(CHAT_PICK_LS_KEY)?.trim();
@@ -33,6 +44,7 @@ export function readStoredPick(): { providerId: string; modelId: string } | null
   }
 }
 
+/** 持久化 provider/model 选择到 localStorage。 */
 export function writeStoredPick(p: { providerId: string; modelId: string }) {
   try {
     localStorage.setItem(CHAT_PICK_LS_KEY, JSON.stringify(p));
@@ -41,6 +53,7 @@ export function writeStoredPick(p: { providerId: string; modelId: string }) {
   }
 }
 
+/** 根据目录与 localStorage 解析初始 LLM provider/model。 */
 export function resolveInitialPick(catalog: ChatModelCatalogResponse): {
   providerId: string;
   modelId: string;
@@ -100,9 +113,11 @@ export function resolveInitialPick(catalog: ChatModelCatalogResponse): {
   return { providerId: pid, modelId: mid };
 }
 
+/** 异步 sleep，用于 SSE 重试等短延迟。 */
 export const delay = (ms: number) =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
+/** 流结束时为 trace 内 thinking 步骤写入耗时并清理 start 记录。 */
 export function applyFinalizeThinkingStepToMessages(
   msgs: Message[],
   traceId: string,
@@ -127,6 +142,7 @@ export function applyFinalizeThinkingStepToMessages(
   );
 }
 
+/** 判断 fetch/流错误是否为用户主动 abort 或连接被关闭。 */
 export function isLikelyUserAbort(err: unknown, signal: AbortSignal): boolean {
   if (signal.aborted) return true;
   if (
@@ -147,6 +163,7 @@ export function isLikelyUserAbort(err: unknown, signal: AbortSignal): boolean {
   return /aborted|The operation was aborted|premature close|ERR_STREAM_/i.test(msg);
 }
 
+/** 将 SSE `llm-usage` 片段归一化为 prompt/completion/total token 增量。 */
 export function normalizedUsageDelta(u: unknown): {
   prompt: number;
   completion: number;

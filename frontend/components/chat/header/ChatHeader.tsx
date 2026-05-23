@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 主聊天区顶栏：标题编辑、会话菜单与分组工作台返回。
+ */
 "use client";
 
 import Link from "next/link";
@@ -54,6 +57,7 @@ type ChatHeaderProps = {
   } | null;
 };
 
+/** 主区顶栏：会话标题、新建、导出/删除菜单与侧栏折叠。 */
 export function ChatHeader({
   token,
   authLoading,

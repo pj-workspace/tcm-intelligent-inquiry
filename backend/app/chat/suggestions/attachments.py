@@ -25,6 +25,7 @@ _JSON_OBJECT_PROVIDERS = frozenset({"qwen"})
 
 
 def _truncate(s: str, n: int) -> str:
+    """Internal helper: truncate."""
     t = (s or "").strip().replace("\n", " ")
     if len(t) <= n:
         return t
@@ -32,6 +33,7 @@ def _truncate(s: str, n: int) -> str:
 
 
 def _normalize_items(obj: object) -> list[dict[str, str]]:
+    """Internal helper: normalize items."""
     raw_list: list[object] | None = None
     if isinstance(obj, list):
         raw_list = obj
@@ -59,6 +61,7 @@ def _normalize_items(obj: object) -> list[dict[str, str]]:
 
 
 def _parse_payload(raw: str) -> list[dict[str, str]]:
+    """Internal helper: parse payload."""
     data = _loads_json_object(raw)
     if data is None:
         return []
@@ -72,6 +75,7 @@ async def generate_attachment_suggestions(
     *,
     timeout_sec: float = 28.0,
 ) -> list[dict[str, str]]:
+    """Generate attachment suggestions。"""
     from app.core.config import get_settings
     from app.llm.chat_factory import build_chat_model
 
@@ -119,6 +123,7 @@ async def generate_attachment_suggestions(
     msg = HumanMessage(content=blocks)
 
     async def _call() -> list[dict[str, str]]:
+        """Internal helper: call."""
         res = await model.ainvoke([msg])
         raw_text = _extract_ai_text(res) if res is not None else ""
         return _parse_payload(raw_text.strip())

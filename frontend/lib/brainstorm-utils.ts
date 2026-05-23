@@ -5,6 +5,10 @@ import type {
   WebResultItem,
 } from "@/types/brainstorm";
 
+/**
+ * @fileoverview 头脑风暴 trace UI 工具：时长格式化、工具标签、trace 标题与结果解析。
+ */
+
 /** 新 step 到达时，距 trace 内部底部 <= 该值则视为"仍在底部，可以跟随"。
  *  之前的 72 太宽松——用户只上滑一点就会被新 step 拽回。压到 12 给一手势就能脱离跟随。 */
 export const INTERNAL_SCROLL_THRESHOLD = 12;
@@ -12,12 +16,14 @@ export const INTERNAL_SCROLL_THRESHOLD = 12;
  *  仅作向后兼容保留导出。 */
 export const INTERNAL_LOCK_THRESHOLD = 8;
 
+/** 将秒数格式化为 UI 展示字符串（<10s 保留一位小数）。 */
 export function formatDurationSec(sec: number): string {
   if (!Number.isFinite(sec) || sec < 0) return "0s";
   if (sec < 10) return `${Math.round(sec * 10) / 10}s`;
   return `${Math.round(sec)}s`;
 }
 
+/** 根据 scrollTop 与 scrollHeight 计算上下边缘是否应显示渐变遮罩。 */
 export function getEdgeFadeState(el: HTMLDivElement | null): EdgeFadeState {
   if (!el) return { top: false, bottom: false };
   const maxScrollTop = Math.max(0, el.scrollHeight - el.clientHeight);
@@ -28,6 +34,7 @@ export function getEdgeFadeState(el: HTMLDivElement | null): EdgeFadeState {
   };
 }
 
+/** 工具步骤标题：内置中文名或 MCP 远端名。 */
 export function toolActionLabel(
   toolName: string,
   mcpRemoteName?: string | null
@@ -35,6 +42,7 @@ export function toolActionLabel(
   return toolDisplayName(toolName, mcpRemoteName);
 }
 
+/** 工具成功终态的摘要文案（按工具类型解析结果数量）。 */
 export function toolSuccessLabel(
   toolName: string,
   outputPreview?: string,
@@ -60,6 +68,7 @@ export function toolSuccessLabel(
   return `${name} 完成`;
 }
 
+/** 工具运行中的进度文案。 */
 export function runningToolLabel(
   toolName: string,
   mcpRemoteName?: string | null
@@ -72,6 +81,7 @@ export function runningToolLabel(
   return `正在${name}...`;
 }
 
+/** 工具业务失败终态文案。 */
 export function toolFailureLabel(
   toolName: string,
   mcpRemoteName?: string | null
@@ -148,6 +158,7 @@ export function summarizeTraceHeadline(
   return `用了 ${tools.length} 个工具${dur}`;
 }
 
+/** 从 searx_web_search 的 outputPreview 解析结构化网页结果列表。 */
 export function parseWebResults(raw?: string): WebResultItem[] {
   if (!raw) return [];
   return raw
@@ -174,6 +185,7 @@ export function parseWebResults(raw?: string): WebResultItem[] {
     .slice(0, 10);
 }
 
+/** 从 formula_lookup 等工具的 outputPreview 解析摘要块列表。 */
 export function parseSummaryBlocks(raw?: string): string[] {
   if (!raw) return [];
   const blocks = raw.split(/\n{2,}/).map((block) => block.trim()).filter(Boolean);

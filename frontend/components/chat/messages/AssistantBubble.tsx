@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 助手回复气泡：Markdown 渲染、引用角标、工具栏与追问区。
+ */
 "use client";
 
 import type { RefObject } from "react";
@@ -41,6 +44,7 @@ const enterSecs = (base: number) => Math.max(0.14, Number((base - ENTER_FAST_BY)
 const exitSnapTransition = { duration: 0.04, ease: "linear" as const };
 
 /** 追问条前导「回车」符（16×16） */
+/** 追问条前导「回车」SVG 图标。 */
 function FollowUpEnterIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -90,6 +94,7 @@ interface AssistantBubbleProps {
 /** 近似 3 条追问骨架/按钮纵向占位，仅在追问展示期间起效，减少对贴底滚动时的视感位移 */
 const FOLLOW_UP_TRAY_MIN_H = "min-h-[9.75rem]";
 
+/** 助手 Markdown 气泡：引用角标、工具栏、追问与 PDF 导出。 */
 export function AssistantBubble({
   content,
   modelName,
@@ -126,6 +131,7 @@ export function AssistantBubble({
     for (const item of citations ?? []) map.set(item.id, item);
     return map;
   }, [citations]);
+  // citation: 伪协议链接 → CitationMarker；其余链接走 defaultUrlTransform + 新窗口打开。
   const markdownComponents = useMemo<Components>(() => {
     return {
       ...assistantMarkdownComponents,

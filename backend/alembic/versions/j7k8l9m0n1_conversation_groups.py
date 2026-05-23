@@ -22,6 +22,7 @@ _FK_CONV_GROUP = "fk_conversations_group_id_conversation_groups"
 
 
 def upgrade() -> None:
+    """Apply schema changes."""
     bind = op.get_bind()
     insp = sa.inspect(bind)
 
@@ -79,6 +80,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Revert schema changes."""
     op.drop_constraint(_FK_CONV_GROUP, "conversations", type_="foreignkey")
     op.drop_index(op.f("ix_conversations_group_id"), table_name="conversations")
     op.drop_column("conversations", "group_id")

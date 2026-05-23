@@ -12,10 +12,12 @@ from app.mcp.schema_tools import (
 
 
 def test_react_agent_uses_v1_for_parallel_tools():
+    """Test react agent uses v1 for parallel tools."""
     assert REACT_AGENT_GRAPH_VERSION == "v1"
 
 
 def test_build_flat_schema_from_mcp_input():
+    """Test build flat schema from mcp input."""
     schema = build_mcp_args_schema(
         "search_pubmed",
         {
@@ -34,12 +36,14 @@ def test_build_flat_schema_from_mcp_input():
 
 
 def test_normalize_nested_arguments():
+    """Test normalize nested arguments."""
     assert normalize_mcp_tool_arguments(
         {"arguments": {"query": "x", "max_results": 3}}
     ) == {"query": "x", "max_results": 3}
 
 
 def test_sanitize_drops_null_optional_strings():
+    """Test sanitize drops null optional strings."""
     schema = {
         "type": "object",
         "properties": {
@@ -62,6 +66,7 @@ def test_sanitize_drops_null_optional_strings():
 
 
 def test_sanitize_required_null_string_becomes_empty():
+    """Test sanitize required null string becomes empty."""
     schema = {
         "type": "object",
         "properties": {"body": {"type": "string"}},
@@ -71,6 +76,7 @@ def test_sanitize_required_null_string_becomes_empty():
 
 
 def test_sanitize_body_falls_back_to_html_body():
+    """Test sanitize body falls back to html body."""
     schema = {
         "type": "object",
         "properties": {

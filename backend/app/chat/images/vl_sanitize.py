@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 def _extract_url_from_image_block(block: dict) -> str:
+    """Internal helper: extract url from image block."""
     iu = block.get("image_url")
     if isinstance(iu, dict):
         return str(iu.get("url") or "").strip()
@@ -27,6 +28,7 @@ def _extract_url_from_image_block(block: dict) -> str:
 def collect_unique_image_urls_from_messages(
     messages: Sequence[HumanMessage | AIMessage],
 ) -> list[str]:
+    """Collect unique image urls from messages。"""
     seen: set[str] = set()
     out: list[str] = []
     for m in messages:
@@ -46,6 +48,7 @@ def collect_unique_image_urls_from_messages(
 
 
 async def _fetch_url_bytes_capped(url: str, max_bytes: int) -> bytes:
+    """Internal helper: fetch url bytes capped."""
     timeout = httpx.Timeout(30.0, connect=10.0)
     async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
         async with client.stream("GET", url) as response:
@@ -61,6 +64,7 @@ async def _fetch_url_bytes_capped(url: str, max_bytes: int) -> bytes:
 
 
 async def probe_url_image_ok_for_vl(url: str, *, max_bytes: int) -> bool:
+    """Probe url image ok for vl (``url``)."""
     try:
         data = await _fetch_url_bytes_capped(url, max_bytes)
         if not data:
@@ -88,6 +92,7 @@ async def ensure_urls_probed(
         return
 
     async def _probe(u: str) -> tuple[str, bool]:
+        """Internal helper: probe."""
         return u, await probe_url_image_ok_for_vl(u, max_bytes=max_b)
 
     pairs = await asyncio.gather(*[_probe(u) for u in todo])
@@ -99,10 +104,12 @@ def filter_image_urls_by_probe_cache(
     urls: list[str],
     ok_cache: dict[str, bool],
 ) -> list[str]:
+    """Filter image urls by probe cache。"""
     return [u for u in urls if isinstance(u, str) and u.strip() and ok_cache.get(u, False)]
 
 
 def sanitize_human_message_for_vl(msg: HumanMessage, ok_cache: dict[str, bool]) -> HumanMessage:
+    """Sanitize human message for vl (``msg``, ``ok_cache``)."""
     c = msg.content
     if not isinstance(c, list):
         return msg
@@ -145,6 +152,7 @@ def sanitize_messages_for_vl_images(
     messages: list[HumanMessage | AIMessage],
     ok_cache: dict[str, bool],
 ) -> list[HumanMessage | AIMessage]:
+    """Sanitize messages for vl images。"""
     out: list[HumanMessage | AIMessage] = []
     for m in messages:
         if isinstance(m, HumanMessage):
@@ -194,6 +202,7 @@ def strip_human_message_image_blocks_for_text_only(msg: HumanMessage) -> HumanMe
 def sanitize_messages_for_text_only_images(
     messages: list[HumanMessage | AIMessage],
 ) -> list[HumanMessage | AIMessage]:
+    """Sanitize messages for text only images。"""
     out: list[HumanMessage | AIMessage] = []
     for m in messages:
         if isinstance(m, HumanMessage):

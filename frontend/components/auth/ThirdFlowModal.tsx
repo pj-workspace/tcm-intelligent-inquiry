@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 第三方 OAuth 首次登录后的邮箱绑定弹窗（complete 流程）。
+ */
 "use client";
 
 import { forwardRef, useState } from "react";
@@ -14,6 +17,10 @@ export type ThirdFlowModalProps = {
   finishLogin: (token: string) => void | Promise<void>;
 };
 
+/**
+ * OAuth 绑定邮箱并完成注册/登录。
+ * @param finishLogin - 收到 access_token 后写入 Auth 上下文
+ */
 export const ThirdFlowModal = forwardRef<HTMLDivElement, ThirdFlowModalProps>(
   function ThirdFlowModal({ provider, flowId, onClose, finishLogin }, ref) {
     const [email, setEmail] = useState("");
@@ -27,6 +34,7 @@ export const ThirdFlowModal = forwardRef<HTMLDivElement, ThirdFlowModalProps>(
     const [sendBusy, setSendBusy] = useState(false);
     const sendCd = useCooldownTimer();
 
+    /** 向绑定邮箱发送 6 位验证码。 */
     const sendCode = async () => {
       setErr(null);
       if (!email.trim()) {
@@ -55,6 +63,7 @@ export const ThirdFlowModal = forwardRef<HTMLDivElement, ThirdFlowModalProps>(
       }
     };
 
+    /** 提交 OAuth complete：可能需要补设密码与昵称。 */
     const submitComplete = async (e: React.FormEvent) => {
       e.preventDefault();
       setErr(null);

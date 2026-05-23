@@ -180,6 +180,31 @@ async def stream_chat(
     group_id: str | None = None,
     image_urls: list[str] | None = None,
 ) -> AsyncIterator[str]:
+    """流式执行一轮对话并通过 SSE 帧增量推送事件。
+
+    编排 LangGraph Agent、工具调用、引用来源、用量计费与中断/恢复逻辑；
+    每个 ``yield`` 为一条 ``data: {...}\\n\\n`` 帧，末尾发送 ``[DONE]``。
+
+    Args:
+        message: 用户输入正文；仅附图时可空（会写入「（附图）」占位）。
+        history: 前端传入的历史消息（新建会话时为空）。
+        agent_id: 指定 Agent 配置；空则使用默认图。
+        conversation_id: 已有会话 ID；空则创建新会话。
+        user: 登录用户；匿名时为 ``None``。
+        anon_session_secret: 匿名会话密钥（``X-Anonymous-Session``）。
+        regenerate_last_reply: 是否重新生成上一轮助手回复。
+        regenerate_from_user_id: 重新生成时锚定的 user 消息 ID。
+        resolved: 由 ``resolve_chat_turn`` 解析的模型/厂商/权限上下文。
+        resume_kind: 中断恢复类型（目前仅 ``ask_user``）。
+        resume_widget_id: ask_user 组件 ID。
+        resume_trace_id: 恢复所属 trace ID。
+        web_search_mode: 联网检索策略（``force`` / ``auto``）。
+        group_id: 会话分组 ID。
+        image_urls: 附图 OSS 签名 URL 列表。
+
+    Yields:
+        SSE 格式字符串（``sse()`` / ``sse_done()`` 产出）。
+    """
     vl_ok_cache: dict[str, bool] = {}
 
     raw_urls = [u.strip() for u in (image_urls or ()) if isinstance(u, str) and u.strip()]
@@ -240,6 +265,9 @@ async def stream_chat(
     trace_thinking_parts: list[str] = []
     flush_thinking_fn = None
     flush_assistant_fn = None
+    # ── 引用来源（请求级 ContextVar，见 app.agent.tools._internal.citations）────
+    # 每轮对话开始时清空；工具 on_tool_end 增量下发 sources + source-registry；
+    # flush_assistant_segment 入库时快照全量 citations 到 MessageRecord。
     reset_citation_sources()
     last_source_emit_index = 0
 
@@ -441,6 +469,7 @@ async def stream_chat(
         seen_llm_usage_sigs: set[str] = set()
 
         async def flush_thinking_segment() -> None:
+            """Flush thinking segment."""
             nonlocal thinking_buf, thinking_t0
             if not thinking_buf or thinking_t0 is None:
                 return
@@ -487,6 +516,7 @@ async def stream_chat(
                     await session.commit()
                 return
             lbl = meta_chat_model_label(resolved)
+            # 与 SSE source-registry 终态一致：持久化本轮已登记的全部来源（非仅增量）。
             citations = citation_sources_snapshot()
             async with async_session_factory() as session:
                 session.add(
@@ -792,6 +822,7 @@ async def stream_chat(
                     "status": tool_status,
                 }
                 current_sources = citation_sources_snapshot()
+                # 仅下发自上次 tool-result 以来新登记的来源，避免重复 SSE 载荷。
                 new_sources = current_sources[last_source_emit_index:]
                 if new_sources:
                     tr["sources"] = json_safe_for_sse(new_sources)
@@ -841,6 +872,7 @@ async def stream_chat(
                 else:
                     yield sse(tr)
                     if new_sources:
+                        # 全量 registry 供前端 attach 到本轮所有 assistant 气泡；tool-result.sources 为增量。
                         yield sse(
                             {
                                 "type": "source-registry",

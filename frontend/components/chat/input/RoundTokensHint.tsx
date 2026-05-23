@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 输入框上方 token 用量提示（本轮 SSE 或本会话累计）。
+ */
 "use client";
 
 export type RoundTokensUsage = {

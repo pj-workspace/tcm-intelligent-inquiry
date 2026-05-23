@@ -47,7 +47,15 @@ def _searx_diagnostics_for_llm(payload: dict[str, Any]) -> str:
 
 
 def format_searx_results_for_llm(payload: dict[str, Any], max_results: int) -> str:
-    """将 SearXNG JSON 中的 results 转为模型可读文本（单测可直调）。"""
+    """将 SearXNG JSON 中的 results 转为模型可读文本。
+
+    Args:
+        payload: SearXNG ``/search?format=json`` 响应体。
+        max_results: 最多格式化的结果条数。
+
+    Returns:
+        带来源 id 标记的纯文本；无结果时附带诊断说明。
+    """
     rows = payload.get("results")
     if not isinstance(rows, list) or not rows:
         return (

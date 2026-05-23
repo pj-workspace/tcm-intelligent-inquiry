@@ -7,6 +7,7 @@ from app.agent.tools.formula.synonyms import expand_clinical_text, _load_groups
 
 
 def test_score_row_matches_keywords():
+    """Test score row matches keywords."""
     row = SimpleNamespace(
         symptom_keywords=["口苦", "咽干"],
         pattern_tags=["少阳证"],
@@ -18,6 +19,7 @@ def test_score_row_matches_keywords():
 
 
 def test_synonym_expansion_appends_group():
+    """Test synonym expansion appends group."""
     _load_groups.cache_clear()
     out = expand_clinical_text("疲倦不想吃饭", None)
     # 与「乏力」等同组词应被拼入，利于子串与 trgm
@@ -25,6 +27,7 @@ def test_synonym_expansion_appends_group():
 
 
 def test_format_block_contains_disclaimer():
+    """Test format block contains disclaimer."""
     row = SimpleNamespace(
         name="测试方",
         aliases=[],

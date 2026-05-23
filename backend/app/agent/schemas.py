@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field
 
 
 class AgentCreateRequest(BaseModel):
+    """创建 Agent 的请求体。"""
+
     name: str = Field(..., min_length=1, description="Agent 名称")
     description: str = Field(default="", description="Agent 用途说明")
     system_prompt: str = Field(default="", description="自定义系统提示（空则使用默认）")
@@ -26,6 +28,8 @@ class AgentUpdateRequest(BaseModel):
 
 
 class AgentResponse(BaseModel):
+    """单个 Agent 的 API 响应。"""
+
     id: str
     name: str
     description: str
@@ -35,6 +39,8 @@ class AgentResponse(BaseModel):
 
 
 class AgentListResponse(BaseModel):
+    """Agent 列表分页响应。"""
+
     agents: list[AgentResponse]
     total: int
 
@@ -42,6 +48,8 @@ class AgentListResponse(BaseModel):
 # ── 内置工具元数据 ────────────────────────────────────────────────────────────
 
 class ToolArgInfo(BaseModel):
+    """内置工具单个参数的元数据。"""
+
     name: str
     type: str
     required: bool
@@ -50,6 +58,8 @@ class ToolArgInfo(BaseModel):
 
 
 class BuiltinToolInfo(BaseModel):
+    """内置或 MCP 工具的展示与 schema 信息。"""
+
     name: str
     label: str
     description: str
@@ -62,13 +72,19 @@ class BuiltinToolInfo(BaseModel):
 
 
 class ToolListResponse(BaseModel):
+    """可用工具列表响应。"""
+
     tools: list[BuiltinToolInfo]
 
 
 class ToolInvokeRequest(BaseModel):
+    """在线试用工具时的参数载荷。"""
+
     args: dict[str, Any] = Field(default_factory=dict)
 
 
 class ToolInvokeResponse(BaseModel):
+    """工具试运行的文本结果与耗时。"""
+
     result: str
     elapsed_ms: int

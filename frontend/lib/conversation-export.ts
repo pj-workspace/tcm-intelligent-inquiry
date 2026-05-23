@@ -1,3 +1,7 @@
+/**
+ * @fileoverview 从服务端拉取会话并触发 Markdown 文件下载。
+ */
+
 import { API_BASE, apiJsonHeaders } from "@/lib/api";
 import {
   conversationToMarkdown,

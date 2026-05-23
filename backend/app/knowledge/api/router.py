@@ -36,10 +36,12 @@ router = APIRouter(prefix="/api/knowledge", tags=["knowledge"])
 
 
 def _svc(session: AsyncSession = Depends(get_session)) -> KnowledgeService:
+    """Internal helper: svc."""
     return KnowledgeService(session)
 
 
 async def _read_upload_limited(file: UploadFile) -> bytes:
+    """Internal helper: read upload limited."""
     content = await file.read()
     m = get_settings().max_upload_bytes
     if len(content) > m:
@@ -59,6 +61,7 @@ async def get_ingest_job(
     job_id: str,
     user: Annotated[UserRecord, Depends(require_kb_user)],
 ):
+    """Get ingest job。"""
     data = await job_get(job_id, owner_id=user.id)
     if data is None:
         raise NotFoundError(f"任务 '{job_id}' 不存在或已过期")
@@ -77,6 +80,7 @@ async def list_kbs(
     user: Annotated[UserRecord, Depends(require_kb_user)],
     svc: KnowledgeService = Depends(_svc),
 ):
+    """List kbs。"""
     return await svc.list_kbs(user.id)
 
 
@@ -86,6 +90,7 @@ async def create_kb(
     user: Annotated[UserRecord, Depends(require_kb_user)],
     svc: KnowledgeService = Depends(_svc),
 ):
+    """Create kb。"""
     return await svc.create_kb(req, user.id)
 
 
@@ -95,6 +100,7 @@ async def get_kb(
     user: Annotated[UserRecord, Depends(require_kb_user)],
     svc: KnowledgeService = Depends(_svc),
 ):
+    """Get kb。"""
     return await svc.get_kb(kb_id, user.id)
 
 
@@ -105,6 +111,7 @@ async def update_kb(
     user: Annotated[UserRecord, Depends(require_kb_user)],
     svc: KnowledgeService = Depends(_svc),
 ):
+    """Update kb。"""
     return await svc.update_kb(kb_id, req, user.id)
 
 
@@ -114,6 +121,7 @@ async def remove_kb(
     user: Annotated[UserRecord, Depends(require_kb_user)],
     svc: KnowledgeService = Depends(_svc),
 ):
+    """Remove kb。"""
     await svc.delete_kb(kb_id, user.id)
 
 
@@ -127,6 +135,7 @@ async def list_documents(
     user: Annotated[UserRecord, Depends(require_kb_user)],
     svc: KnowledgeService = Depends(_svc),
 ):
+    """List documents。"""
     return await svc.list_documents(kb_id, user.id)
 
 
@@ -141,6 +150,7 @@ async def remove_document(
     user: Annotated[UserRecord, Depends(require_kb_user)],
     svc: KnowledgeService = Depends(_svc),
 ):
+    """Remove document。"""
     await svc.delete_document(kb_id, doc_id, user.id)
 
 
@@ -151,6 +161,7 @@ async def ingest(
     user: Annotated[UserRecord, Depends(require_kb_user)],
     svc: KnowledgeService = Depends(_svc),
 ):
+    """Ingest。"""
     content = await _read_upload_limited(file)
     return await svc.ingest_file(kb_id, file.filename or "unknown", content, user.id)
 
@@ -167,6 +178,7 @@ async def ingest_async(
     user: Annotated[UserRecord, Depends(require_kb_user)],
     svc: KnowledgeService = Depends(_svc),
 ):
+    """Ingest async。"""
     await svc.get_kb(kb_id, user.id)
     content = await _read_upload_limited(file)
     job_id = await job_create(owner_id=user.id)
@@ -200,4 +212,5 @@ async def search(
     user: Annotated[UserRecord, Depends(require_kb_user)],
     svc: KnowledgeService = Depends(_svc),
 ):
+    """Search。"""
     return await svc.search(kb_id, req, user.id)

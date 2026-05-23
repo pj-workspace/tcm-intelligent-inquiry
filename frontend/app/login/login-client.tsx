@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 登录/注册客户端页：品牌区 + `AuthForm`，成功后跳转 `/chat`。
+ */
 "use client";
 
 import Link from "next/link";
@@ -6,6 +9,10 @@ import { motion } from "framer-motion";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { AppLogo } from "@/components/brand/AppLogo";
 
+/**
+ * 登录或注册表单页。
+ * @param initialMode - 首次展示登录还是注册 Tab
+ */
 export function LoginPageClient({
   initialMode = "login",
 }: Readonly<{ initialMode?: "login" | "register" }>) {

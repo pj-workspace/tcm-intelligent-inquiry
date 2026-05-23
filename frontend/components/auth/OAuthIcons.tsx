@@ -1,3 +1,8 @@
+/**
+ * @fileoverview OAuth 提供商 SVG 图标（Gitee / GitHub）。
+ */
+
+/** Gitee 品牌 SVG 图标。 */
 export function OAuthIconGitee() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -10,6 +15,7 @@ export function OAuthIconGitee() {
   );
 }
 
+/** GitHub 品牌 SVG 图标。 */
 export function OAuthIconGitHub() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 fill-current" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">

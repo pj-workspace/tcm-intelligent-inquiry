@@ -21,6 +21,7 @@ router = APIRouter(tags=["oauth"])
 
 
 def _sess(session: AsyncSession = Depends(get_session)) -> AsyncSession:
+    """Internal helper: sess."""
     return session
 
 
@@ -29,6 +30,7 @@ async def oauth_bindings(
     user: Annotated[UserRecord, Depends(get_current_user)],
     session: AsyncSession = Depends(_sess),
 ):
+    """Oauth bindings。"""
     return await oauth_svc.list_bindings(session, user.id)
 
 
@@ -37,6 +39,7 @@ async def oauth_exchange(
     body: LoginCodeExchangeIn,
     session: AsyncSession = Depends(_sess),
 ):
+    """Oauth exchange。"""
     return await exchange_login_code(session, body.code)
 
 
@@ -45,6 +48,7 @@ async def oauth_exchange(
     summary="获取第三方授权 URL",
 )
 async def oauth_authorize(provider: str, session: AsyncSession = Depends(_sess)):
+    """Oauth authorize (``provider``, ``session``)."""
     try:
         url = await oauth_svc.build_authorize_url(provider)
     except Exception as e:
@@ -63,6 +67,7 @@ async def oauth_callback(
     error: str | None = Query(None),
     error_description: str | None = Query(None),
 ):
+    """Oauth callback。"""
     err = error
     if err and error_description:
         err = f"{error}:{error_description[:200]}"
@@ -82,6 +87,7 @@ async def oauth_complete(
     body: ThirdCompleteIn,
     session: AsyncSession = Depends(_sess),
 ):
+    """Oauth complete。"""
     _ = provider
     return await complete_third_flow(
         session,
@@ -99,6 +105,7 @@ async def oauth_unbind_send(
     user: Annotated[UserRecord, Depends(get_current_user)],
     session: AsyncSession = Depends(_sess),
 ):
+    """Oauth unbind send。"""
     _ = session
     await oauth_svc.send_unbind_code(user.id, user.email, provider)
     return {"ok": True, "message": "验证码已发送"}
@@ -111,5 +118,6 @@ async def oauth_unbind_verify(
     user: Annotated[UserRecord, Depends(get_current_user)],
     session: AsyncSession = Depends(_sess),
 ):
+    """Oauth unbind verify。"""
     await oauth_svc.verify_unbind(session, user.id, user.email, provider, body.code)
     return {"ok": True, "message": "解绑成功"}

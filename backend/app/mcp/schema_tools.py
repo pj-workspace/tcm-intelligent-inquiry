@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field, create_model
 
 @dataclass(frozen=True)
 class McpToolDef:
+    """Mcp Tool Def."""
     name: str
     input_schema: dict[str, Any] | None = None
 
@@ -24,6 +25,7 @@ class McpProxyArgs(BaseModel):
 
 
 def _json_schema_property_type(prop: dict[str, Any]) -> type[Any]:
+    """Internal helper: json schema property type."""
     raw = prop.get("type")
     if isinstance(raw, list):
         raw = next((t for t in raw if t != "null"), raw[0] if raw else "string")
@@ -102,6 +104,7 @@ def normalize_mcp_tool_arguments(raw: dict[str, Any] | None) -> dict[str, Any]:
 
 
 def _prop_expects_string(prop_schema: dict[str, Any]) -> bool:
+    """Internal helper: prop expects string."""
     raw = prop_schema.get("type")
     if raw == "string":
         return True

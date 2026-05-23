@@ -1,3 +1,6 @@
+/**
+ * @fileoverview Brainstorm 时间轴节点图标（thinking / tool / user_input / trace 收口态）。
+ */
 "use client";
 
 import clsx from "clsx";

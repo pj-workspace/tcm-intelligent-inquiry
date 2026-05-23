@@ -21,6 +21,7 @@ _BACKEND_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
 
 def _ingest_temp_root() -> Path:
+    """Internal helper: ingest temp root."""
     s = get_settings()
     if s.ingest_temp_dir.strip():
         return Path(s.ingest_temp_dir).expanduser().resolve()
@@ -28,14 +29,17 @@ def _ingest_temp_root() -> Path:
 
 
 def _key(job_id: str) -> str:
+    """Internal helper: key."""
     return f"{_PREFIX}{job_id}"
 
 
 def _blob_key(job_id: str) -> str:
+    """Internal helper: blob key."""
     return f"{_BLOB_PREFIX}{job_id}"
 
 
 async def job_create(owner_id: str | None = None) -> str:
+    """Job create (``owner_id``)."""
     jid = str(uuid.uuid4())
     r = get_redis()
     payload: dict = {"status": "pending", "job_id": jid}
@@ -46,6 +50,7 @@ async def job_create(owner_id: str | None = None) -> str:
 
 
 async def job_update(job_id: str, **fields) -> None:
+    """Job update (``job_id``)."""
     r = get_redis()
     raw = await r.get(_key(job_id))
     base = json.loads(raw) if raw else {"job_id": job_id}
@@ -54,6 +59,7 @@ async def job_update(job_id: str, **fields) -> None:
 
 
 async def job_get(job_id: str, owner_id: str | None = None) -> dict | None:
+    """Job get (``job_id``, ``owner_id``)."""
     r = get_redis()
     raw = await r.get(_key(job_id))
     if not raw:
@@ -170,6 +176,7 @@ async def _execute_ingest_core(
     await job_update(job_id, status="running", phase="extracting", progress=0)
 
     async def _progress(phase: str, progress: int) -> None:
+        """Internal helper: progress."""
         await job_update(job_id, phase=phase, progress=progress)
 
     async with async_session_factory() as session:

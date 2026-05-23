@@ -18,6 +18,7 @@ logger = get_logger(__name__)
 
 
 def _extract_ai_text(res: object) -> str:
+    """Internal helper: extract ai text."""
     content = getattr(res, "content", None)
     if isinstance(content, str):
         return content
@@ -40,6 +41,7 @@ _JSON_OBJECT_PROVIDERS = frozenset({"qwen", "openai", "glm", "deepseek"})
 
 
 def _truthy(v: object) -> bool:
+    """Internal helper: truthy."""
     if isinstance(v, bool):
         return v
     if isinstance(v, (int, float)):
@@ -50,12 +52,14 @@ def _truthy(v: object) -> bool:
 
 
 def _truncate_safe(s: str, n: int) -> str:
+    """Internal helper: truncate safe."""
     if len(s) <= n:
         return s
     return s[: n - 1] + "…"
 
 
 def _normalize_suggestion_strings(items: object) -> list[str]:
+    """Internal helper: normalize suggestion strings."""
     if not isinstance(items, list):
         return []
     out: list[str] = []
@@ -74,6 +78,7 @@ def _normalize_suggestion_strings(items: object) -> list[str]:
 
 
 def _loads_json_object(payload: str) -> dict | list | None:
+    """Internal helper: loads json object."""
     s = payload.strip()
     if not s:
         return None
@@ -139,6 +144,7 @@ async def generate_follow_up_suggestions(
     user_question: str | None = None,
     timeout_sec: float = 22.0,
 ) -> list[str]:
+    """Generate follow up suggestions。"""
     from app.core.config import get_settings
     from app.llm.chat_factory import build_chat_model
 
@@ -205,6 +211,7 @@ async def generate_follow_up_suggestions(
     )
 
     async def _call() -> list[str]:
+        """Internal helper: call."""
         res = await model.ainvoke(prompt)
         raw = _extract_ai_text(res) if res is not None else ""
         if not raw and hasattr(res, "content"):

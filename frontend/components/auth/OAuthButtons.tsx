@@ -1,3 +1,6 @@
+/**
+ * @fileoverview OAuth 第三方登录按钮组（GitHub / Gitee）。
+ */
 "use client";
 
 import { OAuthIconGitee, OAuthIconGitHub } from "@/components/auth/OAuthIcons";
@@ -8,6 +11,7 @@ type OAuthButtonsProps = {
   onGitee: () => void;
 };
 
+/** GitHub / Gitee 并排 OAuth 入口，样式随 `compact` 微调间距。 */
 export function OAuthButtons({ compact, onGitHub, onGitee }: OAuthButtonsProps) {
   return (
     <div

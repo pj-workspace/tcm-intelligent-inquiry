@@ -28,19 +28,23 @@ class VectorStoreUnavailable(Exception):
 
 @lru_cache(maxsize=8)
 def _qdrant_client_for_url(qdrant_url: str) -> QdrantClient:
+    """Internal helper: qdrant client for url."""
     # 与 docker 内 Qdrant 主版本可能不一致时仅告警，不阻断
     return QdrantClient(url=qdrant_url, check_compatibility=False)
 
 
 def _qdrant_client() -> QdrantClient:
+    """Internal helper: qdrant client."""
     return _qdrant_client_for_url(get_settings().qdrant_url)
 
 
 def _collection_name(kb_id: str) -> str:
+    """Internal helper: collection name."""
     return f"kb_{kb_id.replace('-', '_')}"
 
 
 def _vector_store(kb_id: str) -> QdrantVectorStore:
+    """Internal helper: vector store."""
     # 首次入库前 collection 可能尚未创建，关闭启动时校验
     return QdrantVectorStore(
         client=_qdrant_client(),

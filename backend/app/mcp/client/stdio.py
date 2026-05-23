@@ -21,6 +21,7 @@ _CALL_TIMEOUT = 120
 
 
 async def _list_tools(session: ClientSession) -> list[McpToolDef]:
+    """Internal helper: list tools."""
     tools: list[McpToolDef] = []
     cursor: str | None = None
     while True:
@@ -40,6 +41,7 @@ async def _list_tools(session: ClientSession) -> list[McpToolDef]:
 
 
 async def _list_tool_names(session: ClientSession) -> list[str]:
+    """Internal helper: list tool names."""
     return [t.name for t in await _list_tools(session)]
 
 
@@ -53,7 +55,9 @@ async def discover_tools_stdio(
     sid = server_id or "__discover__"
 
     async def _attempt() -> list[McpToolDef]:
+        """Internal helper: attempt."""
         async def _fn(session: ClientSession) -> list[McpToolDef]:
+            """Internal helper: fn."""
             return await _list_tools(session)
 
         return await stdio_pool.run(sid, config, _fn)
@@ -84,6 +88,7 @@ async def call_tool_stdio(
     logger.info("stdio MCP call_tool id=%s tool=%s", server_id, tool_name)
 
     async def _fn(session: ClientSession) -> str:
+        """Internal helper: fn."""
         result = await session.call_tool(tool_name, arguments or {})
         return _format_call_tool_result(result)
 

@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 登录/注册表单：密码与邮箱验证码、OAuth 回调、忘记密码与第三方绑定流程。
+ */
 "use client";
 
 import { useEffect, useRef, useState, Suspense } from "react";
@@ -21,6 +24,7 @@ import { ThirdFlowModal } from "@/components/auth/ThirdFlowModal";
 import { OAuthButtons } from "@/components/auth/OAuthButtons";
 
 
+/** 登录/注册表单核心逻辑（依赖 `useSearchParams`，由外层 Suspense 包裹）。 */
 function AuthFormInner({
   onAuthenticated,
   compact,
@@ -95,6 +99,7 @@ function AuthFormInner({
     }
   }, [searchParams, loginWithToken, onAuthenticated]);
 
+  /** 发起 GitHub/Gitee OAuth 授权跳转。 */
   const startOAuth = async (p: "github" | "gitee") => {
     setError(null);
     try {
@@ -107,6 +112,7 @@ function AuthFormInner({
     }
   };
 
+  /** 注册流程：向邮箱发送 6 位验证码。 */
   const sendRegisterCode = async () => {
     setError(null);
     const em = emailReg.trim();
@@ -136,6 +142,7 @@ function AuthFormInner({
     }
   };
 
+  /** 登录流程：向邮箱发送验证码（免密登录）。 */
   const sendLoginEmailCode = async () => {
     setError(null);
     const em = emailLogin.trim();
@@ -164,6 +171,7 @@ function AuthFormInner({
     }
   };
 
+  /** 提交登录或注册表单。 */
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -210,6 +218,7 @@ function AuthFormInner({
     }
   };
 
+  /** 忘记密码第一步：发送重置验证码。 */
   const sendForgot = async () => {
     setError(null);
     const em = forgotEmail.trim();
@@ -239,6 +248,7 @@ function AuthFormInner({
     }
   };
 
+  /** 忘记密码：仅重发验证码（已在 reset 步骤时）。 */
   const resendForgotOnly = async () => {
     if (forgotSendCd.left > 0 || forgotMailBusy) return;
     const em = forgotEmail.trim();
@@ -266,6 +276,7 @@ function AuthFormInner({
     }
   };
 
+  /** 忘记密码第二步：校验验证码并设置新密码。 */
   const resetForgot = async () => {
     setError(null);
     const trimmed = forgotCode.trim();

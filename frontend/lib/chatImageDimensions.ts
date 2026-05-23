@@ -1,3 +1,7 @@
+/**
+ * @fileoverview 聊天图片尺寸预检（浏览器解码最短边，与 VL 接口下限对齐）。
+ */
+
 import { CHAT_IMAGE_MIN_EDGE_PX } from "@/lib/chatAttachmentConstants";
 
 /**

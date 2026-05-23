@@ -1,3 +1,6 @@
+/**
+ * @fileoverview `brainstorm-utils` 单元测试：trace 标题与工具步骤标签。
+ */
 import { describe, expect, it } from "vitest";
 import type { BrainstormStep } from "@/types/brainstorm";
 import {
@@ -7,6 +10,7 @@ import {
   toolFailureLabel,
 } from "@/lib/brainstorm-utils";
 
+/** 构造测试用 thinking 步骤。 */
 const thinking = (id = "t1", durationSec?: number): BrainstormStep => ({
   id,
   type: "thinking",
@@ -14,6 +18,7 @@ const thinking = (id = "t1", durationSec?: number): BrainstormStep => ({
   durationSec,
 });
 
+/** 构造测试用 tool 步骤。 */
 const tool = (
   name: string,
   status: "running" | "success" | "error" = "success",

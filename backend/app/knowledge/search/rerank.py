@@ -35,6 +35,7 @@ async def rerank_document_pairs(
     texts = [d.page_content for d, _ in pairs]
 
     def _call_sync():
+        """Internal helper: call sync."""
         return TextReRank.call(
             model=model,
             query=query,

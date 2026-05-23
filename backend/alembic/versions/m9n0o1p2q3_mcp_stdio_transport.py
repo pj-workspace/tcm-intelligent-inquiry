@@ -18,6 +18,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    """Apply schema changes."""
     op.add_column(
         "mcp_servers",
         sa.Column("transport", sa.String(length=16), nullable=False, server_default="http"),
@@ -30,6 +31,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Revert schema changes."""
     op.alter_column("mcp_servers", "url", existing_type=sa.Text(), nullable=False)
     op.drop_column("mcp_servers", "stdio_config")
     op.drop_column("mcp_servers", "transport")

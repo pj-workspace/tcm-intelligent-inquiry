@@ -1,3 +1,6 @@
+/**
+ * @fileoverview Agent 工具多选面板：按类别分组、搜索与批量勾选。
+ */
 "use client";
 
 import { useMemo, useState } from "react";
@@ -24,6 +27,7 @@ interface AgentToolPickerProps {
   onSetSelected: (names: string[]) => void;
 }
 
+/** 工具选择卡片（勾选切换）。 */
 function ToolCard({
   tool,
   checked,
@@ -81,6 +85,7 @@ function ToolCard({
   );
 }
 
+/** 按类别折叠展示的一组工具。 */
 function ToolGroupSection({
   group,
   selectedSet,
@@ -153,6 +158,7 @@ function ToolGroupSection({
   );
 }
 
+/** Agent 表单内嵌的工具多选器。 */
 export function AgentToolPicker({
   toolInfos,
   selected,

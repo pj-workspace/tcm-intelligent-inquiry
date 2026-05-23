@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 对话相关组件 barrel 导出。
+ */
 export { Sidebar } from "./sidebar/Sidebar";
 export type { SidebarConversation } from "./sidebar/Sidebar";
 

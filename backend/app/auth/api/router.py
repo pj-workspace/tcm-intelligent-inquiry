@@ -24,6 +24,7 @@ from app.core.database import get_session
 
 
 def _svc(session: AsyncSession = Depends(get_session)) -> AuthService:
+    """Internal helper: svc."""
     return AuthService(session)
 
 
@@ -32,11 +33,13 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 @router.post("/register", response_model=UserPublic, summary="注册账号")
 async def register(req: RegisterRequest, svc: AuthService = Depends(_svc)):
+    """Register (``req``, ``svc``)."""
     return await svc.register(req)
 
 
 @router.post("/login", response_model=TokenResponse, summary="登录获取 JWT（用户名或绑定邮箱）")
 async def login(req: LoginRequest, svc: AuthService = Depends(_svc)):
+    """Login (``req``, ``svc``)."""
     return await svc.login(req)
 
 
@@ -45,6 +48,7 @@ async def login(req: LoginRequest, svc: AuthService = Depends(_svc)):
     summary="登录：向已注册邮箱发送验证码（无密码登录）",
 )
 async def send_email_login_code(body: SendCodeIn, svc: AuthService = Depends(_svc)):
+    """Send email login code (``body``, ``svc``)."""
     return await svc.send_email_login_code(body.email)
 
 
@@ -54,11 +58,13 @@ async def send_email_login_code(body: SendCodeIn, svc: AuthService = Depends(_sv
     summary="邮箱验证码登录",
 )
 async def login_email_code(body: EmailCodeLoginIn, svc: AuthService = Depends(_svc)):
+    """Login email code (``body``, ``svc``)."""
     return await svc.login_with_email_code(body)
 
 
 @router.get("/me", response_model=UserPublic, summary="当前登录用户")
 async def me(user: Annotated[UserRecord, Depends(get_current_user)]):
+    """Me (``user``)."""
     return UserPublic(
         id=user.id,
         username=user.username,
@@ -69,16 +75,19 @@ async def me(user: Annotated[UserRecord, Depends(get_current_user)]):
 
 @router.post("/code/send", summary="发送邮箱验证码（注册 / 第三方补全）")
 async def send_auth_code(body: SendCodeIn, svc: AuthService = Depends(_svc)):
+    """Send auth code (``body``, ``svc``)."""
     return await svc.send_register_code(body.email)
 
 
 @router.post("/code/send-forgot", summary="忘记密码：发送验证码")
 async def send_forgot_code(body: SendCodeIn, svc: AuthService = Depends(_svc)):
+    """Send forgot code (``body``, ``svc``)."""
     return await svc.send_forgot_code(body.email)
 
 
 @router.post("/forgot-reset", summary="忘记密码：重置")
 async def forgot_reset(body: ForgotResetIn, svc: AuthService = Depends(_svc)):
+    """Forgot reset (``body``, ``svc``)."""
     return await svc.reset_forgotten_password(body)
 
 
@@ -90,6 +99,7 @@ async def send_change_pwd_code(
     user: Annotated[UserRecord, Depends(get_current_user)],
     svc: AuthService = Depends(_svc),
 ):
+    """Send change pwd code。"""
     return await svc.send_change_password_code(user)
 
 
@@ -99,6 +109,7 @@ async def check_password(
     user: Annotated[UserRecord, Depends(get_current_user)],
     svc: AuthService = Depends(_svc),
 ):
+    """Check password。"""
     return await svc.check_password(user, body)
 
 
@@ -108,4 +119,5 @@ async def change_password_route(
     user: Annotated[UserRecord, Depends(get_current_user)],
     svc: AuthService = Depends(_svc),
 ):
+    """Change password。"""
     return await svc.change_password(user, body)

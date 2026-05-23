@@ -17,13 +17,16 @@ _SESSION_TIMEOUT = 30
 
 
 class _StdioEntry:
+    """Stdio Entry."""
     def __init__(self, server_id: str) -> None:
+        """Initialize instance."""
         self.server_id = server_id
         self.lock = asyncio.Lock()
         self.stack: AsyncExitStack | None = None
         self.session: ClientSession | None = None
 
     async def close(self) -> None:
+        """Close."""
         if self.stack is not None:
             try:
                 await self.stack.aclose()
@@ -34,11 +37,14 @@ class _StdioEntry:
 
 
 class StdioMcpPool:
+    """Stdio Mcp Pool."""
     def __init__(self) -> None:
+        """Initialize instance."""
         self._entries: dict[str, _StdioEntry] = {}
         self._meta_lock = asyncio.Lock()
 
     async def close_server(self, server_id: str) -> None:
+        """Close server (``server_id``)."""
         async with self._meta_lock:
             entry = self._entries.pop(server_id, None)
         if entry:
@@ -46,12 +52,14 @@ class StdioMcpPool:
                 await entry.close()
 
     async def close_all(self) -> None:
+        """Close all."""
         async with self._meta_lock:
             ids = list(self._entries.keys())
         for sid in ids:
             await self.close_server(sid)
 
     def _to_params(self, config: dict[str, Any]) -> StdioServerParameters:
+        """Internal helper: to params."""
         kwargs: dict[str, Any] = {
             "command": str(config["command"]),
             "args": list(config.get("args") or []),
@@ -62,6 +70,7 @@ class StdioMcpPool:
         return StdioServerParameters(**kwargs)
 
     async def _connect(self, server_id: str, config: dict[str, Any]) -> _StdioEntry:
+        """Internal helper: connect."""
         entry = _StdioEntry(server_id)
         stack = AsyncExitStack()
         params = self._to_params(config)
@@ -83,6 +92,7 @@ class StdioMcpPool:
         return entry
 
     async def _get_entry(self, server_id: str, config: dict[str, Any]) -> _StdioEntry:
+        """Internal helper: get entry."""
         async with self._meta_lock:
             entry = self._entries.get(server_id)
         if entry and entry.session is not None:

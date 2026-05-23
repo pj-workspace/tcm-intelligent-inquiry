@@ -1,3 +1,8 @@
+/**
+ * @fileoverview 头脑风暴 trace 步骤类型（thinking / tool / user_input）。
+ * ``ToolStep.sources`` 保存该次工具 SSE 附带的结构化引用，供历史回放与导出。
+ */
+
 import type { CitationSource } from "@/types/chat";
 
 export type BrainstormStep =
@@ -39,6 +44,7 @@ export type BrainstormStep =
       createdAt?: string;
     };
 
+/** BrainstormPanel 组件 props；控制 trace 折叠、间距与 footer 语义。 */
 export interface BrainstormPanelProps {
   steps: BrainstormStep[];
   isStreaming: boolean;
@@ -55,10 +61,12 @@ export interface BrainstormPanelProps {
   summaryAcknowledged?: boolean;
 }
 
+/** 联网搜索工具 outputPreview 解析后的单条网页结果。 */
 export type WebResultItem = {
   title: string;
   url?: string;
   summary?: string;
 };
 
+/** 可滚动 trace 区域上下边缘渐变遮罩开关。 */
 export type EdgeFadeState = { top: boolean; bottom: boolean };

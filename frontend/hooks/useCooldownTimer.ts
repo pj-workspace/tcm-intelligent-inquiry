@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 通用秒级倒计时 Hook，用于验证码重发等冷却场景。
+ */
 "use client";
 
 import { useCallback, useEffect, useState } from "react";

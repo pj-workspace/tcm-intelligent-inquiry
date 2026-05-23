@@ -45,6 +45,7 @@ def load_all_tools(*, web_search_enabled: bool = True):
 
 
 def primary_supports_tool_calling_cached() -> bool:
+    """当前主 Qwen 模型是否支持 function calling；非 qwen provider 恒为 True。"""
     s = get_settings()
     if (s.llm_provider or "").strip().lower() != "qwen":
         return True
@@ -58,6 +59,7 @@ def primary_supports_tool_calling_cached() -> bool:
 
 
 def default_graph_fingerprint() -> str:
+    """根据 provider、主模型、提示词与工具名生成默认图缓存键。"""
     ensure_tools_loaded()
     tool_names = tuple(sorted(tool_registry.names()))
     s = get_settings()
@@ -107,6 +109,7 @@ def default_graph_fingerprint() -> str:
 
 
 def get_default_graph() -> CompiledStateGraph:
+    """获取或创建默认 Agent 编译图（按 fingerprint 缓存，LRU 上限 8）。"""
     fp = default_graph_fingerprint()
     cached = _default_graph_by_fp.get(fp)
     if cached is not None:
@@ -132,11 +135,13 @@ def get_default_graph() -> CompiledStateGraph:
 
 
 def invalidate_default_graph_cache() -> None:
+    """清空默认图与全部命名 Agent 图缓存。"""
     _default_graph_by_fp.clear()
     _named_agent_graphs.clear()
 
 
 def invalidate_agent_graph_cache(agent_id: str | None = None) -> None:
+    """使指定或全部命名 Agent 编译图缓存失效。"""
     if agent_id:
         _named_agent_graphs.pop(agent_id, None)
     else:
@@ -144,6 +149,7 @@ def invalidate_agent_graph_cache(agent_id: str | None = None) -> None:
 
 
 def get_named_agent_graph(agent_id: str) -> CompiledStateGraph | None:
+    """读取命名 Agent 缓存图；命中时更新 LRU 顺序。"""
     g = _named_agent_graphs.get(agent_id)
     if g is not None:
         _named_agent_graphs.move_to_end(agent_id)
@@ -151,6 +157,7 @@ def get_named_agent_graph(agent_id: str) -> CompiledStateGraph | None:
 
 
 def set_named_agent_graph(agent_id: str, graph: CompiledStateGraph) -> None:
+    """写入命名 Agent 编译图并维护 LRU（上限 16）。"""
     _named_agent_graphs[agent_id] = graph
     _named_agent_graphs.move_to_end(agent_id)
     while len(_named_agent_graphs) > _MAX_NAMED_AGENT_GRAPHS:

@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 主聊天工作台状态机：会话列表、消息、SSE 委托、附件与计费提示。
+ */
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
@@ -52,6 +55,15 @@ import {
 } from "@/hooks/chat/chatHelpers";
 import { useChatStream } from "@/hooks/chat/useChatStream";
 
+/**
+ * 聊天页核心 Hook：路由同步、消息缓存、生成态与侧栏会话操作。
+ * @param opts.autoFollowMainRef 主滚动区是否自动跟随到底
+ * @param opts.onNewChatScrollReset 切换/新建会话时重置滚动
+ * @param opts.getPreferredGroupForNewConversation 新建会话默认分组
+ * @param opts.chatPathname 当前 `/chat/*` 路径
+ * @param opts.onNavigateToNewChatSurface 清空后导航到空白工作台
+ * @param opts.onUserMessageAppended 用户消息入库 UI 后回调
+ */
 export function useChat(opts: {
   autoFollowMainRef: React.MutableRefObject<boolean>;
   onNewChatScrollReset: () => void;

@@ -29,6 +29,7 @@ class ConversationGroupRecord(Base):
 
 
 class ConversationRecord(Base):
+    """Conversation Record."""
     __tablename__ = "conversations"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
@@ -52,6 +53,12 @@ class ConversationRecord(Base):
 
 
 class MessageRecord(Base):
+    """单条会话消息行。
+
+    ``citations`` 仅存于 ``role=assistant``：与请求内 ``CitationSource`` 列表同构，
+    供历史 API 与前端角标/来源面板回放；thinking/tool 等角色不使用该列。
+    """
+
     __tablename__ = "messages"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)

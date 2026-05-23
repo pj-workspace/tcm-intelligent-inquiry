@@ -1,3 +1,6 @@
+/**
+ * @fileoverview MCP 添加/编辑表单：stdio/HTTP 配置与 Cursor JSON 批量导入。
+ */
 "use client";
 
 import { useState } from "react";
@@ -33,6 +36,7 @@ interface McpAddFormProps {
   onCancel: () => void;
 }
 
+/** 将 JSON 解析结果写入表单 state。 */
 function applyParseResult(
   setFormData: React.Dispatch<React.SetStateAction<McpFormData>>,
   parsed: McpParseResult
@@ -40,6 +44,7 @@ function applyParseResult(
   setFormData((prev) => applyMcpParseResult(prev, parsed));
 }
 
+/** MCP 新增/编辑表单（含批量导入）。 */
 export function McpAddForm({
   formData,
   setFormData,

@@ -27,6 +27,7 @@ _WRAPPED_FLAG = "_tcm_timeout_wrapped"
 
 
 def _build_timeout_message(name: str, timeout: float) -> str:
+    """生成工具超时时的友好回执文案。"""
     secs = int(timeout) if timeout.is_integer() else timeout
     return (
         f"工具「{name}」调用超时（>{secs}s）已自动终止；"
@@ -44,6 +45,7 @@ def _wrap_tool_with_timeout(tool: BaseTool, timeout: float) -> BaseTool:
 
     @functools.wraps(original)
     async def _bounded(*args: Any, **kwargs: Any) -> Any:
+        """带 asyncio.wait_for 的 coroutine 包装，超时返回兜底文案。"""
         try:
             return await asyncio.wait_for(
                 original(*args, **kwargs),

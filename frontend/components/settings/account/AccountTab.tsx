@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 账户 Tab：资料、改密、邮箱验证码与 OAuth 绑定管理。
+ */
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -26,6 +29,7 @@ import {
 } from "@/components/settings/account/accountShared";
 import { OAuthBindingsSection } from "@/components/settings/account/OAuthBindingsSection";
 
+/** 账户与安全设置主 Tab。 */
 export function AccountTab() {
   const { token, user } = useAuth();
   const [bindings, setBindings] = useState<OAuthBinding[]>([]);

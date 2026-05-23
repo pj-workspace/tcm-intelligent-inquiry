@@ -1,3 +1,6 @@
+/**
+ * @fileoverview Agent 工具选择器分组与模糊匹配单元测试。
+ */
 import { describe, expect, it } from "vitest";
 import {
   buildToolPickerGroups,
@@ -7,6 +10,7 @@ import {
 } from "@/lib/agent/toolPickerGroups";
 import type { BuiltinToolInfo } from "@/types/tool";
 
+/** 构造最小 BuiltinToolInfo 测试夹具。 */
 const mk = (partial: Partial<BuiltinToolInfo> & Pick<BuiltinToolInfo, "name">): BuiltinToolInfo => ({
   label: partial.name,
   description: "",

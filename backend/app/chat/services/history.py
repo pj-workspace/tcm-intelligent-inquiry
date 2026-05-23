@@ -11,6 +11,7 @@ from app.chat.schemas import ConversationItem, MessageItem
 
 
 def _normalized_follow_up_suggestions(v: object | None) -> list[str] | None:
+    """Internal helper: normalized follow up suggestions."""
     if not isinstance(v, list):
         return None
     out = [str(x).strip() for x in v if isinstance(x, str) and x.strip()]
@@ -18,6 +19,7 @@ def _normalized_follow_up_suggestions(v: object | None) -> list[str] | None:
 
 
 def _normalized_citations(v: object | None) -> list[dict] | None:
+    """从 ORM JSON 列读出 citations；丢弃非 dict 元素，空列表视为 None。"""
     if not isinstance(v, list):
         return None
     out = [x for x in v if isinstance(x, dict)]
@@ -43,6 +45,7 @@ async def list_my_conversations(
     session: AsyncSession,
     user: UserRecord,
 ) -> list[ConversationItem]:
+    """List my conversations。"""
     last_model = _last_assistant_model_subquery()
     r = await session.execute(
         select(
@@ -79,6 +82,7 @@ async def list_messages_for_conversation(
     user: UserRecord | None,
     anon_session_secret: str | None = None,
 ) -> list[MessageItem]:
+    """List messages for conversation。"""
     await assert_can_use_conversation(
         session, conversation_id, user, anon_session_secret
     )
@@ -109,6 +113,7 @@ async def delete_conversation(
     user: UserRecord | None,
     anon_session_secret: str | None = None,
 ) -> None:
+    """Delete conversation。"""
     conv = await assert_can_use_conversation(
         session, conversation_id, user, anon_session_secret
     )
@@ -123,6 +128,7 @@ async def update_conversation_title(
     user: UserRecord | None,
     anon_session_secret: str | None = None,
 ) -> None:
+    """Update conversation title。"""
     conv = await assert_can_use_conversation(
         session, conversation_id, user, anon_session_secret
     )

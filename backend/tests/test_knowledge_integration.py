@@ -9,6 +9,7 @@ from tests.register_helpers import prime_register_otp
 
 @pytest.mark.integration
 def test_create_list_get_kb(client, auth_headers):
+    """Test create list get kb."""
     name = f"kb_{uuid.uuid4().hex[:8]}"
     r = client.post(
         "/api/knowledge",
@@ -33,12 +34,14 @@ def test_create_list_get_kb(client, auth_headers):
 
 @pytest.mark.integration
 def test_knowledge_requires_auth(client):
+    """Test knowledge requires auth."""
     r = client.get("/api/knowledge")
     assert r.status_code == 401
 
 
 @pytest.mark.integration
 def test_ingest_rejects_oversized_file(client, auth_headers, monkeypatch):
+    """Test ingest rejects oversized file."""
     monkeypatch.setenv("MAX_UPLOAD_BYTES", "1024")
     name = f"kb_big_{uuid.uuid4().hex[:8]}"
     kb = client.post(
@@ -100,6 +103,7 @@ def test_kb_not_accessible_to_other_user(client, unique_username):
 
 @pytest.mark.integration
 def test_knowledge_requires_api_key_when_configured(client, auth_headers, monkeypatch):
+    """Test knowledge requires api key when configured."""
     monkeypatch.setenv("API_KEY", "integration-test-key")
     r = client.get("/api/knowledge", headers=auth_headers)
     assert r.status_code == 401

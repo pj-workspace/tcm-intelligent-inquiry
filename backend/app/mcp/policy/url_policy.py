@@ -18,6 +18,7 @@ _BLOCKED_HOSTNAMES = frozenset(
 
 
 def _is_blocked_ip(ip: str) -> bool:
+    """Internal helper: is blocked ip."""
     try:
         addr = ipaddress.ip_address(ip)
     except ValueError:

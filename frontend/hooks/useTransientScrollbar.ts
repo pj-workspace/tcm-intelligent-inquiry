@@ -1,8 +1,12 @@
+/**
+ * @fileoverview 轻量 overlay 滚动条：原生滚动条隐藏时短暂显示 thumb 位置。
+ */
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 
+/** overlay 滚动条可见性与 thumb 几何信息。 */
 export type TransientScrollbarState = {
   visible: boolean;
   thumbTop: number;

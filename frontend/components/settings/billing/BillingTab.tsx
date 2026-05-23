@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 用量与账单 Tab：Provider 余额、汇总与事件明细。
+ */
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
@@ -13,10 +16,12 @@ import type { BalanceSnapshotJson, UsageSummaryResponse } from "@/types/billing"
 const DAYS_OPTIONS = [7, 30, 90] as const;
 const EVENTS_PAGE = 25;
 
+/** 本地化数字展示。 */
 function fmtNum(n: number): string {
   return n.toLocaleString("zh-CN");
 }
 
+/** ISO 时间戳转简短本地日期时间。 */
 function fmtIsoShort(iso: string): string {
   const t = iso?.trim();
   if (!t) return "—";
@@ -31,6 +36,7 @@ function fmtIsoShort(iso: string): string {
   });
 }
 
+/** 账单事件行 token 数：优先 total，否则 prompt+completion。 */
 function effectiveEventTokens(row: {
   total_tokens: number | null;
   prompt_tokens: number | null;
@@ -42,6 +48,7 @@ function effectiveEventTokens(row: {
   return Math.max(0, p) + Math.max(0, c);
 }
 
+/** 用量与账单数据 Tab。 */
 export function BillingTab() {
   const { token } = useAuth();
   const [days, setDays] = useState<(typeof DAYS_OPTIONS)[number]>(30);

@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 知识库列表 CRUD 与编辑态管理。
+ */
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
@@ -5,6 +8,7 @@ import { API_BASE, apiHeaders, apiJsonHeaders, parseApiError } from "@/lib/api";
 import { toast } from "sonner";
 import type { KnowledgeBase } from "@/types/knowledge";
 
+/** 加载并管理用户知识库列表、创建与 PATCH 更新。 */
 export function useKnowledgeBases(token: string | null) {
   const [kbs, setKbs] = useState<KnowledgeBase[]>([]);
   const [loading, setLoading] = useState(true);

@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 设置页 Client 壳：Tab 导航与各功能 Tab 懒渲染。
+ */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -14,6 +17,7 @@ import { BillingTab } from "@/components/settings/billing/BillingTab";
 
 type TabId = "builtin" | "mcp" | "knowledge" | "agents" | "billing" | "account";
 
+/** 工具与 Agent 设置页（需登录）。 */
 export function SettingsPageClient() {
   const { loading, token } = useAuth();
   const router = useRouter();

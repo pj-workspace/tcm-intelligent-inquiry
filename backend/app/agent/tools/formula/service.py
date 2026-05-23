@@ -28,16 +28,19 @@ _W_FTS = 5.0
 
 
 def _stable_id(name: str) -> str:
+    """由方剂名生成确定性 UUID5 主键。"""
     return str(uuid.uuid5(_NS, name.strip()))
 
 
 def _as_str_list(raw: Any) -> list[str]:
+    """将 JSONB 字段安全转为非空字符串列表。"""
     if not isinstance(raw, list):
         return []
     return [str(x).strip() for x in raw if str(x).strip()]
 
 
 def _format_formula_block(row: FormulaRecord, rank: int | None = None) -> str:
+    """格式化为模型可读文本块并登记 formula 类引用来源。"""
     src = (row.source_ref or "").strip()
     citation = register_citation_source(
         kind="formula",
@@ -75,6 +78,7 @@ def _format_formula_block(row: FormulaRecord, rank: int | None = None) -> str:
 
 
 async def lookup_formula_by_name(session: AsyncSession, formula_name: str) -> str:
+    """按方名或别名模糊匹配方剂；多条命中时列出供模型核对。"""
     q = (formula_name or "").strip()
     if not q:
         return "请提供方剂名称。"
@@ -157,6 +161,7 @@ async def _prescreen_formula_ids(session: AsyncSession, needle: str) -> list[str
 
 
 async def _fallback_formula_ids(session: AsyncSession, limit: int = 200) -> list[str]:
+    """pg_trgm 预筛不可用时，按名称取前 N 条方剂 id 作为候选集。"""
     r = await session.execute(
         select(FormulaRecord.id).order_by(FormulaRecord.name).limit(limit)
     )
@@ -256,6 +261,7 @@ async def recommend_formulas_for_clinical(
     pattern_type: str | None,
     top_k: int,
 ) -> str:
+    """综合启发式分、pg_trgm 与全文检索推荐方剂（仅供学习参考）。"""
     q0 = (clinical_query or "").strip()
     if len(q0) < 2:
         return "请用一两句话描述症状、体征或就诊诉求，便于检索相关方剂（仅供学习参考）。"

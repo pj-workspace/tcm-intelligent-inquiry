@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 知识库向量检索：查询参数与 POST `/search` 结果态。
+ */
 "use client";
 
 import { useCallback, useState } from "react";
@@ -5,6 +8,7 @@ import { API_BASE, apiJsonHeaders, parseApiError } from "@/lib/api";
 import { toast } from "sonner";
 import type { SearchResult } from "@/types/knowledge";
 
+/** 管理知识库语义检索的表单状态与提交。 */
 export function useKnowledgeSearch(token: string | null) {
   const [searchKbId, setSearchKbId] = useState("");
   const [searchQuery, setSearchQuery] = useState("");

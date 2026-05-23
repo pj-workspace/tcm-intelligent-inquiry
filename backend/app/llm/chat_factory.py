@@ -13,6 +13,20 @@ def build_chat_model(
     llm_provider: str | None = None,
     response_format_json_object: bool = False,
 ) -> BaseChatModel:
+    """Build a LangChain chat model for the configured or overridden provider.
+
+    Args:
+        enable_thinking: Enable extended/deep thinking when supported.
+        chat_model_override: Explicit model id; provider-specific validation applies.
+        llm_provider: Override ``Settings.llm_provider`` for this call.
+        response_format_json_object: Request JSON-object response format when supported.
+
+    Returns:
+        Configured ``BaseChatModel`` instance.
+
+    Raises:
+        ValueError: Unknown provider or missing API credentials.
+    """
     s = get_settings()
     raw_lp = llm_provider if isinstance(llm_provider, str) and llm_provider.strip() else None
     p = (raw_lp.strip().lower() if raw_lp else (s.llm_provider or "qwen")).strip().lower()

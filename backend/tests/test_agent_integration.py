@@ -5,6 +5,7 @@ import pytest
 
 @pytest.mark.integration
 def test_agent_patch(client, auth_headers):
+    """Test agent patch."""
     r = client.post(
         "/api/agents",
         json={
@@ -34,6 +35,7 @@ def test_agent_patch(client, auth_headers):
 
 @pytest.mark.integration
 def test_agent_delete_persists(client, auth_headers):
+    """Test agent delete persists."""
     r = client.post(
         "/api/agents",
         json={
@@ -60,5 +62,6 @@ def test_agent_delete_persists(client, auth_headers):
 
 @pytest.mark.integration
 def test_agent_requires_auth(client):
+    """Test agent requires auth."""
     r = client.get("/api/agents")
     assert r.status_code == 401

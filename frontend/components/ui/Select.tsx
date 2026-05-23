@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 基于 Radix Select 的样式化下拉选择器。
+ */
 "use client";
 
 import clsx from "clsx";
@@ -18,10 +21,12 @@ import { Check, ChevronDown } from "lucide-react";
 /** Radix 要求 option 的 value 非空字符串时更稳定，用哨兵表示「未选 / 空」 */
 const SENTINEL_EMPTY = "__tcm_select_empty__";
 
+/** 将空字符串映射为 Radix 哨兵值，避免 value="" 不稳定。 */
 function toRadixValue(v: string): string {
   return v === "" ? SENTINEL_EMPTY : v;
 }
 
+/** 将 Radix 哨兵值还原为空字符串。 */
 function fromRadixValue(v: string): string {
   return v === SENTINEL_EMPTY ? "" : v;
 }

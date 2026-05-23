@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 知识库列表卡片：打开抽屉、编辑与删除。
+ */
 "use client";
 
 import type { KeyboardEvent } from "react";
@@ -11,12 +14,14 @@ interface KnowledgeBaseCardProps {
   onDelete: () => void;
 }
 
+/** 知识库摘要卡片（点击进入抽屉）。 */
 export function KnowledgeBaseCard({
   kb,
   onOpen,
   onEdit,
   onDelete,
 }: KnowledgeBaseCardProps) {
+/** 知识库卡片键盘 Enter/Space 打开抽屉。 */
   const handleOpenKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();

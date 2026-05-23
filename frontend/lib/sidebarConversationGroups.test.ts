@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 侧栏会话时间分组与分区构建单元测试。
+ */
 import { describe, expect, it } from "vitest";
 import {
   buildSidebarConversationSections,
@@ -5,6 +8,7 @@ import {
 } from "./sidebarConversationGroups";
 import type { ServerConversation } from "@/types/chat";
 
+/** 构造最小 ServerConversation 测试夹具。 */
 function conv(id: string, createdAt?: string): ServerConversation {
   return { id, title: id, created_at: createdAt };
 }

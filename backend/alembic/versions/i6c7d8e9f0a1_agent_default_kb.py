@@ -18,6 +18,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    """Apply schema changes."""
     op.add_column(
         "agents",
         sa.Column("default_kb_id", sa.String(length=36), nullable=True),
@@ -25,4 +26,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Revert schema changes."""
     op.drop_column("agents", "default_kb_id")

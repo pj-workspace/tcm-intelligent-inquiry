@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 知识库文档列表：展开加载、缓存与单文档删除。
+ */
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -5,6 +8,7 @@ import { API_BASE, apiHeaders, parseApiError } from "@/lib/api";
 import { toast } from "sonner";
 import type { KnowledgeDocument } from "@/types/knowledge";
 
+/** 管理某知识库下的文档展开、缓存与删除确认。 */
 export function useKnowledgeDocs(
   token: string | null,
   fetchKbs: () => Promise<void>

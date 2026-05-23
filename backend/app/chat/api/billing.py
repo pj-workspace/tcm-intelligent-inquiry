@@ -44,6 +44,7 @@ async def provider_llm_balance(
     provider_id: str,
     user: Annotated[UserRecord, Depends(get_current_user)],
 ):
+    """Provider llm balance。"""
     pid = provider_id.strip().lower()
     if pid not in catalog_provider_ids():
         raise HTTPException(status_code=404, detail="未知的厂商 ID")
@@ -86,6 +87,7 @@ async def billing_usage_summary(
     days: int = 30,
     provider_id: str | None = None,
 ):
+    """Billing usage summary。"""
     pid = (provider_id or "").strip().lower() or None
     if pid is not None and pid not in catalog_provider_ids():
         raise HTTPException(status_code=400, detail="无效的 provider_id")
@@ -131,6 +133,7 @@ async def billing_usage_events(
     offset: int = 0,
     provider_id: str | None = None,
 ):
+    """Billing usage events。"""
     pid = (provider_id or "").strip().lower() or None
     if pid is not None and pid not in catalog_provider_ids():
         raise HTTPException(status_code=400, detail="无效的 provider_id")
@@ -174,6 +177,7 @@ async def conversation_billing_usage_summary(
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[UserRecord, Depends(get_current_user)],
 ):
+    """Conversation billing usage summary。"""
     cid = conversation_id.strip()
     await assert_can_use_conversation(session, cid, user, None)
     totals_row = await fetch_usage_totals_for_conversation(

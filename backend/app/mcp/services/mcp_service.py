@@ -32,11 +32,13 @@ logger = get_logger(__name__)
 
 
 def _row_headers(row: McpServerRecord) -> dict[str, str]:
+    """Internal helper: row headers."""
     h = row.headers if isinstance(row.headers, dict) else {}
     return {str(k): str(v) for k, v in h.items()}
 
 
 def _row_stdio(row: McpServerRecord) -> dict[str, Any] | None:
+    """Internal helper: row stdio."""
     raw = row.stdio_config
     if not isinstance(raw, dict):
         return None
@@ -47,6 +49,7 @@ def _row_stdio(row: McpServerRecord) -> dict[str, Any] | None:
 
 
 def _mask_headers(headers: dict[str, str]) -> dict[str, str]:
+    """Internal helper: mask headers."""
     masked: dict[str, str] = {}
     sensitive = {"authorization", "x-api-key", "api-key", "token"}
     for k, v in headers.items():
@@ -58,6 +61,7 @@ def _mask_headers(headers: dict[str, str]) -> dict[str, str]:
 
 
 def _mask_stdio_env(env: dict[str, str]) -> dict[str, str]:
+    """Internal helper: mask stdio env."""
     masked: dict[str, str] = {}
     sensitive_sub = ("key", "secret", "token", "password", "email")
     for k, v in env.items():
@@ -70,6 +74,7 @@ def _mask_stdio_env(env: dict[str, str]) -> dict[str, str]:
 
 
 def _stdio_to_schema(row: McpServerRecord) -> McpStdioConfig | None:
+    """Internal helper: stdio to schema."""
     cfg = _row_stdio(row)
     if not cfg:
         return None
@@ -84,6 +89,7 @@ def _stdio_to_schema(row: McpServerRecord) -> McpStdioConfig | None:
 
 
 def _to_response(row: McpServerRecord) -> McpServerResponse:
+    """Internal helper: to response."""
     names = row.tool_names if isinstance(row.tool_names, list) else []
     probe_at = row.last_probe_at.isoformat() if row.last_probe_at else None
     transport = (row.transport or "http").strip() or "http"
@@ -105,6 +111,7 @@ def _to_response(row: McpServerRecord) -> McpServerResponse:
 
 
 async def _discover_for_row(row: McpServerRecord) -> tuple[list[McpToolDef], str | None]:
+    """Internal helper: discover for row."""
     transport = (row.transport or "http").strip() or "http"
     probe_error: str | None = None
     tool_defs: list[McpToolDef] = []
@@ -130,6 +137,7 @@ async def _discover_for_row(row: McpServerRecord) -> tuple[list[McpToolDef], str
 
 
 def _register_langchain(row: McpServerRecord, tool_defs: list[McpToolDef]) -> None:
+    """Internal helper: register langchain."""
     transport = (row.transport or "http").strip() or "http"
     tool_names = [d.name for d in tool_defs]
     if not row.enabled or not tool_names:
@@ -156,10 +164,13 @@ def _register_langchain(row: McpServerRecord, tool_defs: list[McpToolDef]) -> No
 
 
 class McpService:
+    """Mcp Service."""
     def __init__(self, session: AsyncSession):
+        """Initialize instance."""
         self._session = session
 
     async def list_servers(self) -> McpServerListResponse:
+        """List servers."""
         r = await self._session.execute(select(McpServerRecord).order_by(McpServerRecord.name))
         rows = r.scalars().all()
         return McpServerListResponse(
@@ -167,12 +178,14 @@ class McpService:
         )
 
     async def get_server(self, server_id: str) -> McpServerResponse:
+        """Get server (``server_id``)."""
         row = await self._session.get(McpServerRecord, server_id)
         if row is None:
             raise NotFoundError(f"MCP 服务 '{server_id}' 不存在")
         return _to_response(row)
 
     async def register_server(self, req: McpServerCreateRequest) -> McpServerResponse:
+        """Register server (``req``)."""
         transport = req.transport
         url: str | None = None
         stdio_raw: dict[str, Any] | None = None
@@ -216,6 +229,7 @@ class McpService:
         return _to_response(row)
 
     async def import_cursor_config(self, req: McpImportRequest) -> McpImportResponse:
+        """Import cursor config (``req``)."""
         imported: list[McpServerResponse] = []
         errors: list[str] = []
         for name, conf in req.mcpServers.items():
@@ -235,6 +249,7 @@ class McpService:
         return McpImportResponse(imported=imported, errors=errors)
 
     async def delete_server(self, server_id: str) -> None:
+        """Delete server (``server_id``)."""
         row = await self._session.get(McpServerRecord, server_id)
         if row is None:
             raise NotFoundError(f"MCP 服务 '{server_id}' 不存在")
@@ -244,6 +259,7 @@ class McpService:
         logger.info("删除 MCP 服务 id=%s", server_id)
 
     async def refresh_tools(self, server_id: str) -> McpServerResponse:
+        """Refresh tools (``server_id``)."""
         row = await self._session.get(McpServerRecord, server_id)
         if row is None:
             raise NotFoundError(f"MCP 服务 '{server_id}' 不存在")
@@ -258,6 +274,7 @@ class McpService:
 
 
 async def probe_enabled_mcp_servers(session: AsyncSession) -> None:
+    """Probe enabled mcp servers (``session``)."""
     r = await session.execute(
         select(McpServerRecord).where(McpServerRecord.enabled.is_(True))
     )
@@ -267,6 +284,7 @@ async def probe_enabled_mcp_servers(session: AsyncSession) -> None:
     sem = asyncio.Semaphore(concurrency)
 
     async def _probe_row(row: McpServerRecord) -> None:
+        """Internal helper: probe row."""
         async with sem:
             try:
                 tool_defs, probe_error = await _discover_for_row(row)
@@ -284,6 +302,7 @@ async def probe_enabled_mcp_servers(session: AsyncSession) -> None:
 
 
 async def restore_mcp_tool_registrations(session: AsyncSession) -> None:
+    """Restore mcp tool registrations (``session``)."""
     r = await session.execute(select(McpServerRecord))
     rows = r.scalars().all()
     for row in rows:

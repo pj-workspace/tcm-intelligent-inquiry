@@ -33,6 +33,7 @@ async def follow_up_suggestions_route(
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[UserRecord | None, Depends(get_current_user_optional)],
 ):
+    """Follow up suggestions。"""
     if req.conversation_id:
         await assert_can_use_conversation(
             session,
@@ -66,6 +67,7 @@ async def attachment_suggestions_route(
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[UserRecord | None, Depends(get_current_user_optional)],
 ):
+    """Attachment suggestions。"""
     if req.conversation_id:
         await assert_can_use_conversation(
             session,

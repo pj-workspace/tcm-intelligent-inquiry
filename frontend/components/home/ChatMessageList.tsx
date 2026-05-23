@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 主聊天区消息列表：trace 与 assistant 分段布局、引用来源展示时机。
+ */
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -74,6 +77,7 @@ function useWaitingElapsedSec(genState: GenerationState): number {
   return elapsedSec;
 }
 
+/** 主消息列表：trace/assistant 分段布局、Brainstorm 与引用展示时机。 */
 export function ChatMessageList({
   messages,
   setMessages,
@@ -155,6 +159,7 @@ export function ChatMessageList({
               : undefined
           }
           citations={msg.role === "assistant" ? msg.citations : undefined}
+          // 生成结束后且在「该轮最终 assistant 分段」才展示引用入口，避免流式中途闪烁。
           showCitationSources={
             msg.role === "assistant" &&
             genState === "idle" &&

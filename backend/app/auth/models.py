@@ -15,6 +15,7 @@ def utc_naive_now() -> datetime:
 
 
 class UserRecord(Base):
+    """User Record."""
     __tablename__ = "users"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
@@ -31,6 +32,7 @@ class UserRecord(Base):
 
 
 class UserOauthAccount(Base):
+    """User Oauth Account."""
     __tablename__ = "user_oauth_accounts"
     __table_args__ = (
         UniqueConstraint("provider", "external_id", name="uq_oauth_provider_ext"),

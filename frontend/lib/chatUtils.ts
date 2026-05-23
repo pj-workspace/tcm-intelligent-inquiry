@@ -1,3 +1,7 @@
+/**
+ * @fileoverview 聊天消息工具函数：历史行映射、trace 聚合、引用来源规范化、会话导出。
+ */
+
 import type {
   ApiMessageRow,
   ChatMessage,
@@ -30,6 +34,10 @@ const CITATION_KINDS = new Set<CitationKind>([
   "external",
 ]);
 
+/**
+ * 将 SSE/DB 中的 sources 数组规范为 ``CitationSource[]``。
+ * 丢弃缺少 id/title/kind 或 kind 非法的项，避免脏数据渲染为角标。
+ */
 export function normalizeCitationSources(v: unknown): CitationSource[] | undefined {
   if (!Array.isArray(v)) return undefined;
   const out: CitationSource[] = [];
@@ -59,6 +67,7 @@ export function normalizeCitationSources(v: unknown): CitationSource[] | undefin
   return out.length ? out : undefined;
 }
 
+/** 累加 thinking 步骤的 durationSec 总和；无有效时长时返回 undefined。 */
 export function sumThinkingDurations(steps: BrainstormStep[]): number | undefined {
   const total = steps.reduce((sum, step) => {
     if (step.type !== "thinking") return sum;
@@ -375,6 +384,7 @@ export function parseUserMessageContent(raw: string): {
   }
 }
 
+/** 将历史 API 单行 `ApiMessageRow` 映射为 FlatMessage。 */
 export function mapApiRowToMessage(msg: ApiMessageRow): FlatMessage {
   const createdAt =
     typeof msg.created_at === "string" && msg.created_at
@@ -506,6 +516,7 @@ export function mapApiRowToMessage(msg: ApiMessageRow): FlatMessage {
 
 /* ── 会话导出（Markdown）────────────────────────────────────────────────── */
 
+/** 将 trace 步骤序列转为 Markdown「过程」小节。 */
 function traceStepsToMarkdown(steps: BrainstormStep[]): string {
   const lines: string[] = ["## 过程"];
   for (const step of steps) {

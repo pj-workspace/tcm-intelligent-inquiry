@@ -1,3 +1,6 @@
+/**
+ * @fileoverview trace 内 thinking 步骤的 Markdown 渲染（弱化样式，不解析引用角标）。
+ */
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -133,6 +136,7 @@ const SOFT_MAX_HEIGHT_PX = 144;
 /** 内容溢出判断的容差，避免恰好等高时也显示 Show more 按钮 */
 const SOFT_MAX_OVERFLOW_BUFFER_PX = 24;
 
+/** trace 内 thinking 段 Markdown：软截断 + 展开（流式时持续测量高度）。 */
 export function ThinkingMarkdown({
   content,
   active: _activeUnused = false,

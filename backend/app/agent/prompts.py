@@ -75,6 +75,8 @@ RAW_DEFAULT_SYSTEM_PROMPT = """\
 
 DEFAULT_SYSTEM_PROMPT = append_tcm_safety_to_system_prompt(RAW_DEFAULT_SYSTEM_PROMPT)
 
+# RAW_DEFAULT_SYSTEM_PROMPT 内 <citation_policy> 与 citations.register_citation_source
+# 的 K/W/F/E id 前缀一致；模型只应引用工具结果里出现过的键，由 stream 层登记真实来源。
 RAW_CHAT_ONLY_SYSTEM_PROMPT = """\
 <role>
 你是面向中医领域的对话助手（当前模式不启用任何外部工具）。
@@ -124,11 +126,19 @@ def dynamic_prompt_suffix(
     effective_web_search: bool,
     web_search_mode: Literal["auto", "force"],
 ) -> str:
-    """运行时 prompt 后缀；deep_think 触发推理输出，web_search 控制联网检索。
+    """组装运行时 prompt 后缀；deep_think 触发推理输出，web_search 控制联网检索。
 
     注意：「工具间不输出过渡话术」的约束已固化在 RAW_DEFAULT_SYSTEM_PROMPT
     与 RAW_CHAT_ONLY_SYSTEM_PROMPT 中，**不在此处叠加**——这样默认缓存图
     仍能命中（suffix 在普通对话下仍为空）。
+
+    Args:
+        effective_deep_think: 是否启用深度思考协议（含 mark_summary）。
+        effective_web_search: 是否允许/强制联网搜索工具。
+        web_search_mode: ``force`` 时追加必搜后缀，否则为自动模式文案。
+
+    Returns:
+        拼接后的后缀字符串；无启用项时为空串。
     """
     parts: list[str] = []
     if effective_deep_think:

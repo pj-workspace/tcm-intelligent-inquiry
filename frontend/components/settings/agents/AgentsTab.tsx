@@ -1,3 +1,6 @@
+/**
+ * @fileoverview Agent 管理 Tab：列表、表单与删除确认。
+ */
 "use client";
 
 import { Plus, Bot } from "lucide-react";
@@ -7,6 +10,7 @@ import { useAgents } from "@/hooks/useAgents";
 import { AgentForm } from "./AgentForm";
 import { AgentCard } from "./AgentCard";
 
+/** Agent 列表与 CRUD 入口 Tab。 */
 export function AgentsTab() {
   const { token } = useAuth();
   const {

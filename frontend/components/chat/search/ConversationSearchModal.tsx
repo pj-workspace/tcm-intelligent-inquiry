@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 全局会话搜索模态：按日期分组过滤与键盘导航。
+ */
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -40,6 +43,7 @@ function getGroup(dateStr: string | undefined): string {
 
 const GROUP_ORDER = ["今天", "本周", "本月", "更早"];
 
+/** 将会话列表按本地日历天分组（今天/本周/本月/更早）。 */
 function groupConversations(convs: SearchableConversation[]): Group[] {
   const map: Record<string, SearchableConversation[]> = {};
   for (const c of convs) {
@@ -53,6 +57,7 @@ function groupConversations(convs: SearchableConversation[]): Group[] {
   }));
 }
 
+/** 会话搜索弹窗：模糊匹配标题并按日期分组展示。 */
 export function ConversationSearchModal({
   open,
   conversations,

@@ -29,4 +29,5 @@ from app.llm.providers.deepseek_balance_coerce import balance_is_available_field
     ],
 )
 def test_balance_is_available_field(raw, expected):
+    """Test balance is available field."""
     assert balance_is_available_field(raw) is expected

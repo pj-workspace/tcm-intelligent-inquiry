@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 主聊天区滚动行为：自动跟随、回到底部 FAB 与 transient 滚动条。
+ */
 "use client";
 
 import type { MutableRefObject } from "react";

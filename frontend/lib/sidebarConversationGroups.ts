@@ -1,5 +1,10 @@
+/**
+ * @fileoverview 侧栏会话列表按置顶与时间桶分组。
+ */
+
 import type { ServerConversation } from "@/types/chat";
 
+/** 侧栏一节：置顶或时间桶标签 + 会话项。 */
 export type SidebarConversationSection = {
   id: string;
   label: string;
@@ -35,6 +40,7 @@ const TIME_BUCKET_ORDER: SidebarTimeBucket[] = [
   "older",
 ];
 
+/** 本地日历午夜毫秒时间戳。 */
 function localMidnightMs(d: Date): number {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 }

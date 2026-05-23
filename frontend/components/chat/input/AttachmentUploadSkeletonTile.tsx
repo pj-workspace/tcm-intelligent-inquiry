@@ -1,3 +1,8 @@
+/**
+ * @fileoverview 附件上传中的缩略图占位与环形进度。
+ */
+
+/** 上传进度占位块： shimmer 背景 + SVG 环形百分比。 */
 export function AttachmentUploadSkeletonTile({ progress }: { progress: number }) {
   const p = Math.min(1, Math.max(0, progress));
   const pctLabel = p >= 1 ? 100 : Number((p * 100).toFixed(1));

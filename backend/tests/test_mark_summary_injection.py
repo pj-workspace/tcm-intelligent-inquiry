@@ -18,6 +18,7 @@ from app.agent.tools.registry import tool_registry
 
 
 def test_mark_summary_tool_name_constant():
+    """Test mark summary tool name constant."""
     assert MARK_SUMMARY_TOOL_NAME == "mark_summary"
     assert mark_summary_tool.name == "mark_summary"
 
@@ -38,11 +39,13 @@ def test_mark_summary_is_parameterless():
 
 
 def test_mark_summary_not_in_global_registry():
+    """Test mark summary not in global registry."""
     ensure_tools_loaded()
     assert MARK_SUMMARY_TOOL_NAME not in tool_registry.names()
 
 
 def test_with_mark_summary_skips_when_not_thinking():
+    """Test with mark summary skips when not thinking."""
     fake_tools = [mark_summary_tool]  # 仅作占位，模拟有一个真工具
     out = _with_mark_summary(list(fake_tools), effective_deep_think=False)
     # 非 think 不追加
@@ -71,6 +74,7 @@ def test_with_mark_summary_empty_and_not_think_returns_empty():
 
 
 def test_with_mark_summary_appends_in_think_mode():
+    """Test with mark summary appends in think mode."""
     ensure_tools_loaded()
     real_tools = list(tool_registry.all())
     assert real_tools, "registry 应当至少有一个内置工具，否则用例前提失效"
@@ -80,6 +84,7 @@ def test_with_mark_summary_appends_in_think_mode():
 
 
 def test_with_mark_summary_idempotent():
+    """Test with mark summary idempotent."""
     ensure_tools_loaded()
     real_tools = list(tool_registry.all())
     once = _with_mark_summary(real_tools, effective_deep_think=True)

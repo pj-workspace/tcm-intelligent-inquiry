@@ -1,3 +1,6 @@
+/**
+ * @fileoverview MCP JSON 粘贴解析与 docker-compose 片段归一化单元测试。
+ */
 import { describe, expect, it } from "vitest";
 import {
   normalizeMcpPasteText,

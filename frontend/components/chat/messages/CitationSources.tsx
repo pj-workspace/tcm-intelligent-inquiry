@@ -1,3 +1,9 @@
+/**
+ * @fileoverview 助手气泡内引用角标、来源 HoverCard 与侧栏来源面板。
+ *
+ * 角标由 ``AssistantBubble`` 将 ``【K1】`` 预处理为 ``citation:`` 链接后在此渲染；
+ * 仅展示工具真实登记的来源（与后端 citation 登记一致）。
+ */
 "use client";
 
 import { useMemo, useState } from "react";
@@ -20,6 +26,7 @@ const KIND_ICON: Record<CitationSource["kind"], typeof Library> = {
   external: FileText,
 };
 
+/** 从 URL 提取去 www 的主机名，用于来源卡片副标题。 */
 function sourceDomain(url?: string): string | null {
   if (!url) return null;
   try {
@@ -29,11 +36,13 @@ function sourceDomain(url?: string): string | null {
   }
 }
 
+/** 截断 snippet 至约 180 字符，HoverCard 内紧凑展示。 */
 function shortSnippet(text?: string): string {
   const s = (text || "").replace(/\s+/g, " ").trim();
   return s.length > 180 ? `${s.slice(0, 179)}…` : s;
 }
 
+/** 单条引用来源详情卡（角标 Hover 与侧栏列表复用）。 */
 function SourceCard({ source, dense = false }: { source: CitationSource; dense?: boolean }) {
   const Icon = KIND_ICON[source.kind] ?? FileText;
   const domain = sourceDomain(source.url);
@@ -84,6 +93,7 @@ function SourceCard({ source, dense = false }: { source: CitationSource; dense?:
   );
 }
 
+/** 正文内联引用角标：Hover 预览，点击打开侧栏来源面板。 */
 export function CitationMarker({
   id,
   source,
@@ -93,6 +103,7 @@ export function CitationMarker({
   source?: CitationSource;
   onOpenPanel: () => void;
 }) {
+  // 模型引用了未登记或已过滤的 id 时仍显示灰色占位，避免正文缺角标。
   if (!source) {
     return (
       <span className="mx-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full border border-stone-200 px-1 align-super text-[10px] font-medium leading-none text-stone-400">
@@ -129,6 +140,7 @@ export function CitationMarker({
   );
 }
 
+/** 右侧滑出面板：按 kind 分组展示本轮全部引用来源。 */
 export function CitationSourcePanel({
   sources,
   open,
@@ -206,6 +218,7 @@ export function CitationSourcePanel({
   );
 }
 
+/** 工具栏「引用来源 (N)」入口；流式生成中由父级通过 showCitationSources 控制隐藏。 */
 export function CitationSourcesButton({
   count,
   onClick,

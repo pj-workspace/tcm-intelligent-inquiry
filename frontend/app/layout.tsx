@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 应用根布局：字体变量、全局样式与 Providers 包裹。
+ */
 import type { Metadata } from "next";
 import { Inter, Noto_Serif_SC } from "next/font/google";
 import { Providers } from "./providers";
@@ -21,6 +24,7 @@ export const metadata: Metadata = {
   description: "AI-powered Traditional Chinese Medicine Assistant",
 };
 
+/** 根 HTML 壳：挂载字体 CSS 变量与全局 Auth/Toast Providers。 */
 export default function RootLayout({
   children,
 }: Readonly<{

@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 知识库向量检索试搜面板：TopK、关键词高亮与分数条。
+ */
 "use client";
 
 import { useState } from "react";
@@ -7,6 +10,7 @@ import type { KnowledgeBase, SearchResult } from "@/types/knowledge";
 
 // ─── 关键词高亮 ────────────────────────────────────────────────────────────────
 // split 捕获组会将匹配部分放在奇数索引位，非匹配部分在偶数索引位
+/** 检索结果 snippet 内关键词高亮（split 捕获组奇偶位着色）。 */
 function highlightKeywords(text: string, query: string): React.ReactNode {
   const keywords = query
     .split(/\s+/)
@@ -33,6 +37,7 @@ function highlightKeywords(text: string, query: string): React.ReactNode {
 }
 
 // ─── 分数进度条颜色 ────────────────────────────────────────────────────────────
+/** 相似度分数对应的进度条颜色档位。 */
 function scoreBarColor(score: number): string {
   if (score > 0.7) return "bg-green-500";
   if (score > 0.4) return "bg-orange-400";
@@ -56,6 +61,7 @@ const TOP_K_OPTIONS = Array.from({ length: 20 }, (_, i) => ({
   label: String(i + 1),
 }));
 
+/** 知识库内试搜 UI（非对话内 RAG，供管理员验证索引质量）。 */
 export function KnowledgeSearchPanel({
   kb,
   searchQuery,

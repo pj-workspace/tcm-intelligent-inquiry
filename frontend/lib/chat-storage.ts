@@ -1,5 +1,8 @@
-/** 匿名会话多会话列表（后端 /conversations 需登录，故本地持久化） */
+/**
+ * @fileoverview 匿名用户会话列表的 localStorage 持久化（登录前无服务端列表 API）。
+ */
 
+/** localStorage 中缓存的单条匿名会话元数据。 */
 export type StoredConversation = {
   id: string;
   title: string;
@@ -9,6 +12,7 @@ export type StoredConversation = {
 
 const LIST_KEY = "tcm_conversation_list";
 
+/** 读取本地会话列表；解析失败或非数组时返回空数组。 */
 export function readConversationList(): StoredConversation[] {
   if (typeof window === "undefined") return [];
   try {
@@ -30,6 +34,7 @@ export function readConversationList(): StoredConversation[] {
   }
 }
 
+/** 将完整会话列表写回 localStorage。 */
 export function writeConversationList(items: StoredConversation[]): void {
   localStorage.setItem(LIST_KEY, JSON.stringify(items));
 }
@@ -65,6 +70,7 @@ export function upsertConversation(
   writeConversationList(list);
 }
 
+/** 将会话置顶到列表头部（仅更新 updatedAt）。 */
 export function touchConversation(id: string): void {
   const list = readConversationList();
   const idx = list.findIndex((c) => c.id === id);

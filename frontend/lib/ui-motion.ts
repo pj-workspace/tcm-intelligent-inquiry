@@ -1,9 +1,10 @@
 /**
- * 与其它 UI 共用：弹窗遮罩 / 卡片 / 小菜单。
- * easing 与 `app/styles/animations.css` 中 `--ui-ease-pop` 保持一致。
+ * @fileoverview 共享 UI 动效 preset（Framer Motion），与 animations.css 缓动一致。
  */
+
 export const UI_EASE_POP = [0.16, 1, 0.3, 1] as const;
 
+/** 模态遮罩淡入淡出动画配置。 */
 export const uiModalBackdrop = {
   initial: { opacity: 0 },
   animate: { opacity: 1 },
@@ -11,6 +12,7 @@ export const uiModalBackdrop = {
   transition: { duration: 0.22, ease: UI_EASE_POP },
 } as const;
 
+/** 模态面板 spring 弹入动画配置。 */
 export const uiModalPanel = {
   initial: { opacity: 0, scale: 0.96, y: 12 },
   animate: { opacity: 1, scale: 1, y: 0 },

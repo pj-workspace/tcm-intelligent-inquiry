@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 侧栏单条会话行：标题、置顶、批量勾选与上下文菜单。
+ */
 "use client";
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
@@ -36,6 +39,7 @@ export type SidebarConversationRowProps = {
   onPrefetchConversation?: (id: string) => void;
 };
 
+/** 侧栏会话列表中的一行（含 hover 预取与 ⋮ 操作）。 */
 export function SidebarConversationRow({
   conversation: c,
   folders,

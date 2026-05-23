@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 发送/停止按钮：随 `genState` 在 Send 与 Stop 间切换。
+ */
 "use client";
 
 import { Send, Square } from "lucide-react";
@@ -11,6 +14,7 @@ type Props = {
   onStop: () => void;
 };
 
+/** 流式生成中显示停止，否则显示发送（受内容与上传态 gate）。 */
 export function ChatSendControls({
   genState,
   hasSendableContent,

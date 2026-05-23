@@ -6,6 +6,7 @@ from app.core.exceptions import ValidationError
 
 
 def normalize_stdio_config(raw: dict | None) -> dict[str, object]:
+    """Normalize stdio config (``raw``)."""
     if not raw or not isinstance(raw, dict):
         raise ValidationError("stdio 配置无效")
     command = raw.get("command")

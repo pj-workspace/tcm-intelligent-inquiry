@@ -14,6 +14,7 @@ from sqlalchemy import select
 
 
 async def _kb_visible_to_user(kb_id: str, user_id: str | None) -> bool:
+    """知识库存在且 owner_id 与 user_id 一致时返回 True。"""
     async with async_session_factory() as session:
         row = await session.get(KnowledgeBaseRecord, kb_id)
         if row is None:
@@ -24,6 +25,7 @@ async def _kb_visible_to_user(kb_id: str, user_id: str | None) -> bool:
 
 
 async def _resolve_kb_id(explicit_kb_id: str | None) -> str | None:
+    """解析本次检索应使用的知识库 ID（Agent 默认库 / 环境变量 / 用户首个自有库）。"""
     uid = chat_user_id.get()
     s = get_settings()
     default_kid = s.default_knowledge_base_id.strip()

@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 知识库设置页聚合 Hook：组合 bases / docs / upload / search 子模块。
+ */
 "use client";
 
 import { API_BASE, apiHeaders, parseApiError } from "@/lib/api";
@@ -11,6 +14,8 @@ import { useKnowledgeUpload } from "@/hooks/knowledge/useKnowledgeUpload";
 // useKnowledge：聚合知识库相关的所有客户端状态与异步行为。
 // 子模块：useKnowledgeBases / useKnowledgeUpload / useKnowledgeDocs / useKnowledgeSearch
 // =====================================================================
+
+/** 聚合知识库 CRUD、文档列表、异步入库与向量检索的单一入口 Hook。 */
 export function useKnowledge(token: string | null) {
   const bases = useKnowledgeBases(token);
   const docs = useKnowledgeDocs(token, bases.fetchKbs);
@@ -21,6 +26,7 @@ export function useKnowledge(token: string | null) {
     setError: bases.setError,
   });
 
+  /** 确认删除知识库并联动清理上传/检索选中态。 */
   const confirmDelete = async () => {
     if (!token || !bases.deleteId) return;
     bases.setIsDeleting(true);

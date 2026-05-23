@@ -1,3 +1,6 @@
+/**
+ * @fileoverview Agent 设置页 CRUD：列表、表单、默认 Agent 与工具绑定。
+ */
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
@@ -35,6 +38,7 @@ const INITIAL_FORM: AgentFormData = {
   default_kb_id: "",
 };
 
+/** 加载并管理用户 Agent 列表、编辑表单与删除确认。 */
 export function useAgents(token: string | null) {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [availableTools, setAvailableTools] = useState<string[]>([]);

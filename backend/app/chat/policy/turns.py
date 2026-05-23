@@ -50,6 +50,7 @@ def resolve_chat_turn(
     deep_think: bool,
     web_search_enabled: bool,
 ) -> ResolvedChatTurn:
+    """Resolve chat turn。"""
     s = get_settings()
     override = normalize_requested_llm_provider(llm_provider_body, settings=s)
     eff_lp = override if override is not None else (s.llm_provider or "qwen").strip().lower()

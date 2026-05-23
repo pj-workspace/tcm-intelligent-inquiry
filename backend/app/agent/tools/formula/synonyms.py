@@ -11,6 +11,7 @@ _DATA = Path(__file__).resolve().parent.parent.parent.parent.parent / "data" / "
 
 @lru_cache(maxsize=1)
 def _load_groups() -> tuple[tuple[str, ...], ...]:
+    """加载 symptom_synonyms.json 中的同义词组（进程内缓存）。"""
     if not _DATA.is_file():
         return ()
     try:

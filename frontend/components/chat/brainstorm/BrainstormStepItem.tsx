@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 单条 trace 步骤 UI；tool 步骤的 sources 存于 step 对象，正文引用见 AssistantBubble。
+ */
 "use client";
 
 import clsx from "clsx";
@@ -46,6 +49,7 @@ function StepShell({
   );
 }
 
+/** 单条 trace 步骤渲染（thinking 正文、tool I/O 折叠等）。 */
 export function BrainstormStepItem({
   step,
   isFirst,

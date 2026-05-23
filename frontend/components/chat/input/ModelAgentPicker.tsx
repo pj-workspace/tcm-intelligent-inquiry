@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 模型与 Agent 下拉选择（Radix Select + HoverCard 说明）。
+ */
 "use client";
 
 import { useMemo } from "react";
@@ -27,6 +30,7 @@ type ModelAgentPickerProps = {
   agentsLoading?: boolean;
 };
 
+/** 输入栏左侧模型与可选 Agent 选择器。 */
 export function ModelAgentPicker({
   genState,
   modelCatalog,

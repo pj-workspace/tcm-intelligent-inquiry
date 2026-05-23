@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 知识库文档上传面板：拖拽、类型过滤与 ingest 任务状态。
+ */
 "use client";
 
 import { useState, useRef } from "react";
@@ -9,6 +12,7 @@ import type { KnowledgeBase, IngestJobState } from "@/types/knowledge";
 
 const ACCEPTED_EXTS = [".pdf", ".txt", ".md", ".docx"] as const;
 
+/** 按允许扩展名拆分有效/无效文件。 */
 function filterFiles(files: File[]): { valid: File[]; invalid: File[] } {
   const valid: File[] = [];
   const invalid: File[] = [];
@@ -31,6 +35,7 @@ interface KnowledgeUploadPanelProps {
   onRetry: (job: IngestJobState) => void;
 }
 
+/** 知识库文档上传与 ingest 进度列表。 */
 export function KnowledgeUploadPanel({
   kbId,
   fileInputRef,

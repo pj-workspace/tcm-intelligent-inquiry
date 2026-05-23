@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 头脑风暴 trace 面板滚动：展开定位、流式跟随与边缘渐隐。
+ */
 "use client";
 
 import {
@@ -29,6 +32,7 @@ interface UseBrainstormScrollReturn {
   onWheel: (e: WheelEvent<HTMLDivElement>) => void;
 }
 
+/** 管理头脑风暴步骤列表的滚动容器、边缘渐隐与 wheel 冒泡隔离。 */
 export function useBrainstormScroll({
   steps,
   isOpen,

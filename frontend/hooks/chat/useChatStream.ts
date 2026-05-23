@@ -1,3 +1,9 @@
+/**
+ * @fileoverview 主聊天 SSE 流消费：解析事件、维护 trace/assistant 状态、挂载引用来源。
+ *
+ * 引用流：`tool-result.sources` 写入 trace 内 tool 步骤；`source-registry` 更新
+ * ``activeCitationSources`` 并同步到本轮所有 assistant 气泡，与后端 flush 入库一致。
+ */
 "use client";
 
 import { useCallback } from "react";
@@ -68,6 +74,7 @@ export type UseChatStreamDeps = {
   onUserMessageAppended?: (userMsgId: string) => void;
 };
 
+/** 消费主聊天 SSE 流：解析事件、更新 trace/assistant 与引用来源。 */
 export function useChatStream(deps: UseChatStreamDeps) {
   const {
     token,
@@ -241,8 +248,10 @@ export function useChatStream(deps: UseChatStreamDeps) {
       let pendingInterimStepId: string | null = null;
       let pendingInterimText = "";
       let inSummaryPhase = false;
+      /** 本轮 SSE 已登记的引用全量；随 source-registry 更新并 attach 到 assistant 气泡。 */
       let activeCitationSources: CitationSource[] = [];
 
+      /** 将最新 sources 写入本轮内存中创建的所有 assistant 气泡（含 promote 路径）。 */
       const attachCitationsToTurnAssistants = (sources: CitationSource[]) => {
         if (!sources.length) return;
         setMessages((prev) =>
@@ -695,6 +704,7 @@ export function useChatStream(deps: UseChatStreamDeps) {
                   })
                 );
               } else if (data.type === "source-registry") {
+                // 全量 registry：覆盖 activeCitationSources，保证最终角标与入库 citations 一致。
                 const sources = normalizeCitationSources(
                   (data as { sources?: unknown }).sources,
                 );

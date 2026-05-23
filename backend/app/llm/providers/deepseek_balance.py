@@ -22,12 +22,14 @@ def deepseek_balance_api_root(base_url: str) -> str:
 
 
 def balance_url_for_settings(settings: "Settings") -> str:
+    """Balance url for settings (``settings``)."""
     base = (settings.deepseek_base_url or "").strip() or "https://api.deepseek.com/v1"
     root = deepseek_balance_api_root(base)
     return f"{root}/user/balance"
 
 
 async def fetch_deepseek_balance_snapshot(settings: "Settings") -> BalanceSnapshot:
+    """Fetch deepseek balance snapshot (``settings``)."""
     key = (settings.deepseek_api_key or "").strip()
     if not key:
         raise ValueError("未配置 DEEPSEEK_API_KEY")

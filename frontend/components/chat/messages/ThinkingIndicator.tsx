@@ -1,9 +1,13 @@
+/**
+ * @fileoverview 助手「思考过程」可折叠指示器（流式 thinking 与结束后时长展示）。
+ */
 "use client";
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, BrainCircuit } from "lucide-react";
 
+/** 将思考时长格式化为短字符串（秒，一位小数或整数）。 */
 function formatDurationSec(sec: number): string {
   if (!Number.isFinite(sec) || sec < 0) return "0s";
   if (sec < 10) return `${Math.round(sec * 10) / 10}s`;
@@ -17,6 +21,7 @@ interface ThinkingIndicatorProps {
   durationSec?: number;
 }
 
+/** 可展开/收起的 thinking 区块；流式时默认展开并显示脉冲光标。 */
 export function ThinkingIndicator({
   content,
   isThinking,

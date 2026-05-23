@@ -19,6 +19,7 @@ logger = get_logger(__name__)
 
 
 def meta_chat_model_label(rt: ResolvedChatTurn) -> str:
+    """Meta chat model label (``rt``)."""
     mid = (rt.llm_chat_model_id or "").strip()
     short = active_chat_model_label(mid or None, llm_provider=rt.effective_llm_provider)
     return sse_reply_model_label(rt.effective_llm_provider, mid, short)
@@ -66,6 +67,7 @@ async def generate_title_async(
         )
 
         async def _call_model():
+            """Internal helper: call model."""
             res = await model.ainvoke(prompt)
             raw = extract_text(res) if res is not None else ""
             if not raw and hasattr(res, "content"):

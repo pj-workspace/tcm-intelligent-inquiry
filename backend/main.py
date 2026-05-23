@@ -24,6 +24,7 @@ logger = get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    """应用 lifespan：初始化 DB、种子数据、MCP 注册与后台探测循环。"""
     import asyncio
 
     await init_db()
@@ -109,6 +110,7 @@ app.add_middleware(
 # ── 中间件：SSE 响应补充 charset ───────────────────────────────────────────────
 @app.middleware("http")
 async def add_utf8_charset(request, call_next):
+    """为 SSE 响应补充 `charset=utf-8`，避免部分客户端乱码。"""
     response = await call_next(request)
     ct = response.headers.get("content-type", "")
     if ct.startswith("text/event-stream") and "charset" not in ct:
@@ -137,11 +139,13 @@ app.include_router(storage_router)
 # ── 健康检查 ──────────────────────────────────────────────────────────────────
 @app.get("/health", tags=["system"], summary="服务健康检查")
 async def health():
+    """返回 API 存活状态与版本号。"""
     return {"status": "ok", "version": app.version}
 
 
 @app.get("/health/deps", tags=["system"], summary="检查 PostgreSQL / Redis / Qdrant 连通性")
 async def health_deps():
+    """探测 PostgreSQL、Redis、Qdrant 连通性并汇总为键值对。"""
     from sqlalchemy import text
 
     from qdrant_client import QdrantClient

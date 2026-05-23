@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 知识库编辑对话框：AnimatePresence 卸载时重置表单，避免 effect 同步 props。
+ */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -48,6 +51,7 @@ interface FormProps {
   onCancel: () => void;
 }
 
+/** 编辑知识库名称与说明的内层表单（随 open 挂载/卸载以重置 state）。 */
 function EditKnowledgeBaseDialogForm({
   kb,
   pending,

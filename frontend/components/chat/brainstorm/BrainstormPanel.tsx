@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 可折叠 trace 面板：thinking / tool / user_input 时间线。
+ */
 "use client";
 
 import { useCallback, useState } from "react";
@@ -16,6 +19,7 @@ import { TimelineNode } from "./TimelineNode";
 
 export type { BrainstormStep } from "@/types/brainstorm";
 
+/** 可折叠 trace 时间线面板（thinking / tool / user_input 步骤）。 */
 export function BrainstormPanel({
   steps,
   isStreaming,

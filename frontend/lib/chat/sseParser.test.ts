@@ -1,3 +1,6 @@
+/**
+ * @fileoverview SSE 帧解析单元测试：事件类型、`[DONE]` 与 JSON payload。
+ */
 import { describe, expect, it } from "vitest";
 import {
   KNOWN_SSE_EVENT_TYPES,

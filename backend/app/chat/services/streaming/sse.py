@@ -10,14 +10,17 @@ THINKING_MAX = 16000
 
 
 def sse(payload: dict) -> str:
+    """Serialize one SSE ``data:`` frame (JSON payload + blank line)."""
     return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
 
 def sse_done() -> str:
+    """Terminal SSE frame signaling stream completion."""
     return "data: [DONE]\n\n"
 
 
 def truncate(s: str, max_len: int) -> str:
+    """Truncate ``s`` to ``max_len`` characters with ellipsis suffix."""
     if len(s) <= max_len:
         return s
     return s[: max_len - 1] + "…"

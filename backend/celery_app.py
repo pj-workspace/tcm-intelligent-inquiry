@@ -6,6 +6,7 @@ from app.core.config import get_settings
 
 
 def make_celery() -> Celery:
+    """根据 settings 创建并配置 Celery 应用（broker/backend 均为 Redis）。"""
     s = get_settings()
     app = Celery(
         "tcm",

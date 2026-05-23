@@ -19,6 +19,7 @@ BALANCE_FETCHERS: dict[str, BalanceFetcherFn] = {
 
 
 async def fetch_provider_balance(provider_id: str, settings: "Settings") -> BalanceSnapshot:
+    """Fetch provider balance (``provider_id``, ``settings``)."""
     pid = (provider_id or "").strip().lower()
     fn = BALANCE_FETCHERS.get(pid)
     if fn is None:

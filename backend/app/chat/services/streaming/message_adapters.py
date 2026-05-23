@@ -53,6 +53,7 @@ def persist_user_turn_content(text: str, image_urls: list[str]) -> str:
 
 
 def parse_user_turn_content(raw: str) -> tuple[str, list[str]]:
+    """Parse user turn content (``raw``)."""
     s = (raw or "").strip()
     if not s.startswith("{"):
         return raw, []
@@ -74,6 +75,7 @@ def parse_user_turn_content(raw: str) -> tuple[str, list[str]]:
 
 
 def lc_human_user_from_storage(raw: str) -> HumanMessage:
+    """Lc human user from storage (``raw``)."""
     text, imgs = parse_user_turn_content(raw)
     if imgs:
         blocks: list[dict[str, Any]] = [
@@ -88,6 +90,7 @@ def lc_human_user_from_storage(raw: str) -> HumanMessage:
 
 
 def user_message_text_for_regenerate_compare(raw: str) -> str:
+    """User message text for regenerate compare (``raw``)."""
     tx, imgs = parse_user_turn_content(raw)
     if imgs:
         return tx.strip() if tx.strip() else "（附图）"
@@ -95,6 +98,7 @@ def user_message_text_for_regenerate_compare(raw: str) -> str:
 
 
 def history_to_lc(history: list[ChatMessage]) -> list[HumanMessage | AIMessage]:
+    """History to lc (``history``)."""
     out: list[HumanMessage | AIMessage] = []
     for m in history:
         if m.role == "user":
@@ -107,6 +111,7 @@ def history_to_lc(history: list[ChatMessage]) -> list[HumanMessage | AIMessage]:
 async def messages_to_lc(
     session: AsyncSession, conversation_id: str
 ) -> list[HumanMessage | AIMessage | ToolMessage]:
+    """Messages to lc。"""
     r = await session.execute(
         select(MessageRecord)
         .where(MessageRecord.conversation_id == conversation_id)

@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 用户消息气泡：文本、多图缩略图、复制与回填编辑。
+ */
 "use client";
 
 import { useCallback, useState } from "react";
@@ -18,6 +21,7 @@ interface UserBubbleProps {
 /** 多图时气泡外横排缩略图格数；第 4 格叠「+N」表示其余张数 */
 const MULTI_GRID_SLOTS = 4;
 
+/** 用户消息附件区：单图大图按钮或多图横滑网格（第 4 格可叠 +N）。 */
 function UserBubbleAttachments({
   urls,
   onOpenPreview,
@@ -111,6 +115,7 @@ function UserBubbleAttachments({
   );
 }
 
+/** 右侧用户气泡：文本与图片分开展示，hover 显示复制/编辑。 */
 export function UserBubble({ content, imageUrls, copied, onCopy, onEdit, messageId }: UserBubbleProps) {
   const hasImages = Boolean(imageUrls && imageUrls.length > 0);
   const text = content?.trim() ?? "";

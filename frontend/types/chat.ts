@@ -1,7 +1,14 @@
+/**
+ * @fileoverview 聊天域核心类型：消息、SSE 行映射、引用来源（CitationSource）等。
+ * 引用 id 协议与后端 ``CitationSource.id``（K/W/F/E + 序号）及模型输出的 ``【K1】`` 标记对齐。
+ */
+
 import type { BrainstormStep } from "@/types/brainstorm";
 
+/** 引用来源类别；与后端 ``CitationKind`` 及工具登记前缀一致。 */
 export type CitationKind = "knowledge" | "web" | "formula" | "external";
 
+/** 单条可展示引用来源；来自 SSE source-registry / tool-result.sources 或历史 API。 */
 export type CitationSource = {
   id: string;
   kind: CitationKind;
@@ -13,6 +20,7 @@ export type CitationSource = {
   metadata?: Record<string, unknown>;
 };
 
+/** 用户或助手的一条聊天消息（不含 trace/widget）。 */
 export type ChatMessage = {
   id: string;
   role: "user" | "assistant";
@@ -32,8 +40,11 @@ export type ChatMessage = {
   createdAt?: string;
 };
 
+/** 从 BrainstormStep 提取的思考步骤类型别名。 */
 export type ThinkingStep = Extract<BrainstormStep, { type: "thinking" }>;
+/** 从 BrainstormStep 提取的工具调用步骤类型别名。 */
 export type ToolStep = Extract<BrainstormStep, { type: "tool" }>;
+/** 从 BrainstormStep 提取的 interim 文本步骤类型别名。 */
 export type InterimTextStep = Extract<BrainstormStep, { type: "interim_text" }>;
 
 /** 历史里的"模型主动收口"标记；不渲染为独立消息，仅用于让前面的 trace
@@ -54,6 +65,7 @@ export type InterruptMarkMessage = {
   createdAt?: string;
 };
 
+/** 历史 API 映射前的扁平消息联合（含 trace 步骤与标记行）。 */
 export type FlatMessage =
   | ChatMessage
   | ThinkingStep
@@ -63,6 +75,7 @@ export type FlatMessage =
   | SummaryMarkMessage
   | InterruptMarkMessage;
 
+/** 聚合后的头脑风暴 trace 容器消息。 */
 export type TraceMessage = {
   id: string;
   type: "trace";
@@ -93,8 +106,10 @@ export type WidgetMessage = {
   traceId?: string;
 };
 
+/** 渲染层使用的顶层消息联合。 */
 export type Message = ChatMessage | TraceMessage | WidgetMessage;
 
+/** GET /api/chat/conversations/{id}/messages 单行原始记录。 */
 export type ApiMessageRow = {
   id: string;
   role: string;
@@ -107,8 +122,10 @@ export type ApiMessageRow = {
   citations?: CitationSource[] | null;
 };
 
+/** 流式生成 UI 状态机阶段。 */
 export type GenerationState = "idle" | "waiting" | "thinking" | "tool" | "typing";
 
+/** GET /api/chat/conversations 列表项。 */
 export type ServerConversation = {
   id: string;
   title: string;

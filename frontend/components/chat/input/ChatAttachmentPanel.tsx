@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 待发送图片缩略图条与添加入口（含上传骨架占位）。
+ */
 "use client";
 
 import { Plus, X } from "lucide-react";
@@ -18,6 +21,7 @@ type ChatAttachmentPanelProps = {
   onAddImageClick: () => void;
 };
 
+/** 输入框上方待发送附件预览与添加按钮。 */
 export function ChatAttachmentPanel({
   pendingImageUrls,
   attachmentUploadBusy,

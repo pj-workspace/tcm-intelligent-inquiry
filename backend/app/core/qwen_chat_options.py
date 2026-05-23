@@ -21,12 +21,14 @@ class QwenCapabilitiesModel(BaseModel):
     @field_validator("input", mode="before")
     @classmethod
     def _coerce_input(cls, v: Any) -> Any:
+        """Internal helper: coerce input."""
         if v is None:
             return ["text"]
         return v
 
 
 class QwenChatModelOptionModel(BaseModel):
+    """Qwen Chat Model Option Model data model."""
     id: str
     label: str
     default: bool = False
@@ -35,6 +37,7 @@ class QwenChatModelOptionModel(BaseModel):
 
 @dataclass(frozen=True)
 class QwenChatModelOptionRow:
+    """Qwen Chat Model Option Row."""
     id: str
     label: str
     default: bool

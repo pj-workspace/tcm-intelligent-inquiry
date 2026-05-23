@@ -36,6 +36,7 @@ class BillingPeriodOut(BaseModel):
 
 
 class BillingTotalsOut(BaseModel):
+    """Billing Totals Out."""
     requests: int
     prompt_tokens: int
     completion_tokens: int
@@ -43,6 +44,7 @@ class BillingTotalsOut(BaseModel):
 
 
 class BillingProviderBreakdownRow(BaseModel):
+    """Billing Provider Breakdown Row."""
     provider_id: str
     requests: int
     prompt_tokens: int
@@ -51,12 +53,14 @@ class BillingProviderBreakdownRow(BaseModel):
 
 
 class UsageSummaryResponse(BaseModel):
+    """Usage Summary Response data model."""
     period: BillingPeriodOut
     totals: BillingTotalsOut
     by_provider: list[BillingProviderBreakdownRow]
 
 
 class UsageEventItemOut(BaseModel):
+    """Usage Event Item Out."""
     usage_event_id: str
     created_at: str
     provider_id: str
@@ -68,6 +72,7 @@ class UsageEventItemOut(BaseModel):
 
 
 class UsageEventsResponse(BaseModel):
+    """Usage Events Response data model."""
     items: list[UsageEventItemOut]
     limit: int
     offset: int

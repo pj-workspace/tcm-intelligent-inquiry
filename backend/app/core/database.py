@@ -18,10 +18,11 @@ logger = get_logger(__name__)
 
 
 class Base(DeclarativeBase):
-    pass
+    """Declarative base shared by all SQLAlchemy ORM models."""
 
 
 def _engine():
+    """Build async engine from ``Settings.database_url`` (pool pre-ping enabled)."""
     s = get_settings()
     return create_async_engine(
         s.database_url,
@@ -40,6 +41,7 @@ async_session_factory = async_sessionmaker(
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
+    """FastAPI dependency: yield an ``AsyncSession`` with commit/rollback."""
     async with async_session_factory() as session:
         try:
             yield session
@@ -57,6 +59,7 @@ _AUTO_MIGRATE_DDL: tuple[str, ...] = (
     "ALTER TABLE knowledge_bases ADD COLUMN IF NOT EXISTS embedding_dim INTEGER",
     # mcp_servers：请求头列
     "ALTER TABLE mcp_servers ADD COLUMN IF NOT EXISTS headers JSONB NOT NULL DEFAULT '{}'",
+    # messages.citations：assistant 回复的结构化引用来源（JSON 数组，与 CitationSource 同构）
     "ALTER TABLE messages ADD COLUMN IF NOT EXISTS citations JSONB",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255)",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT false",

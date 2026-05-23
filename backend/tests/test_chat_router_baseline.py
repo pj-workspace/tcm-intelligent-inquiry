@@ -11,6 +11,7 @@ BASELINE = (
 
 
 def _collect_chat_routes() -> list[dict[str, str]]:
+    """Test collect chat routes."""
     prefix = (chat_router.prefix or "").rstrip("/")
     out: list[dict[str, str]] = []
     for r in chat_router.routes:
@@ -31,6 +32,7 @@ def _collect_chat_routes() -> list[dict[str, str]]:
 
 
 def test_chat_router_matches_baseline():
+    """Test chat router matches baseline."""
     expected = json.loads(BASELINE.read_text(encoding="utf-8"))
     expected.sort(key=lambda x: (x["path"], x["method"]))
     assert _collect_chat_routes() == expected

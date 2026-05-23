@@ -1,3 +1,6 @@
+/**
+ * @fileoverview MCP 服务设置页：HTTP/stdio 注册、批量导入、探测刷新与删除。
+ */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -7,6 +10,7 @@ import type { McpImportResponse, McpServer } from "@/types/mcp";
 import type { McpFormData } from "@/components/settings/mcp/McpAddForm";
 import { parseArgsText, parseEnvText } from "@/lib/mcp/parseMcpConfig";
 
+/** 返回空 MCP 添加表单初始值。 */
 const emptyForm = (): McpFormData => ({
   name: "",
   transport: "http",
@@ -19,6 +23,7 @@ const emptyForm = (): McpFormData => ({
   bulkImport: null,
 });
 
+/** 管理 MCP 服务器列表、添加表单与工具探测刷新。 */
 export function useMcp(token: string | null) {
   const [servers, setServers] = useState<McpServer[]>([]);
   const [loading, setLoading] = useState(true);

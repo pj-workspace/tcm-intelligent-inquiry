@@ -18,6 +18,7 @@ _emb_singleton: DashScopeEmbeddings | None = None
 
 
 def _delta_as_dict(delta: Any) -> dict[str, Any] | None:
+    """Internal helper: delta as dict."""
     if delta is None:
         return None
     if isinstance(delta, dict):
@@ -40,6 +41,7 @@ class DashScopeChatOpenAI(ChatOpenAI):
         default_chunk_class: type,
         base_generation_info: dict | None,
     ) -> ChatGenerationChunk | None:
+        """Internal helper: _convert_chunk_to_generation_chunk."""
         gen = super()._convert_chunk_to_generation_chunk(
             chunk, default_chunk_class, base_generation_info
         )
@@ -70,6 +72,7 @@ def build_qwen_chat(
     *,
     response_format_json_object: bool = False,
 ) -> ChatOpenAI:
+    """Build qwen chat。"""
     s = get_settings()
     key = (s.dashscope_api_key or "").strip()
     if not key:
@@ -94,6 +97,7 @@ def build_qwen_chat(
 
 
 def get_embeddings() -> DashScopeEmbeddings:
+    """Get embeddings."""
     global _emb_fp, _emb_singleton
     s = get_settings()
     key = (s.dashscope_api_key or "").strip()

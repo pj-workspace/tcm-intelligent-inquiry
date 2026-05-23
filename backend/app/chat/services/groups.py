@@ -17,6 +17,7 @@ async def assert_own_group(
     group_id: str,
     user: UserRecord,
 ) -> ConversationGroupRecord:
+    """Assert own group。"""
     row = await session.get(ConversationGroupRecord, group_id)
     if row is None:
         raise NotFoundError(f"分组 '{group_id}' 不存在")
@@ -29,6 +30,7 @@ async def list_groups(
     session: AsyncSession,
     user: UserRecord,
 ) -> list[ConversationGroupItem]:
+    """List groups。"""
     r = await session.execute(
         select(ConversationGroupRecord)
         .where(ConversationGroupRecord.user_id == user.id)
@@ -50,6 +52,7 @@ async def list_groups(
 
 
 async def create_group(session: AsyncSession, user: UserRecord, name: str) -> ConversationGroupItem:
+    """Create group (``session``, ``user``, ``name``)."""
     nid = str(uuid.uuid4())
     r = await session.execute(
         select(func.coalesce(func.max(ConversationGroupRecord.sort_order), -1)).where(
@@ -81,12 +84,14 @@ async def rename_group(
     group_id: str,
     name: str,
 ) -> None:
+    """Rename group。"""
     g = await assert_own_group(session, group_id, user)
     g.name = name.strip()[:128]
     await session.commit()
 
 
 async def delete_group(session: AsyncSession, user: UserRecord, group_id: str) -> None:
+    """Delete group (``session``, ``user``, ``group_id``)."""
     g = await assert_own_group(session, group_id, user)
     # FK ON DELETE SET NULL 会清空 conversations.group_id；显式做一次也无妨（兼容 SQLite 外键关闭时）
     await session.execute(
@@ -104,6 +109,7 @@ async def update_conversation_group(
     conversation_id: str,
     group_id: str | None,
 ) -> None:
+    """Update conversation group。"""
     conv = await assert_can_use_conversation(session, conversation_id, user, None)
     if conv.user_id is None or conv.user_id != user.id:
         raise ForbiddenError("仅能为自己已登录创建的会话设置分组")

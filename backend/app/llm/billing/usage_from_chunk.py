@@ -13,6 +13,7 @@ from app.llm.billing.normalize import (
 
 
 def _usage_sources_from_chunk(chunk: Any) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """Internal helper: usage sources from chunk."""
     um = getattr(chunk, "usage_metadata", None)
     usage_meta = um if isinstance(um, dict) else None
     rm = getattr(chunk, "response_metadata", None)
@@ -44,6 +45,7 @@ def merged_usage_dict(chunk: Any) -> dict[str, Any]:
 
 
 def chunk_usage_for_persist(chunk: Any) -> tuple[dict[str, Any], dict[str, Any] | None, dict[str, Any] | None]:
+    """Chunk usage for persist (``chunk``)."""
     merged = merged_usage_dict(chunk)
     um, rm = _usage_sources_from_chunk(chunk)
     return merged, um, rm

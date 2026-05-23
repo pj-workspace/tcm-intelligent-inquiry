@@ -87,6 +87,7 @@ async def _open_mcp_session(
 
 
 async def _list_tools(session: ClientSession) -> list[McpToolDef]:
+    """Internal helper: list tools."""
     tools: list[McpToolDef] = []
     cursor: str | None = None
     while True:
@@ -106,10 +107,12 @@ async def _list_tools(session: ClientSession) -> list[McpToolDef]:
 
 
 async def _list_tool_names(session: ClientSession) -> list[str]:
+    """Internal helper: list tool names."""
     return [t.name for t in await _list_tools(session)]
 
 
 def _format_call_tool_result(result: types.CallToolResult) -> str:
+    """Internal helper: format call tool result."""
     parts: list[str] = []
     for block in result.content:
         if isinstance(block, types.TextContent):
@@ -135,6 +138,7 @@ async def discover_tools(
     total_timeout = _TRANSPORT_TIMEOUT * 2 + 5
 
     async def _attempt() -> list[McpToolDef]:
+        """Internal helper: attempt."""
         async with _open_mcp_session(server_url, headers=headers) as session:
             return await _list_tools(session)
 

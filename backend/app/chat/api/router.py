@@ -22,6 +22,7 @@ async def chat(
     req: ChatRequest,
     user: Annotated[UserRecord | None, Depends(get_current_user_optional)],
 ):
+    """Chat。"""
     if req.conversation_id:
         async with async_session_factory() as session:
             await assert_can_use_conversation(

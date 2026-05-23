@@ -1,7 +1,8 @@
 /**
- * useChat 对外 API 冻结清单（M0 基线；重构时键名不得删改）。
+ * @fileoverview useChat 对外 API 冻结清单（M0 基线；重构时键名不得删改）。
  */
 
+/** useChat opts 参数的冻结键名列表。 */
 export const USE_CHAT_OPTS_KEYS = [
   "autoFollowMainRef",
   "onNewChatScrollReset",
@@ -10,6 +11,7 @@ export const USE_CHAT_OPTS_KEYS = [
   "onNavigateToNewChatSurface",
 ] as const;
 
+/** useChat 返回对象的冻结键名列表。 */
 export const USE_CHAT_RETURN_KEYS = [
   "messages",
   "setMessages",

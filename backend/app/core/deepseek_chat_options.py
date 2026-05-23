@@ -10,6 +10,7 @@ from app.core.config import Settings, get_settings
 
 @dataclass(frozen=True)
 class DeepSeekChatModelOptionRow:
+    """Deep Seek Chat Model Option Row."""
     id: str
     label: str
     default: bool
@@ -54,10 +55,12 @@ def _built_in_rows() -> tuple[DeepSeekChatModelOptionRow, ...]:
 
 
 def list_deepseek_chat_model_option_rows() -> list[DeepSeekChatModelOptionRow]:
+    """List deepseek chat model option rows."""
     return list(_built_in_rows())
 
 
 def deepseek_option_for_model_id(model_id: str) -> DeepSeekChatModelOptionRow | None:
+    """Deepseek option for model id (``model_id``)."""
     mid = (model_id or "").strip()
     if not mid:
         return None

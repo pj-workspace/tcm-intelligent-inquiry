@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 知识库详情抽屉：文档列表、上传与向量检索试搜。
+ */
 "use client";
 
 import { useState } from "react";
@@ -34,6 +37,7 @@ interface KnowledgeDrawerProps {
   onSearch: () => void;
 }
 
+/** ISO 时间转本地 locale 字符串。 */
 function formatTime(iso: string): string {
   try {
     return new Date(iso).toLocaleString("zh-CN");
@@ -42,6 +46,7 @@ function formatTime(iso: string): string {
   }
 }
 
+/** 知识库侧滑抽屉（文档 + 上传 + 搜索 Tab）。 */
 export function KnowledgeDrawer({
   open,
   onClose,

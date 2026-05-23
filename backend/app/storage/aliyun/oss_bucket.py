@@ -12,6 +12,7 @@ class OssNotConfigured(RuntimeError):
 
 
 def oss_storage_ready(settings: Settings | None = None) -> bool:
+    """Oss storage ready (``settings``)."""
     s = settings or get_settings()
     return bool(
         (s.aliyun_oss_access_key_id or "").strip()
@@ -22,6 +23,7 @@ def oss_storage_ready(settings: Settings | None = None) -> bool:
 
 
 def _normalize_endpoint(endpoint: str) -> str:
+    """Internal helper: normalize endpoint."""
     e = endpoint.strip().rstrip("/")
     if not e.startswith("http"):
         return f"https://{e}"

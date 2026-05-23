@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, model_validator
 
 
 class McpStdioConfig(BaseModel):
+    """Mcp Stdio Config."""
     command: str = Field(..., min_length=1, description="可执行文件路径（如 docker、uv、bash）")
     args: list[str] = Field(default_factory=list, description="命令行参数")
     env: dict[str, str] = Field(default_factory=dict, description="附加环境变量")
@@ -13,6 +14,7 @@ class McpStdioConfig(BaseModel):
 
 
 class McpServerCreateRequest(BaseModel):
+    """Mcp Server Create Request."""
     name: str = Field(..., min_length=1, description="MCP 服务名称")
     transport: Literal["http", "stdio"] = Field(
         default="http",
@@ -35,6 +37,7 @@ class McpServerCreateRequest(BaseModel):
 
     @model_validator(mode="after")
     def _check_transport_fields(self) -> "McpServerCreateRequest":
+        """Internal helper: check transport fields."""
         if self.transport == "http":
             if not (self.url or "").strip():
                 raise ValueError("HTTP 传输须填写 url")
@@ -45,6 +48,7 @@ class McpServerCreateRequest(BaseModel):
 
 
 class McpServerResponse(BaseModel):
+    """Mcp Server Response data model."""
     id: str
     name: str
     transport: Literal["http", "stdio"] = "http"
@@ -66,6 +70,7 @@ class McpServerResponse(BaseModel):
 
 
 class McpServerListResponse(BaseModel):
+    """Mcp Server List Response data model."""
     servers: list[McpServerResponse]
     total: int
 
@@ -77,5 +82,6 @@ class McpImportRequest(BaseModel):
 
 
 class McpImportResponse(BaseModel):
+    """Mcp Import Response data model."""
     imported: list[McpServerResponse]
     errors: list[str] = Field(default_factory=list)

@@ -1,3 +1,7 @@
+/**
+ * @fileoverview 内置工具中文展示名与 MCP 内部名解析。
+ */
+
 /** 内置工具中文展示名（不含外部 MCP） */
 export const TOOL_LABEL_ZH: Record<string, string> = {
   search_tcm_knowledge: "知识库检索",
@@ -12,6 +16,7 @@ export function mcpRemoteToolName(internalName: string): string | null {
   return m ? m[1] : null;
 }
 
+/** 判断 LangChain 内部工具名是否为 MCP 前缀格式。 */
 export function isMcpToolName(internalName: string): boolean {
   return internalName.trim().startsWith("mcp_");
 }

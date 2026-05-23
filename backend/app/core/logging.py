@@ -8,6 +8,7 @@ import sys
 
 
 def configure_logging(level: str = "INFO") -> None:
+    """Configure root logging and suppress noisy third-party loggers."""
     logging.basicConfig(
         stream=sys.stdout,
         level=getattr(logging, level.upper(), logging.INFO),
@@ -20,4 +21,5 @@ def configure_logging(level: str = "INFO") -> None:
 
 
 def get_logger(name: str) -> logging.Logger:
+    """Return a module-scoped logger."""
     return logging.getLogger(name)

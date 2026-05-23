@@ -9,6 +9,7 @@ from app.mcp.schema_tools import McpToolDef
 
 @pytest.mark.integration
 def test_mcp_register_list_delete_roundtrip(client, auth_headers):
+    """Test mcp register list delete roundtrip."""
     # 使用公网可解析主机名，避免 SSRF 策略拦截；实际连接由 discover_tools_http mock
     with patch(
         "app.mcp.services.mcp_service.discover_tools_http",
@@ -46,6 +47,7 @@ def test_mcp_register_list_delete_roundtrip(client, auth_headers):
 
 @pytest.mark.integration
 def test_mcp_private_url_rejected(client, auth_headers):
+    """Test mcp private url rejected."""
     with patch(
         "app.mcp.services.mcp_service.discover_tools_http",
         new_callable=AsyncMock,
@@ -67,6 +69,7 @@ def test_mcp_private_url_rejected(client, auth_headers):
 
 @pytest.mark.integration
 def test_mcp_stdio_register(client, auth_headers):
+    """Test mcp stdio register."""
     with patch(
         "app.mcp.services.mcp_service.discover_tools_stdio",
         new_callable=AsyncMock,
@@ -98,6 +101,7 @@ def test_mcp_stdio_register(client, auth_headers):
 
 @pytest.mark.integration
 def test_mcp_import_cursor_config(client, auth_headers):
+    """Test mcp import cursor config."""
     with patch(
         "app.mcp.services.mcp_service.discover_tools_stdio",
         new_callable=AsyncMock,
@@ -136,5 +140,6 @@ def test_mcp_import_cursor_config(client, auth_headers):
 
 @pytest.mark.integration
 def test_mcp_requires_auth(client):
+    """Test mcp requires auth."""
     r = client.get("/api/mcp")
     assert r.status_code == 401

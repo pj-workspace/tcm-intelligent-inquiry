@@ -1,3 +1,6 @@
+/**
+ * @fileoverview Agent 创建/编辑表单：系统提示、工具与知识库绑定。
+ */
 "use client";
 
 import { Bot, RotateCcw, Save, Wrench, X } from "lucide-react";
@@ -20,6 +23,7 @@ interface AgentFormProps {
   toggleTool: (toolName: string) => void;
 }
 
+/** Agent 编辑表单（新建或更新）。 */
 export function AgentForm({
   editingId,
   formData,

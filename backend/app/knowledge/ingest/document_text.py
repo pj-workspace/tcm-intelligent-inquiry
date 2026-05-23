@@ -9,6 +9,7 @@ logger = get_logger(__name__)
 
 
 def _extract_pdf(content: bytes) -> str:
+    """Internal helper: extract pdf."""
     from pypdf import PdfReader
 
     reader = PdfReader(BytesIO(content))
@@ -25,6 +26,7 @@ def _extract_pdf(content: bytes) -> str:
 
 
 def _extract_docx(content: bytes) -> str:
+    """Internal helper: extract docx."""
     from docx import Document
 
     doc = Document(BytesIO(content))

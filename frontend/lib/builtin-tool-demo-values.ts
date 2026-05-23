@@ -1,5 +1,5 @@
 /**
- * 内置工具「试用」表单预填的示例参数，一键可测，仍可手动改写。
+ * @fileoverview 内置工具试用表单的示例参数预填：合并 schema 默认值与演示值。
  */
 import type { BuiltinToolInfo, ToolArgInfo } from "@/types/tool";
 
@@ -25,6 +25,7 @@ const DEMO_ARGS: Record<string, Record<string, string>> = {
   },
 };
 
+/** 内置工具试用表单 schema 默认值转字符串。 */
 function schemaDefaultString(arg: ToolArgInfo): string {
   if (arg.default === null || arg.default === undefined) return "";
   if (arg.type === "boolean") return String(arg.default);

@@ -12,6 +12,7 @@ from app.llm.billing.normalize import normalize_llm_usage
 
 
 def _norm_columns(norm: dict[str, Any]) -> tuple[int | None, int | None, int | None, int | None, int | None]:
+    """Internal helper: norm columns."""
     pt = norm.get("prompt_tokens")
     ct = norm.get("completion_tokens")
     tt = norm.get("total_tokens")

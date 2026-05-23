@@ -18,6 +18,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    """Apply schema changes."""
     op.add_column(
         "messages",
         sa.Column("duration_sec", sa.Float(), nullable=True),
@@ -25,4 +26,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Revert schema changes."""
     op.drop_column("messages", "duration_sec")

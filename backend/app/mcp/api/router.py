@@ -21,6 +21,7 @@ router = APIRouter(prefix="/api/mcp", tags=["mcp"])
 
 
 def _svc(session: AsyncSession = Depends(get_session)) -> McpService:
+    """Internal helper: svc."""
     return McpService(session)
 
 
@@ -29,6 +30,7 @@ async def list_servers(
     _: Annotated[UserRecord, Depends(require_api_user)],
     svc: McpService = Depends(_svc),
 ):
+    """List servers。"""
     return await svc.list_servers()
 
 
@@ -38,6 +40,7 @@ async def register_server(
     _: Annotated[UserRecord, Depends(require_api_user)],
     svc: McpService = Depends(_svc),
 ):
+    """Register server。"""
     return await svc.register_server(req)
 
 
@@ -51,6 +54,7 @@ async def import_servers(
     _: Annotated[UserRecord, Depends(require_api_user)],
     svc: McpService = Depends(_svc),
 ):
+    """Import servers。"""
     return await svc.import_cursor_config(req)
 
 
@@ -60,6 +64,7 @@ async def get_server(
     _: Annotated[UserRecord, Depends(require_api_user)],
     svc: McpService = Depends(_svc),
 ):
+    """Get server。"""
     return await svc.get_server(server_id)
 
 
@@ -73,6 +78,7 @@ async def refresh_tools(
     _: Annotated[UserRecord, Depends(require_api_user)],
     svc: McpService = Depends(_svc),
 ):
+    """Refresh tools。"""
     return await svc.refresh_tools(server_id)
 
 
@@ -82,4 +88,5 @@ async def delete_server(
     _: Annotated[UserRecord, Depends(require_api_user)],
     svc: McpService = Depends(_svc),
 ):
+    """Delete server。"""
     await svc.delete_server(server_id)

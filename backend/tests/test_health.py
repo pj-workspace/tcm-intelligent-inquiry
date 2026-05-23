@@ -1,9 +1,11 @@
+"""单元/集成测试：health。"""
 from fastapi.testclient import TestClient
 
 from main import app
 
 
 def test_health():
+    """Test health."""
     c = TestClient(app)
     r = c.get("/health")
     assert r.status_code == 200
@@ -11,6 +13,7 @@ def test_health():
 
 
 def test_health_deps_structure():
+    """Test health deps structure."""
     c = TestClient(app)
     r = c.get("/health/deps")
     assert r.status_code == 200
@@ -25,6 +28,7 @@ def test_health_deps_structure():
 
 
 def test_database_url_sync():
+    """Test database url sync."""
     from app.core.config import get_settings
 
     s = get_settings()

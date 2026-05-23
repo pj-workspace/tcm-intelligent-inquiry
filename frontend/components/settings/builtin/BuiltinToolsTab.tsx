@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 内置工具 Tab：按类别浏览与试调用（ToolInvokeModal）。
+ */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -28,6 +31,7 @@ const CATEGORY_META: Record<
 };
 
 // ── 单张工具卡片（纯展示，点击开模态框）────────────────────────────────────────
+/** 内置工具卡片：点击打开试调用模态。 */
 function ToolCard({
   tool,
   onClick,
@@ -91,6 +95,7 @@ function ToolCard({
 }
 
 // ── 主组件 ────────────────────────────────────────────────────────────────────
+/** 内置工具 Tab：卡片网格 + 试调用模态。 */
 export function BuiltinToolsTab() {
   const { token } = useAuth();
   const [tools, setTools] = useState<BuiltinToolInfo[]>([]);

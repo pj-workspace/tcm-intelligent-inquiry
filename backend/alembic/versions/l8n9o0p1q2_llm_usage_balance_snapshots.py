@@ -20,6 +20,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    """Apply schema changes."""
     bind = op.get_bind()
     insp = sa.inspect(bind)
     tables = set(insp.get_table_names())
@@ -114,6 +115,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Revert schema changes."""
     # 与 upgrade 中 CREATE IF NOT EXISTS 对称，避免手工删改过对象时 downgrade 报错
     for stmt in (
         "DROP INDEX IF EXISTS ix_provider_balance_snapshots_user_created",

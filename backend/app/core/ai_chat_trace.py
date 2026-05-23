@@ -15,6 +15,7 @@ _SEP_W = 80
 
 
 def trace_banner(title: str = "") -> str:
+    """Trace banner (``title``)."""
     t = (title or "").strip()
     if not t:
         return "=" * _SEP_W
@@ -64,6 +65,7 @@ def format_llm_turn_request(
     *,
     meta: dict[str, Any],
 ) -> str:
+    """Format llm turn request。"""
     hint = (
         "下列为载入会话 + 本轮用户消息后，送入 LangGraph Agent 的状态中的 messages（原始结构）。\n"
         "系统提示由 create_react_agent 绑定，不包含在本列表。\n"
@@ -85,6 +87,7 @@ def format_llm_turn_request(
 
 
 def format_tool_event_raw(note: str, payload: dict[str, Any]) -> str:
+    """Format tool event raw (``note``, ``payload``)."""
     body = dict(payload)
     body.setdefault("trace_note", note)
     title = note.strip() or "tool"
@@ -185,6 +188,7 @@ def format_stream_aggregate_summary(
 
 
 def format_title_llm_call(*, user_message_excerpt: str, prompt: str, reply_raw: str) -> str:
+    """Format title llm call."""
     return "\n".join(
         [
             trace_banner("会话标题生成 · Title LLM（原始全文）"),

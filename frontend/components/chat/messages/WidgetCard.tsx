@@ -1,3 +1,6 @@
+/**
+ * @fileoverview Agent `ask_user` 交互卡片：选项、自由文本与跳过。
+ */
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -17,6 +20,7 @@ interface WidgetCardProps {
   onAnswer: (answer: string | null) => void;
 }
 
+/** 追问 Widget：未答时展示选项/自由输入，已答后紧凑展示选择结果。 */
 export function WidgetCard({
   question,
   choices,
@@ -36,6 +40,7 @@ export function WidgetCard({
     if (showFreeInput) freeInputRef.current?.focus();
   }, [showFreeInput]);
 
+  /** 点选预设选项。 */
   const handleChoice = useCallback(
     (label: string) => {
       if (disabled || answered) return;
@@ -44,12 +49,14 @@ export function WidgetCard({
     [disabled, answered, onAnswer],
   );
 
+  /** 提交自由文本答案。 */
   const handleFreeSubmit = useCallback(() => {
     const t = freeText.trim();
     if (!t || disabled || answered) return;
     onAnswer(t);
   }, [freeText, disabled, answered, onAnswer]);
 
+  /** 跳过 Widget（传 null）。 */
   const handleSkip = useCallback(() => {
     if (disabled || answered) return;
     onAnswer(null);

@@ -7,6 +7,7 @@ from tests.register_helpers import prime_email_login_otp, prime_register_otp
 
 @pytest.mark.integration
 def test_login_with_email_otp(client, unique_username):
+    """Test login with email otp."""
     pw = "secret123456"
     email = f"{unique_username}@test.local"
     prime_register_otp(email)
@@ -33,6 +34,7 @@ def test_login_with_email_otp(client, unique_username):
 
 @pytest.mark.integration
 def test_register_login_me(client, unique_username):
+    """Test register login me."""
     pw = "secret123456"
     email = f"{unique_username}@test.local"
     prime_register_otp(email)
@@ -74,6 +76,7 @@ def test_register_login_me(client, unique_username):
 
 @pytest.mark.integration
 def test_login_wrong_password(client, unique_username):
+    """Test login wrong password."""
     pw = "secret123456"
     email = f"{unique_username}@test.local"
     prime_register_otp(email)

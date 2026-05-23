@@ -27,6 +27,7 @@ def _effective_total_expr():
 
 @dataclass(frozen=True)
 class SummaryTotalsRow:
+    """Summary Totals Row."""
     requests: int
     prompt_tokens: int
     completion_tokens: int
@@ -116,6 +117,7 @@ async def fetch_usage_events_for_user(
     offset: int,
     provider_id: str | None = None,
 ) -> list[LlmUsageEventRecord]:
+    """Fetch usage events for user。"""
     lim = max(1, min(int(limit), MAX_USAGE_EVENTS_LIMIT))
     off = max(0, int(offset))
 

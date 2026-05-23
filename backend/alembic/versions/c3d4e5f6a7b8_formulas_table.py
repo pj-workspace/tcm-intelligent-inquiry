@@ -19,6 +19,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    """Apply schema changes."""
     op.create_table(
         "formulas",
         sa.Column("id", sa.String(length=36), nullable=False),
@@ -36,5 +37,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Revert schema changes."""
     op.drop_index("ix_formulas_name", table_name="formulas")
     op.drop_table("formulas")

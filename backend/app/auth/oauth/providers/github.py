@@ -9,9 +9,11 @@ from app.core.config import get_settings
 
 
 class GithubOAuthProvider:
+    """Github OAuth Provider."""
     provider = "github"
 
     def authorize_url(self, *, state: str, redirect_uri: str) -> str:
+        """Authorize url."""
         s = get_settings()
         cid = (s.github_client_id or "").strip()
         if not cid:
@@ -25,6 +27,7 @@ class GithubOAuthProvider:
         )
 
     async def exchange_and_profile(self, *, code: str, redirect_uri: str) -> OAuthUserProfile:
+        """Exchange and profile."""
         s = get_settings()
         headers = {"Accept": "application/json"}
         async with httpx.AsyncClient(timeout=25.0) as client:

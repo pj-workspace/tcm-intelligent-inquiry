@@ -18,6 +18,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    """Apply schema changes."""
     op.add_column(
         "mcp_servers",
         sa.Column("last_probe_at", sa.DateTime(timezone=True), nullable=True),
@@ -29,5 +30,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Revert schema changes."""
     op.drop_column("mcp_servers", "last_probe_error")
     op.drop_column("mcp_servers", "last_probe_at")

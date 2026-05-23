@@ -9,6 +9,7 @@ from app.agent.tools.searx_web_search.formatting import format_searx_results_for
 
 
 def test_citation_registry_assigns_kind_prefixed_ids():
+    """Test citation registry assigns kind prefixed ids."""
     reset_citation_sources()
 
     k = register_citation_source(
@@ -31,6 +32,7 @@ def test_citation_registry_assigns_kind_prefixed_ids():
 
 
 def test_searx_formatter_registers_web_sources_with_visible_keys():
+    """Test searx formatter registers web sources with visible keys."""
     reset_citation_sources()
     text = format_searx_results_for_llm(
         {

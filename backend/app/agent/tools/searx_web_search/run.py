@@ -19,7 +19,16 @@ async def run_searx_web_search(
     max_results: int = 5,
     language: str = "zh",
 ) -> str:
-    """执行 SearXNG 检索并返回可给模型阅读的纯文本（供测试与工具共用）。"""
+    """执行 SearXNG 检索并返回可给模型阅读的纯文本。
+
+    Args:
+        query: 检索关键词。
+        max_results: 返回条数上限（内部 clamp 至 15）。
+        language: 语言偏好；中文时默认仅调 baidu 引擎。
+
+    Returns:
+        格式化后的结果文本，或配置/连接/HTTP 错误说明。
+    """
     q = (query or "").strip()
     if not q:
         return "请提供非空的检索关键词。"

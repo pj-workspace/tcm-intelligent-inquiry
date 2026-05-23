@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+"""应用全局配置：从环境变量与 ``backend/.env`` 加载，支持多 LLM 厂商与基础设施连接串。"""
+
 from pathlib import Path
 
 from pydantic import Field, field_validator, model_validator
@@ -284,17 +286,20 @@ class Settings(BaseSettings):
     )
 
     def cors_origin_list(self) -> list[str]:
+        """Cors origin list."""
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
     @field_validator("qwen_chat_model_options", mode="before")
     @classmethod
     def _coerce_qwen_options_blank(cls, v: object) -> object:
+        """Internal helper: coerce qwen options blank."""
         if v is None:
             return ""
         return v
 
     @model_validator(mode="after")
     def _validate_qwen_options_json(self) -> Settings:
+        """Internal helper: validate qwen options json."""
         raw = (self.qwen_chat_model_options or "").strip()
         if raw:
             parse_qwen_chat_model_options(raw)
@@ -314,6 +319,7 @@ def get_settings() -> Settings:
 
 
 def list_qwen_chat_model_option_rows(settings: Settings | None = None) -> list[QwenChatModelOptionRow]:
+    """List qwen chat model option rows (``settings``)."""
     s = settings or get_settings()
     return parse_qwen_chat_model_options(s.qwen_chat_model_options)
 
@@ -335,6 +341,7 @@ def qwen_option_for_model_id(
     *,
     settings: Settings | None = None,
 ) -> QwenChatModelOptionRow | None:
+    """Qwen option for model id。"""
     mid = (model_id or "").strip()
     if not mid:
         return None
@@ -365,6 +372,7 @@ def active_chat_model_label(
         return mid
 
     def _fallback_non_qwen() -> str:
+        """Internal helper: fallback non qwen."""
         if p == "openai":
             return s.openai_chat_model
         if p == "anthropic":

@@ -132,6 +132,7 @@ async def _build_ephemeral_agent_graph(
     effective_tool_calling: bool,
     llm_provider: str | None = None,
 ) -> CompiledStateGraph:
+    """按单次聊天请求参数构建不缓存的 ReAct 图（模型/后缀/联网开关可变）。"""
     mid = chat_model_override.strip()
     extra = suffix.strip()
 
@@ -270,6 +271,11 @@ async def build_agent_graph_for_chat_request(
     web_search_mode: Literal["auto", "force"] = "force",
     effective_tool_calling: bool,
 ) -> CompiledStateGraph:
+    """为单次聊天请求选择缓存图或临时图，并叠加 deep_think / 联网后缀。
+
+    命中条件：默认 provider、主模型、无动态后缀、工具挂载策略与缓存一致时
+    复用 ``build_agent_graph``；否则走 ``_build_ephemeral_agent_graph``。
+    """
     s = get_settings()
     lp_eff = (llm_provider_effective or "qwen").strip().lower()
     lp_settings = (s.llm_provider or "qwen").strip().lower()

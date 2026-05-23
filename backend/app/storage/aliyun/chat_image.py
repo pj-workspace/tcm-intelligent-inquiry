@@ -27,6 +27,7 @@ SUFFIX_BY_TYPE: dict[str, str] = {
 
 
 def normalize_content_type(raw: str | None) -> str | None:
+    """Normalize content type (``raw``)."""
     if not raw:
         return None
     return raw.split(";")[0].strip().lower()
@@ -46,6 +47,7 @@ def sniff_image_type(data: bytes) -> tuple[str | None, str]:
 
 
 def _resolve_ct_and_suffix(data: bytes, content_type_hint: str | None) -> tuple[str, str]:
+    """Internal helper: resolve ct and suffix."""
     ct = normalize_content_type(content_type_hint)
     if ct == "image/jpg":
         ct = "image/jpeg"

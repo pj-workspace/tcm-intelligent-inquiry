@@ -13,6 +13,7 @@ from app.chat.services.streaming.message_adapters import (
 
 
 def test_fake_pair_returns_aimessage_then_toolmessage():
+    """Test fake pair returns aimessage then toolmessage."""
     pair = _fake_mark_summary_history_pair("rec-123")
     assert len(pair) == 2
     ai, tool = pair
@@ -21,6 +22,7 @@ def test_fake_pair_returns_aimessage_then_toolmessage():
 
 
 def test_ai_message_carries_mark_summary_tool_call_with_no_args():
+    """Test ai message carries mark summary tool call with no args."""
     [ai, _tool] = _fake_mark_summary_history_pair("rec-xyz")
     assert ai.content == ""
     assert isinstance(ai.tool_calls, list) and len(ai.tool_calls) == 1
@@ -31,6 +33,7 @@ def test_ai_message_carries_mark_summary_tool_call_with_no_args():
 
 
 def test_tool_message_matches_ai_call_id():
+    """Test tool message matches ai call id."""
     [ai, tool] = _fake_mark_summary_history_pair("rec-abc")
     ai_call_id = ai.tool_calls[0]["id"]
     assert tool.tool_call_id == ai_call_id

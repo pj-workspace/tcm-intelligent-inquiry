@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 通用确认对话框：支持危险操作样式与 pending 禁用。
+ */
 "use client";
 
 import { useEffect } from "react";
@@ -19,6 +22,7 @@ export type ConfirmDialogProps = {
   danger?: boolean;
 };
 
+/** 模态确认框；Esc 关闭（pending 时忽略）。 */
 export function ConfirmDialog({
   open,
   title,

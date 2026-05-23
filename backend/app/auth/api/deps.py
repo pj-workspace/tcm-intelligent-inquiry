@@ -19,6 +19,7 @@ async def get_current_user_optional(
     cred: Annotated[HTTPAuthorizationCredentials | None, Depends(_security)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> UserRecord | None:
+    """Get current user optional。"""
     if cred is None or cred.scheme.lower() != "bearer":
         return None
     payload = decode_token(cred.credentials)
@@ -32,6 +33,7 @@ async def get_current_user_optional(
 async def get_current_user(
     user: Annotated[UserRecord | None, Depends(get_current_user_optional)],
 ) -> UserRecord:
+    """Get current user。"""
     if user is None:
         raise HTTPException(status_code=401, detail="未登录或 Token 无效")
     return user

@@ -15,6 +15,12 @@ CitationKind = Literal["knowledge", "web", "formula", "external"]
 
 
 class CitationSource(TypedDict, total=False):
+    """单条结构化引用来源，与前端 ``CitationSource`` 及 SSE ``sources`` 载荷对齐。
+
+    ``id`` 由 ``register_citation_source`` 按 kind 分配（K/W/F/E + 序号），
+    模型在最终答案中用 ``【K1】`` 等全角括号标记引用；前端据此渲染角标与来源面板。
+    """
+
     id: str
     kind: CitationKind
     title: str
@@ -33,6 +39,7 @@ _PREFIX_BY_KIND: dict[CitationKind, str] = {
 }
 
 
+# 请求级隔离：同一 async 任务内工具并发登记，stream_chat 在 tool-result / flush 时快照。
 _sources_ctx: ContextVar[list[CitationSource] | None] = ContextVar(
     "agent_citation_sources",
     default=None,
@@ -55,6 +62,7 @@ def citation_sources_snapshot() -> list[CitationSource]:
 
 
 def _next_source_id(kind: CitationKind) -> str:
+    """按 kind 前缀递增计数并生成分配 id（如 K1、W2）。"""
     counters = _counters_ctx.get()
     if counters is None:
         counters = {}
@@ -65,6 +73,7 @@ def _next_source_id(kind: CitationKind) -> str:
 
 
 def _clip(text: object, max_len: int) -> str:
+    """截断字符串并追加省略号，防止 SSE/DB 字段过大。"""
     s = str(text or "").strip()
     return s if len(s) <= max_len else s[: max_len - 1] + "…"
 
@@ -79,7 +88,23 @@ def register_citation_source(
     score: float | None = None,
     metadata: dict[str, Any] | None = None,
 ) -> CitationSource:
-    """登记一个来源并返回其结构化信息。"""
+    """登记一个来源并返回其结构化信息。
+
+    字段会截断以防 JSON 列/SSE 过大；``metadata`` 仅保留可 JSON 序列化的标量或
+    短字符串，避免工具内部对象泄漏到前端。
+
+    Args:
+        kind: 来源类别，决定 id 前缀（K/W/F/E）。
+        title: 展示标题；空则回退为「未命名来源」。
+        source: 可选副标题（书名、站点名等）。
+        url: 可选外链；知识库片段通常无 url。
+        snippet: 可选摘要，供 HoverCard / 来源面板展示。
+        score: 可选检索分数（向量/重排）。
+        metadata: 可选扩展键值；最多 20 项，值非 JSON 原生类型时转为截断字符串。
+
+    Returns:
+        已 append 到当前请求登记表的条目（含分配的 ``id``）。
+    """
     sources = _sources_ctx.get()
     if sources is None:
         sources = []
@@ -102,6 +127,7 @@ def register_citation_source(
         except (TypeError, ValueError):
             pass
     if metadata:
+        # 限制条目数与值类型：metadata 会进入 DB JSON 与 SSE，不可信任工具传入的任意对象。
         safe_meta: dict[str, Any] = {}
         for key, value in list(metadata.items())[:20]:
             if value is None:

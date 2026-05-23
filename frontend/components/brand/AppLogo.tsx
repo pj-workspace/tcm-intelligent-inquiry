@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 应用 Logo 图片组件（Next.js Image 封装）。
+ */
 import Image from "next/image";
 
 type AppLogoProps = {
@@ -7,6 +10,7 @@ type AppLogoProps = {
   priority?: boolean;
 };
 
+/** 渲染 `/tcm_logo.png` 品牌图标。 */
 export function AppLogo({ size = 32, className = "", priority = false }: AppLogoProps) {
   return (
     <Image

@@ -23,6 +23,7 @@ from app.core.deepseek_chat_options import primary_deepseek_chat_model_id
 
 
 def _delta_as_dict(delta: Any) -> dict[str, Any] | None:
+    """Internal helper: delta as dict."""
     if delta is None:
         return None
     if isinstance(delta, dict):
@@ -42,6 +43,7 @@ class DeepSeekChatOpenAI(ChatOpenAI):
         stop: list[str] | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
+        """Internal helper: _get_request_payload."""
         messages = self._convert_input(input_).to_messages()
         if stop is not None:
             kwargs["stop"] = stop
@@ -76,6 +78,7 @@ class DeepSeekChatOpenAI(ChatOpenAI):
         default_chunk_class: type,
         base_generation_info: dict | None,
     ) -> ChatGenerationChunk | None:
+        """Internal helper: _convert_chunk_to_generation_chunk."""
         gen = super()._convert_chunk_to_generation_chunk(
             chunk, default_chunk_class, base_generation_info
         )
@@ -106,6 +109,7 @@ def build_deepseek_chat(
     *,
     response_format_json_object: bool = False,
 ) -> ChatOpenAI:
+    """Build deepseek chat。"""
     s = get_settings()
     key = (s.deepseek_api_key or "").strip()
     if not key:

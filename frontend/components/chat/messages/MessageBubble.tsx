@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 用户/助手消息气泡路由：复制、朗读、追问与 citations 透传至 AssistantBubble。
+ */
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -39,6 +42,7 @@ interface MessageBubbleProps {
   messageId?: string;
 }
 
+/** 按 role 分发 UserBubble / AssistantBubble，并管理复制与 TTS 状态。 */
 export function MessageBubble({
   role,
   content,

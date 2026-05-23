@@ -6,11 +6,13 @@ from pydantic import BaseModel, Field
 
 
 class DocumentMetadata(BaseModel):
+    """Document Metadata."""
     source: str = Field(..., description="原始文件名或来源标识")
     chunk_count: int = Field(default=0, description="已索引分块数量")
 
 
 class KnowledgeBaseResponse(BaseModel):
+    """Knowledge Base Response data model."""
     id: str
     owner_id: str = Field(..., description="所属用户 ID")
     name: str
@@ -36,6 +38,7 @@ class KnowledgeBaseResponse(BaseModel):
 
 
 class KnowledgeBaseCreateRequest(BaseModel):
+    """Knowledge Base Create Request."""
     name: str = Field(..., min_length=1, description="知识库名称")
     description: str = Field(default="", description="知识库说明")
 
@@ -48,11 +51,13 @@ class KnowledgeBaseUpdateRequest(BaseModel):
 
 
 class KnowledgeBaseListResponse(BaseModel):
+    """Knowledge Base List Response data model."""
     knowledge_bases: list[KnowledgeBaseResponse]
     total: int
 
 
 class IngestResponse(BaseModel):
+    """Ingest Response data model."""
     kb_id: str
     filename: str
     chunk_count: int
@@ -60,6 +65,7 @@ class IngestResponse(BaseModel):
 
 
 class IngestJobCreateResponse(BaseModel):
+    """Ingest Job Create Response data model."""
     job_id: str
     status: str = "pending"
     celery_task_id: str | None = Field(
@@ -69,6 +75,7 @@ class IngestJobCreateResponse(BaseModel):
 
 
 class IngestJobStatusResponse(BaseModel):
+    """Ingest Job Status Response data model."""
     job_id: str
     status: str
     phase: str | None = Field(
@@ -86,11 +93,13 @@ class IngestJobStatusResponse(BaseModel):
 
 
 class SearchRequest(BaseModel):
+    """Search Request."""
     query: str = Field(..., min_length=1, description="检索问题")
     top_k: int = Field(default=5, ge=1, le=20, description="返回片段数量")
 
 
 class SearchResult(BaseModel):
+    """Search Result."""
     content: str
     source: str
     score: float = Field(
@@ -100,6 +109,7 @@ class SearchResult(BaseModel):
 
 
 class SearchResponse(BaseModel):
+    """Search Response data model."""
     results: list[SearchResult]
     query: str
 
@@ -116,5 +126,6 @@ class KnowledgeDocumentResponse(BaseModel):
 
 
 class KnowledgeDocumentListResponse(BaseModel):
+    """Knowledge Document List Response data model."""
     documents: list[KnowledgeDocumentResponse]
     total: int

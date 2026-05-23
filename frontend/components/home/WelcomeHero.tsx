@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 空会话欢迎区：随机标题与打字机轮播句子（客户端挂载后启动，避免 hydration 不一致）。
+ */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -120,10 +123,12 @@ const GAP_BEFORE_NEXT_TYPING_MS = 420;
 /** 每句开始打字前的小延迟 */
 const SENTENCE_START_DELAY_MS = 380;
 
+/** 随机选取一组欢迎文案变体。 */
 function pickRandomVariant(): WelcomeVariant {
   return WELCOME_VARIANTS[Math.floor(Math.random() * WELCOME_VARIANTS.length)]!;
 }
 
+/** 按标点与换行调节打字间隔，模拟自然阅读节奏。 */
 function charDelayMs(ch: string, prev: string): number {
   if (ch === "\n") return 180;
   if (/[，。；：？！、]/.test(ch)) return 140;
@@ -134,6 +139,7 @@ function charDelayMs(ch: string, prev: string): number {
 
 type LinePhase = "typing" | "reading" | "fading";
 
+/** 新对话空态欢迎 Hero：标题固定、副句打字 → 停留 → 淡出循环。 */
 export function WelcomeHero() {
   const [variant, setVariant] = useState<WelcomeVariant | null>(null);
   const [sentenceIndex, setSentenceIndex] = useState(0);

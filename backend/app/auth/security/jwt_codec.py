@@ -9,6 +9,7 @@ from app.core.config import get_settings
 
 
 def create_access_token(*, subject: str, extra: dict[str, Any] | None = None) -> tuple[str, int]:
+    """Create access token."""
     s = get_settings()
     expire_delta = timedelta(minutes=s.jwt_expire_minutes)
     now = datetime.now(tz=UTC)
@@ -25,6 +26,7 @@ def create_access_token(*, subject: str, extra: dict[str, Any] | None = None) ->
 
 
 def decode_token(token: str) -> dict[str, Any] | None:
+    """Decode token (``token``)."""
     s = get_settings()
     try:
         return jwt.decode(token, s.jwt_secret, algorithms=["HS256"])

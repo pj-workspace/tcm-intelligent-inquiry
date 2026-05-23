@@ -18,6 +18,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    """Apply schema changes."""
     op.add_column(
         "knowledge_bases",
         sa.Column("owner_id", sa.String(length=36), nullable=True),
@@ -49,6 +50,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Revert schema changes."""
     op.drop_index("ix_knowledge_bases_owner_id", table_name="knowledge_bases")
     op.drop_constraint("fk_knowledge_bases_owner_id_users", "knowledge_bases", type_="foreignkey")
     op.drop_column("knowledge_bases", "owner_id")

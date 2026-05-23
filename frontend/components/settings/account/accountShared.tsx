@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 账户 Tab 共享 UI：OAuth 图标、头像、密码校验与区块壳。
+ */
 "use client";
 
 import type { ReactNode } from "react";
@@ -11,6 +14,7 @@ export type OAuthBinding = {
   created_at: string | null;
 };
 
+/** Gitee OAuth 品牌 SVG。 */
 export function GiteeLogo({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} xmlns="http://www.w3.org/2000/svg" aria-hidden>
@@ -22,6 +26,7 @@ export function GiteeLogo({ className }: { className?: string }) {
   );
 }
 
+/** GitHub OAuth 品牌 SVG。 */
 export function GitHubLogo({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} xmlns="http://www.w3.org/2000/svg" aria-hidden>
@@ -33,6 +38,7 @@ export function GitHubLogo({ className }: { className?: string }) {
   );
 }
 
+/** 第三方账号头像或首字母占位。 */
 export function ProviderAvatar({
   avatarUrl,
   provider,
@@ -64,11 +70,13 @@ export function ProviderAvatar({
   return <Shield className="h-7 w-7 shrink-0 text-stone-500" aria-hidden />;
 }
 
+/** 从显示名取最多两字符首字母。 */
 export function initials(name: string) {
   const t = name.trim().slice(0, 2);
   return (t || "U").toUpperCase();
 }
 
+/** OAuth provider slug 转中文展示名。 */
 export function providerDisplayName(provider: string) {
   const p = provider.toLowerCase();
   if (p === "github") return "GitHub";
@@ -77,6 +85,7 @@ export function providerDisplayName(provider: string) {
 }
 
 /** 第一步：仅校验新旧密码字段（不涉及邮箱验证码）。 */
+/** 修改密码：旧密码/新密码字段级校验文案。 */
 export function getChangePwCredentialError(
   oldP: string,
   newP: string,
@@ -91,6 +100,7 @@ export function getChangePwCredentialError(
 }
 
 /** 第二步提交：校验验证码 + 与第一步相同的密码字段。 */
+/** 修改密码：表单提交前整体验证。 */
 export function getChangePwFormError(
   cp: string,
   oldP: string,
@@ -108,6 +118,7 @@ export function getChangePwFormError(
   return null;
 }
 
+/** 账户设置区块统一标题壳（图标 + 标题 + 内容）。 */
 export function SectionShell({
   title,
   description,

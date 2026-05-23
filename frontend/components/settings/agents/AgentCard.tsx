@@ -1,3 +1,6 @@
+/**
+ * @fileoverview Agent 卡片：展示配置摘要与编辑/克隆/删除/设默认操作。
+ */
 "use client";
 
 import { useState } from "react";
@@ -33,6 +36,7 @@ const CATEGORY_DOT: Record<string, string> = {
   mcp: "bg-violet-400",
 };
 
+/** 单个 Agent 配置卡片。 */
 export function AgentCard({
   agent,
   isDefault,

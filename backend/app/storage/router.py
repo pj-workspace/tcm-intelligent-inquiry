@@ -29,6 +29,7 @@ async def upload_oss_chat_image(
     user: Annotated[UserRecord, Depends(get_current_user)],
     file: Annotated[UploadFile, File(description="图片文件")],
 ) -> OssChatImageUploadResponse:
+    """Upload oss chat image。"""
     s = get_settings()
     if not oss_storage_ready(s):
         raise HTTPException(

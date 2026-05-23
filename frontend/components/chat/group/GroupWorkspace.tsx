@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 分组工作台主区：选中侧栏分组且未打开具体会话时的 landing 视图。
+ */
 "use client";
 
 import { Folder, FolderOpen } from "lucide-react";

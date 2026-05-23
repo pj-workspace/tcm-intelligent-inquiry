@@ -1,3 +1,4 @@
+"""`mcp` 子包导出与命名空间。"""
 # mcp: Model Context Protocol 集成域
 #
 # 子包职责：

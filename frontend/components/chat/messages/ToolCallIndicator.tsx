@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 工具调用进行中/成功/失败的状态条（SSE tool_call 事件的可视反馈）。
+ */
 "use client";
 
 import { motion } from "framer-motion";
@@ -10,6 +13,7 @@ interface ToolCallIndicatorProps {
   args?: unknown;
 }
 
+/** 展示单次工具调用的运行态与结果态（running 带扫光动画）。 */
 export function ToolCallIndicator({ toolName, status }: ToolCallIndicatorProps) {
   const isRunning = status === "running";
 

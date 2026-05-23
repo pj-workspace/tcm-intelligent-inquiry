@@ -14,6 +14,7 @@ from app.agent.tools.timeout_wrapper import (
 
 
 def _make_tool(coro):
+    """Test make tool."""
     return StructuredTool.from_function(
         name="slow_tool",
         description="测试用慢工具",
@@ -23,7 +24,9 @@ def _make_tool(coro):
 
 @pytest.mark.asyncio
 async def test_tool_completes_within_timeout_returns_original_result():
+    """Test tool completes within timeout returns original result."""
     async def fast(x: int = 1) -> str:
+        """Test fast."""
         await asyncio.sleep(0.01)
         return f"ok {x}"
 
@@ -34,7 +37,9 @@ async def test_tool_completes_within_timeout_returns_original_result():
 
 @pytest.mark.asyncio
 async def test_tool_exceeds_timeout_returns_friendly_message_not_exception():
+    """Test tool exceeds timeout returns friendly message not exception."""
     async def too_slow(**_: object) -> str:
+        """Test too slow."""
         await asyncio.sleep(5.0)
         return "won't get here"
 
@@ -46,11 +51,14 @@ async def test_tool_exceeds_timeout_returns_friendly_message_not_exception():
 
 @pytest.mark.asyncio
 async def test_default_timeout_value_is_30s():
+    """Test default timeout value is 30s."""
     assert DEFAULT_TOOL_TIMEOUT_SECONDS == 30.0
 
 
 def test_wrapper_is_idempotent_does_not_double_wrap():
+    """Test wrapper is idempotent does not double wrap."""
     async def quick(**_: object) -> str:
+        """Test quick."""
         return "ok"
 
     t = _make_tool(quick)
@@ -62,6 +70,7 @@ def test_wrapper_is_idempotent_does_not_double_wrap():
 
 
 def test_non_async_tool_left_untouched():
+    """Test non async tool left untouched."""
     sync_tool = StructuredTool.from_function(
         name="sync_only",
         description="同步工具，不应被包装",

@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 对话页 Agent 下拉目录：内存缓存与跨页变更事件同步。
+ */
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -10,11 +13,13 @@ let cachedForToken: string | null = null;
 /** 设置页增删改 Agent 后派发，对话页下拉等会重新拉列表 */
 export const CHAT_AGENTS_CATALOG_CHANGED_EVENT = "tcm-chat-agents-catalog-changed";
 
+/** 清空 Agent 目录内存缓存（token 变更或设置页变更后）。 */
 export function invalidateChatAgentsCatalog(): void {
   cachedAgents = null;
   cachedForToken = null;
 }
 
+/** 使缓存失效并派发 `CHAT_AGENTS_CATALOG_CHANGED_EVENT` 通知订阅方刷新。 */
 export function notifyChatAgentsCatalogChanged(): void {
   invalidateChatAgentsCatalog();
   if (typeof window !== "undefined") {
@@ -22,6 +27,7 @@ export function notifyChatAgentsCatalogChanged(): void {
   }
 }
 
+/** 拉取并缓存当前用户的 Agent 列表，监听设置页变更事件。 */
 export function useChatAgentsCatalog(token: string | null) {
   const [agents, setAgents] = useState<Agent[]>(() =>
     token && cachedForToken === token && cachedAgents ? cachedAgents : [],

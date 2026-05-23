@@ -35,6 +35,7 @@ logger = get_logger(__name__)
 
 
 def _doc_record_to_response(row: KnowledgeDocumentRecord) -> KnowledgeDocumentResponse:
+    """Internal helper: doc record to response."""
     return KnowledgeDocumentResponse(
         id=row.id,
         kb_id=row.kb_id,
@@ -66,11 +67,14 @@ def _current_embedding_info() -> tuple[str, str, int]:
 
 
 class KnowledgeService:
+    """Knowledge Service."""
     def __init__(self, session: AsyncSession):
+        """Initialize instance."""
         self._session = session
 
     # ── 内部工具：组装响应 ────────────────────────────────────────────────────
     async def _count_documents(self, kb_id: str) -> int:
+        """Internal helper: count documents."""
         stmt = select(func.count(KnowledgeDocumentRecord.id)).where(
             KnowledgeDocumentRecord.kb_id == kb_id
         )
@@ -83,6 +87,7 @@ class KnowledgeService:
         document_count: int,
         total_chunks: int = 0,
     ) -> KnowledgeBaseResponse:
+        """Internal helper: _build_response."""
         return KnowledgeBaseResponse(
             id=row.id,
             owner_id=row.owner_id,
@@ -97,6 +102,7 @@ class KnowledgeService:
         )
 
     async def _sum_chunks(self, kb_id: str) -> int:
+        """Internal helper: sum chunks."""
         stmt = select(func.sum(KnowledgeDocumentRecord.chunk_count)).where(
             KnowledgeDocumentRecord.kb_id == kb_id
         )
@@ -104,12 +110,14 @@ class KnowledgeService:
         return int(result.scalar_one() or 0)
 
     async def _row_to_response(self, row: KnowledgeBaseRecord) -> KnowledgeBaseResponse:
+        """Internal helper: row to response."""
         doc_count = await self._count_documents(row.id)
         total_chunks = await self._sum_chunks(row.id)
         return self._build_response(row, doc_count, total_chunks)
 
     # ── KB CRUD ───────────────────────────────────────────────────────────────
     async def list_kbs(self, owner_id: str) -> KnowledgeBaseListResponse:
+        """List kbs (``owner_id``)."""
         stmt = (
             select(KnowledgeBaseRecord)
             .where(KnowledgeBaseRecord.owner_id == owner_id)
@@ -146,6 +154,7 @@ class KnowledgeService:
         )
 
     async def get_kb(self, kb_id: str, owner_id: str) -> KnowledgeBaseResponse:
+        """Get kb (``kb_id``, ``owner_id``)."""
         row = await self._session.get(KnowledgeBaseRecord, kb_id)
         if row is None or row.owner_id != owner_id:
             raise NotFoundError(f"知识库 '{kb_id}' 不存在")
@@ -154,6 +163,7 @@ class KnowledgeService:
     async def create_kb(
         self, req: KnowledgeBaseCreateRequest, owner_id: str
     ) -> KnowledgeBaseResponse:
+        """Create kb。"""
         kb_id = str(uuid.uuid4())
         row = KnowledgeBaseRecord(
             id=kb_id,
@@ -173,6 +183,7 @@ class KnowledgeService:
         req: KnowledgeBaseUpdateRequest,
         owner_id: str,
     ) -> KnowledgeBaseResponse:
+        """Update kb。"""
         row = await self._session.get(KnowledgeBaseRecord, kb_id)
         if row is None or row.owner_id != owner_id:
             raise NotFoundError(f"知识库 '{kb_id}' 不存在")
@@ -185,6 +196,7 @@ class KnowledgeService:
         return await self._row_to_response(row)
 
     async def delete_kb(self, kb_id: str, owner_id: str) -> None:
+        """Delete kb (``kb_id``, ``owner_id``)."""
         row = await self._session.get(KnowledgeBaseRecord, kb_id)
         if row is None or row.owner_id != owner_id:
             raise NotFoundError(f"知识库 '{kb_id}' 不存在")
@@ -197,6 +209,7 @@ class KnowledgeService:
     async def list_documents(
         self, kb_id: str, owner_id: str
     ) -> KnowledgeDocumentListResponse:
+        """List documents。"""
         kb = await self._session.get(KnowledgeBaseRecord, kb_id)
         if kb is None or kb.owner_id != owner_id:
             raise NotFoundError(f"知识库 '{kb_id}' 不存在")
@@ -217,6 +230,7 @@ class KnowledgeService:
         doc_id: str,
         owner_id: str,
     ) -> None:
+        """Delete document。"""
         kb = await self._session.get(KnowledgeBaseRecord, kb_id)
         if kb is None or kb.owner_id != owner_id:
             raise NotFoundError(f"知识库 '{kb_id}' 不存在")
@@ -240,6 +254,7 @@ class KnowledgeService:
         owner_id: str,
         progress_cb: Callable[[str, int], Awaitable[None]] | None = None,
     ) -> IngestResponse:
+        """Ingest file。"""
         row = await self._session.get(KnowledgeBaseRecord, kb_id)
         if row is None or row.owner_id != owner_id:
             raise NotFoundError(f"知识库 '{kb_id}' 不存在")
@@ -317,6 +332,7 @@ class KnowledgeService:
             await progress_cb("embedding", 20)
 
         async def _emb_progress(pct: int) -> None:
+            """Internal helper: emb progress."""
             if progress_cb is not None:
                 # 将嵌入阶段 0-100 映射到整体进度 20-85
                 mapped = 20 + int(pct * 0.65)
@@ -352,6 +368,7 @@ class KnowledgeService:
     async def search(
         self, kb_id: str, req: SearchRequest, owner_id: str
     ) -> SearchResponse:
+        """Search。"""
         row = await self._session.get(KnowledgeBaseRecord, kb_id)
         if row is None or row.owner_id != owner_id:
             raise NotFoundError(f"知识库 '{kb_id}' 不存在")

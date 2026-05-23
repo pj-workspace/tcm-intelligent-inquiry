@@ -18,8 +18,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    """Apply schema changes."""
     op.execute("ALTER TABLE messages ADD COLUMN IF NOT EXISTS citations JSON")
 
 
 def downgrade() -> None:
+    """Revert schema changes."""
     op.execute("ALTER TABLE messages DROP COLUMN IF EXISTS citations")

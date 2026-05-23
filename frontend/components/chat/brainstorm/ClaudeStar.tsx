@@ -1,7 +1,11 @@
+/**
+ * @fileoverview Brainstorm 等待态旋转八角星图标（对称图形需转 360° 才可见连续旋转）。
+ */
 "use client";
 
 import { motion } from "framer-motion";
 
+/** 流式 trace 面板左侧旋转星标。 */
 export function ClaudeStar() {
   return (
     <motion.div

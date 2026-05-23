@@ -6,6 +6,7 @@ from app.mcp.client import _format_call_tool_result
 
 
 def test_format_call_tool_text():
+    """Test format call tool text."""
     r = types.CallToolResult(
         content=[types.TextContent(type="text", text="hello")],
         isError=False,
@@ -14,6 +15,7 @@ def test_format_call_tool_text():
 
 
 def test_format_call_tool_error_flag():
+    """Test format call tool error flag."""
     r = types.CallToolResult(
         content=[types.TextContent(type="text", text="bad")],
         isError=True,

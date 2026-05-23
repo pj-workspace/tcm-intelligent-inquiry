@@ -7,6 +7,7 @@ from app.mcp.policy.stdio_policy import normalize_stdio_config, parse_cursor_mcp
 
 
 def test_normalize_stdio_config_ok():
+    """Test normalize stdio config ok."""
     cfg = normalize_stdio_config(
         {
             "command": "docker",
@@ -20,6 +21,7 @@ def test_normalize_stdio_config_ok():
 
 
 def test_parse_cursor_http_entry():
+    """Test parse cursor http entry."""
     name, transport, url, stdio, headers = parse_cursor_mcp_entry(
         "remote",
         {"url": "https://example.com/mcp", "headers": {"Authorization": "Bearer x"}},
@@ -32,6 +34,7 @@ def test_parse_cursor_http_entry():
 
 
 def test_parse_cursor_stdio_entry():
+    """Test parse cursor stdio entry."""
     name, transport, url, stdio, _ = parse_cursor_mcp_entry(
         "paper-search-mcp",
         {
@@ -48,5 +51,6 @@ def test_parse_cursor_stdio_entry():
 
 
 def test_parse_cursor_missing_both_raises():
+    """Test parse cursor missing both raises."""
     with pytest.raises(ValidationError):
         parse_cursor_mcp_entry("bad", {"description": "x"})

@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 侧栏批量模式工具条与行内多选框。
+ */
 "use client";
 
 import { Check, Loader2, Trash2 } from "lucide-react";
@@ -12,6 +15,7 @@ type SidebarBatchBarProps = {
   bulkDeletePending?: boolean;
 };
 
+/** 批量模式顶栏：全选、清空与删除所选。 */
 export function SidebarBatchBar({
   totalCount,
   selectedCount,

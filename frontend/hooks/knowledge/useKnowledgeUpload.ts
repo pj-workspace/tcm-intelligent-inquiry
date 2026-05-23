@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 知识库异步入库：XHR 上传、job 轮询与失败重试。
+ */
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -12,6 +15,7 @@ type UseKnowledgeUploadDeps = {
   setError: (msg: string | null) => void;
 };
 
+/** 管理文件选择与 ingest job 进度轮询。 */
 export function useKnowledgeUpload(
   token: string | null,
   { fetchKbs, invalidateDocsForKb, setError }: UseKnowledgeUploadDeps

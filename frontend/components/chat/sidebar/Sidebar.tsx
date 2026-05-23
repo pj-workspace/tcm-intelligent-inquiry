@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 对话侧栏：分组筛选、会话列表、批量管理与搜索入口。
+ */
 "use client";
 
 import Link from "next/link";
@@ -76,6 +79,7 @@ type SidebarProps = {
   conversationsLoading?: boolean;
 };
 
+/** 左侧会话侧栏：文件夹、置顶、批量选择与 ⋮ 菜单。 */
 export function Sidebar({
   folders,
   conversationsFull,

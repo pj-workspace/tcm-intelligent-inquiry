@@ -33,6 +33,7 @@ REDIS_TTL = 600
 
 
 def _redirect_base() -> str:
+    """Internal helper: redirect base."""
     u = (get_settings().frontend_url or "http://localhost:3000").rstrip("/")
     return u
 
@@ -43,15 +44,18 @@ def _login_oauth_url(query: str) -> str:
 
 
 def _random_password_hash() -> str:
+    """Internal helper: random password hash."""
     return hash_password(secrets.token_hex(24))
 
 
 def _sanitize_username_base(raw: str | None) -> str:
+    """Internal helper: sanitize username base."""
     s = re.sub(r"[^a-zA-Z0-9_\u4e00-\u9fff]", "_", (raw or "user").strip())[:48]
     return s or "user"
 
 
 async def _unique_username(session: AsyncSession, base: str) -> str:
+    """Internal helper: unique username."""
     b = _sanitize_username_base(base)
     for _ in range(12):
         cand = b if _ == 0 else f"{b}_{secrets.token_hex(2)}"
@@ -62,6 +66,7 @@ async def _unique_username(session: AsyncSession, base: str) -> str:
 
 
 async def build_authorize_url(provider_name: str) -> str:
+    """Build authorize url (``provider_name``)."""
     prov = get_provider(provider_name)
     state = secrets.token_urlsafe(24)
     r = get_redis()
@@ -71,6 +76,7 @@ async def build_authorize_url(provider_name: str) -> str:
 
 
 def _callback_uri(provider: str) -> str:
+    """Internal helper: callback uri."""
     s = get_settings()
     if provider == "github":
         return (s.github_redirect_uri or "").strip()
@@ -107,6 +113,7 @@ async def handle_oauth_callback(
 
 
 async def _after_profile(session: AsyncSession, provider: str, profile: OAuthUserProfile) -> str:
+    """Internal helper: after profile."""
     ext_id = profile.external_id
     rbind = await session.execute(
         select(UserOauthAccount).where(
@@ -166,6 +173,7 @@ async def _attach_account(
     provider: str,
     profile: OAuthUserProfile,
 ) -> None:
+    """Internal helper: _attach_account."""
     row = UserOauthAccount(
         id=str(uuid.uuid4()),
         provider=provider,
@@ -180,6 +188,7 @@ async def _attach_account(
 
 
 async def _login_redirect_for_user(session: AsyncSession, user_id: str) -> str:
+    """Internal helper: login redirect for user."""
     u = await session.get(UserRecord, user_id)
     if not u:
         raise ValidationError("用户不存在")
@@ -189,6 +198,7 @@ async def _login_redirect_for_user(session: AsyncSession, user_id: str) -> str:
 
 
 async def exchange_login_code(session: AsyncSession, login_code: str) -> TokenResponse:
+    """Exchange login code (``session``, ``login_code``)."""
     if not login_code or not login_code.strip():
         raise UnauthorizedError("缺少 code")
     key = f"{LOGIN_PREFIX}{login_code.strip()}"
@@ -216,6 +226,7 @@ async def complete_third_flow(
     password: str | None,
     nickname: str | None,
 ) -> dict:
+    """Complete third flow。"""
     r = get_redis()
     raw = await r.get(f"{FLOW_PREFIX}{flow_id.strip()}")
     if not raw:
@@ -307,6 +318,7 @@ async def complete_third_flow(
 
 
 async def _token_for_user_id(session: AsyncSession, user_id: str) -> tuple[str, int]:
+    """Internal helper: token for user id."""
     user = await session.get(UserRecord, user_id)
     if not user:
         raise ValidationError("用户不存在")
@@ -314,6 +326,7 @@ async def _token_for_user_id(session: AsyncSession, user_id: str) -> tuple[str, 
 
 
 async def list_bindings(session: AsyncSession, user_id: str) -> list[dict]:
+    """List bindings (``session``, ``user_id``)."""
     r = await session.execute(
         select(UserOauthAccount).where(UserOauthAccount.user_id == user_id)
     )
@@ -330,6 +343,7 @@ async def list_bindings(session: AsyncSession, user_id: str) -> list[dict]:
 
 
 async def send_unbind_code(user_id: str, email: str | None, provider: str) -> None:
+    """Send unbind code (``user_id``, ``email``, ``provider``)."""
     if not email or not email.strip():
         raise ValidationError("当前账号未绑定邮箱，无法进行解绑验证")
     from app.auth.services.mail_service import ensure_send_unbind_code
@@ -340,6 +354,7 @@ async def send_unbind_code(user_id: str, email: str | None, provider: str) -> No
 async def verify_unbind(
     session: AsyncSession, user_id: str, email: str | None, provider: str, code: str
 ) -> None:
+    """Verify unbind。"""
     if not email or not email.strip():
         raise ValidationError("当前账号未绑定邮箱，无法进行解绑验证")
     from app.auth.services.mail_service import pop_unbind_code_if_match

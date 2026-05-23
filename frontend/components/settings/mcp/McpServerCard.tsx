@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 单个 MCP 服务器卡片：端点摘要、刷新工具列表与删除。
+ */
 "use client";
 
 import { RefreshCw, Trash2, ChevronDown, Plug, Terminal } from "lucide-react";
@@ -12,6 +15,7 @@ interface McpServerCardProps {
   onToggleTools: (id: string) => void;
 }
 
+/** 格式化 MCP 端点展示（stdio 命令或 URL）。 */
 function endpointLabel(server: McpServer): string {
   if (server.transport === "stdio" && server.stdio) {
     const args =
@@ -21,6 +25,7 @@ function endpointLabel(server: McpServer): string {
   return server.url ?? "—";
 }
 
+/** MCP 服务器列表项卡片。 */
 export function McpServerCard({
   server,
   isRefreshing,

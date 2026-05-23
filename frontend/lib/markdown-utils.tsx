@@ -1,3 +1,7 @@
+/**
+ * @fileoverview 助手 Markdown 预处理、引用角标注入、PDF 导出与 GFM 表格样式。
+ */
+
 import type { Components } from "react-markdown";
 import DOMPurify from "dompurify";
 import { marked } from "marked";
@@ -7,6 +11,7 @@ marked.use({
   breaks: false,
 });
 
+/** HTML 特殊字符转义，供 PDF 导出 fallback 使用。 */
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -38,12 +43,18 @@ function normalizeGfmPipes(md: string): string {
   return md.replace(/\uFF5C/g, "|");
 }
 
+/** 预处理助手 Markdown：修复列表与表格分隔符后再交给 remark-gfm。 */
 export function preprocessAssistantMarkdown(md: string): string {
   return mergeOrphanOrderedListMarkers(normalizeGfmPipes(md));
 }
 
+/** 模型输出的全角括号引用标记；与后端 prompt ``【K1】`` 及 CitationSource.id 一致。 */
 const CITATION_TOKEN_RE = /【([KWF]\d{1,3})】/g;
 
+/**
+ * 将 ``【K1】`` 转为 ``[K1](citation:K1)``，供 ReactMarkdown 自定义 ``a`` 组件渲染角标。
+ * 使用 ``citation:`` 伪协议以绕过 defaultUrlTransform 对外链的 sanitization。
+ */
 export function injectCitationMarkdownLinks(md: string): string {
   return md.replace(CITATION_TOKEN_RE, (_m, id: string) => {
     return `[${id}](citation:${id})`;
@@ -130,6 +141,7 @@ function markdownToSafePdfHtml(markdown: string): string {
   }
 }
 
+/** 打开新窗口并将助手 Markdown 渲染为可打印 PDF HTML。 */
 export function exportAssistantAsPdf(title: string, markdown: string) {
   const bodyHtml = markdownToSafePdfHtml(markdown);
   const w = window.open("", "_blank");

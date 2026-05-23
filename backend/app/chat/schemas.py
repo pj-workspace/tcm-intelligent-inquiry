@@ -1,3 +1,9 @@
+"""聊天 HTTP 请求/响应 Pydantic 模型。
+
+与 ``MessageRecord`` 持久化字段对应；``MessageItem.citations`` 仅 assistant 角色携带
+本轮工具登记的结构化来源（见 ``app.agent.tools._internal.citations``）。
+"""
+
 from datetime import datetime
 from typing import Literal, Self
 
@@ -5,15 +11,18 @@ from pydantic import BaseModel, Field, model_validator
 
 
 class ChatMessage(BaseModel):
+    """Chat Message."""
     role: Literal["user", "assistant"]
     content: str = Field(..., min_length=1)
 
 
 class ConversationTitleUpdate(BaseModel):
+    """Conversation Title Update."""
     title: str = Field(..., min_length=1, max_length=512)
 
 
 class ChatRequest(BaseModel):
+    """Chat Request."""
     message: str = Field(default="", description="本轮用户输入；可与图片 URL 同时使用")
     history: list[ChatMessage] = Field(
         default_factory=list,
@@ -85,6 +94,7 @@ class ChatRequest(BaseModel):
 
     @model_validator(mode="after")
     def _validate_message_and_images(self) -> Self:
+        """Internal helper: validate message and images."""
         msg = self.message.strip()
         cleaned: list[str] = []
         for u in self.image_urls:
@@ -108,6 +118,7 @@ class ChatRequest(BaseModel):
 
 
 class ConversationItem(BaseModel):
+    """Conversation Item."""
     id: str
     title: str
     agent_id: str | None = None
@@ -120,6 +131,7 @@ class ConversationItem(BaseModel):
 
 
 class ConversationGroupItem(BaseModel):
+    """Conversation Group Item."""
     id: str
     name: str
     sort_order: int
@@ -127,18 +139,22 @@ class ConversationGroupItem(BaseModel):
 
 
 class ConversationGroupCreate(BaseModel):
+    """Conversation Group Create."""
     name: str = Field(..., min_length=1, max_length=128)
 
 
 class ConversationGroupRename(BaseModel):
+    """Conversation Group Rename."""
     name: str = Field(..., min_length=1, max_length=128)
 
 
 class ConversationGroupAssign(BaseModel):
+    """Conversation Group Assign."""
     group_id: str | None = Field(None, description="不传或 null 表示移出分组")
 
 
 class MessageItem(BaseModel):
+    """Message Item."""
     id: str
     role: str
     content: str
@@ -185,10 +201,12 @@ class FollowUpSuggestionsRequest(BaseModel):
 
 
 class FollowUpSuggestionsResponse(BaseModel):
+    """Follow Up Suggestions Response data model."""
     suggestions: list[str] = Field(default_factory=list, description="最多 3 条，每条 ≤80 字")
 
 
 class AttachmentSuggestionItem(BaseModel):
+    """Attachment Suggestion Item."""
     label: str = Field(..., description="按钮短标题")
     prompt: str = Field(..., description="点击后填入/发送的完整话术")
 
@@ -212,6 +230,7 @@ class AttachmentSuggestionsRequest(BaseModel):
 
     @model_validator(mode="after")
     def _validate_urls(self) -> Self:
+        """Internal helper: validate urls."""
         cleaned: list[str] = []
         for u in self.image_urls:
             if not isinstance(u, str):
@@ -233,4 +252,5 @@ class AttachmentSuggestionsRequest(BaseModel):
 
 
 class AttachmentSuggestionsResponse(BaseModel):
+    """Attachment Suggestions Response data model."""
     items: list[AttachmentSuggestionItem] = Field(default_factory=list)

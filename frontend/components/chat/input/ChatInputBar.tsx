@@ -1,3 +1,6 @@
+/**
+ * @fileoverview 聊天输入栏：多行文本、模型/Agent 选择、附件、快捷提示与发送控制。
+ */
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
@@ -171,6 +174,7 @@ const QUICK_PROMPT_POOL: QuickPromptItem[] = [
   },
 ];
 
+/** Fisher–Yates 洗牌后取前 N 条快捷提示。 */
 function pickRandomPrompts(pool: QuickPromptItem[], count: number): QuickPromptItem[] {
   const copy = [...pool];
   for (let i = copy.length - 1; i > 0; i--) {
@@ -239,6 +243,7 @@ type ChatInputBarProps = {
   agentsLoading?: boolean;
 };
 
+/** 底部输入区：文本、附件、模型/Agent、深度思考/联网与发送/停止。 */
 export function ChatInputBar({
   input,
   hasStarted,

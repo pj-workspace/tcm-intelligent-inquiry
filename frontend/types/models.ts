@@ -1,5 +1,8 @@
-/** GET /api/chat/model-options：全厂商分组目录（含 capabilities 与说明文案） */
+/**
+ * @fileoverview 聊天模型目录 API 类型（GET /api/chat/model-options）。
+ */
 
+/** 单模型的能力与输入模态描述。 */
 export type ModelCapabilities = {
   input?: string[];
   supports_tool_calling?: boolean;
@@ -9,6 +12,7 @@ export type ModelCapabilities = {
   [key: string]: unknown;
 };
 
+/** 目录中的单个可选模型。 */
 export type CatalogModelOption = {
   id: string;
   /** 列表简称（不含厂商前缀） */
@@ -25,6 +29,7 @@ export type CatalogModelOption = {
   context_window_hint?: string | null;
 };
 
+/** 按厂商分组的模型列表与配置状态。 */
 export type ChatProviderGroup = {
   id: string;
   label: string;
@@ -33,6 +38,7 @@ export type ChatProviderGroup = {
   models: CatalogModelOption[];
 };
 
+/** GET /api/chat/model-options 完整响应。 */
 export type ChatModelCatalogResponse = {
   default_llm_provider: string;
   providers: ChatProviderGroup[];
