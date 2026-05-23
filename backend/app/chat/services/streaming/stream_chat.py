@@ -118,6 +118,20 @@ async def _persist_interrupt_mark(conv_id: str) -> None:
         await session.commit()
 
 
+async def _persist_summary_mark(conv_id: str) -> None:
+    """写一条 role=summary-mark 的零内容标记记录。"""
+    async with async_session_factory() as session:
+        session.add(
+            MessageRecord(
+                id=str(uuid.uuid4()),
+                conversation_id=conv_id,
+                role="summary-mark",
+                content="",
+            )
+        )
+        await session.commit()
+
+
 async def _persist_pending_tools_as_aborted(
     conv_id: str,
     pending_by_run: dict[str, dict[str, Any]],
@@ -482,6 +496,27 @@ async def stream_chat(
         flush_thinking_fn = flush_thinking_segment
         flush_assistant_fn = flush_assistant_segment
 
+        async def enter_summary_phase(source: str) -> bool:
+            """进入最终答案阶段；返回 True 表示本次真的触发了 summary-start。"""
+            nonlocal in_summary_phase
+            if in_summary_phase:
+                return False
+            await flush_thinking_segment()
+            # 信号前的 assistant 文本是真正的"过渡话术"，按 interim 入库。
+            await flush_assistant_segment(interim=True)
+            in_summary_phase = True
+            await _persist_summary_mark(conv_id)
+            logger.info("%s → summary-start", source)
+            if chat_trace:
+                logger.info(
+                    "\n%s",
+                    format_tool_event_raw(
+                        f"{source}（发 summary-start）",
+                        {"name": MARK_SUMMARY_TOOL_NAME},
+                    ),
+                )
+            return True
+
         async for event in graph.astream_events(
             {"messages": lc_messages},
             version="v2",
@@ -530,7 +565,13 @@ async def stream_chat(
                             continue
                         streamed = True
                         if kind == "text":
-                            await flush_thinking_segment()
+                            if resolved.effective_deep_think and not in_summary_phase:
+                                # 兜底：模型忘记调用 mark_summary 却已经开始输出可见文本。
+                                # deep-think 协议规定可见 text 只能属于最终答案，因此这里自动收口。
+                                if await enter_summary_phase("auto mark_summary fallback before text"):
+                                    yield sse({"type": "summary-start"})
+                            else:
+                                await flush_thinking_segment()
                             assistant_parts.append(delta)
                             yield sse({"type": "text-delta", "textDelta": delta})
                         else:
@@ -557,7 +598,11 @@ async def stream_chat(
                     if not streamed:
                         delta = extract_text(chunk)
                         if delta:
-                            await flush_thinking_segment()
+                            if resolved.effective_deep_think and not in_summary_phase:
+                                if await enter_summary_phase("auto mark_summary fallback before text"):
+                                    yield sse({"type": "summary-start"})
+                            else:
+                                await flush_thinking_segment()
                             assistant_parts.append(delta)
                             if chat_trace:
                                 trace_visible_parts.append(delta)
@@ -611,32 +656,8 @@ async def stream_chat(
                 # think 模式独有；不对前端发 tool-call / tool-result，不入库 tool 记录，
                 # 改为发出 ``summary-start`` 信号让前端切到"最终答案阶段"。
                 if name == MARK_SUMMARY_TOOL_NAME:
-                    await flush_thinking_segment()
-                    # 信号前的 assistant 文本是真正的"过渡话术"，按 interim 入库
-                    await flush_assistant_segment(interim=True)
-                    in_summary_phase = True
-                    # 持久化"模型在此处主动收口"的信号；前端历史聚合用 role=summary-mark
-                    # 让对应 trace 显示 ✓ 完成 footer，刷新后仍可见。
-                    async with async_session_factory() as session:
-                        session.add(
-                            MessageRecord(
-                                id=str(uuid.uuid4()),
-                                conversation_id=conv_id,
-                                role="summary-mark",
-                                content="",
-                            )
-                        )
-                        await session.commit()
-                    logger.info("mark_summary 触发 → summary-start")
-                    if chat_trace:
-                        logger.info(
-                            "\n%s",
-                            format_tool_event_raw(
-                                "on_tool_start mark_summary（已短路，发 summary-start）",
-                                {"name": name, "run_id": run_id},
-                            ),
-                        )
-                    yield sse({"type": "summary-start"})
+                    if await enter_summary_phase("on_tool_start mark_summary（已短路）"):
+                        yield sse({"type": "summary-start"})
                     continue
                 # 已进入 summary 阶段后再来其他工具：按"模型违反约束"处理，
                 # 静默丢弃 tool-call，不写 SSE、不入 pending、也不让 tool_end 走正常流程

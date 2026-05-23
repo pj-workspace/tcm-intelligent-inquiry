@@ -29,13 +29,25 @@ MARK_SUMMARY_TOOL_NAME = "mark_summary"
 
 @tool
 async def mark_summary() -> str:
-    """Internal signal tool — call this right before you write the final answer.
+    """Internal boundary signal for deep-think mode. Call exactly once immediately before the final answer.
 
-    No arguments. The user never sees this tool call.
+    No arguments. The user never sees this tool call. This tool is not a
+    knowledge source and does not produce content; it only tells the product UI
+    that the trace/thinking phase is complete and the final answer is starting.
 
-    After calling this tool, you MUST immediately write the final answer as
-    plain text. Do not call any other tool, do not emit any reasoning
-    content, do not write any transitional phrases like "好的现在我来回答".
+    Use it:
+    - after all required business tools have completed and you are ready to
+      write the first user-visible final answer token;
+    - even if no business tool was needed in this turn.
+
+    Do not use it:
+    - before calling ask_user; if ask_user is needed, ask the user and stop;
+    - while another business tool is still needed;
+    - more than once in the same turn.
+
+    After calling this tool, immediately write the final answer as plain text.
+    Do not call any other tool, do not emit reasoning content, and do not write
+    transitional phrases like "好的，现在我来回答".
     """
     # 后端短路：on_tool_start 时已发 summary-start 信号；此函数体不会被实际执行。
     # 兜底返回空字符串，保证 ReAct 路径若意外走到这里也不会崩。
