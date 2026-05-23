@@ -14,6 +14,7 @@ import { getEdgeFadeState } from "@/lib/brainstorm-utils";
 interface UseBrainstormScrollOptions {
   steps: BrainstormStep[];
   isOpen: boolean;
+  isStreaming: boolean;
 }
 
 interface UseBrainstormScrollReturn {
@@ -26,11 +27,12 @@ interface UseBrainstormScrollReturn {
 export function useBrainstormScroll({
   steps,
   isOpen,
+  isStreaming,
 }: UseBrainstormScrollOptions): UseBrainstormScrollReturn {
   const scrollRef = useRef<HTMLDivElement>(null);
   const autoFollowRef = useRef(true);
   const lastScrollTopRef = useRef(0);
-  /** 用于检测「刚从收起变为展开」，此时应强制滚到底 */
+  /** 用于检测「刚从收起变为展开」，此时按 trace 状态选择默认位置 */
   const wasOpenRef = useRef(false);
   const [edgeFade, setEdgeFade] = useState<EdgeFadeState>({
     top: false,
@@ -42,6 +44,14 @@ export function useBrainstormScroll({
     if (!el) return;
     el.scrollTop = el.scrollHeight;
     lastScrollTopRef.current = el.scrollTop;
+    setEdgeFade(getEdgeFadeState(el));
+  }, []);
+
+  const scrollToStart = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTop = 0;
+    lastScrollTopRef.current = 0;
     setEdgeFade(getEdgeFadeState(el));
   }, []);
 
@@ -74,9 +84,9 @@ export function useBrainstormScroll({
     e.stopPropagation();
   }, []);
 
-  // 刚从收起展开：把内部 scroll 拉到底，让最新 step 可见。
-  // 仅做"同步 + 单次 rAF"两次 scrollToEnd——之前的 4 次（rAF1 → rAF2 → setTimeout 280ms）
-  // 会在用户展开后立刻想上滑时把他强制扯回底部。
+  // 刚从收起展开：
+  // - 流式中：拉到底，让最新 step 可见；
+  // - 已完成：回到顶部，符合用户回看完整 trace 的阅读预期。
   useLayoutEffect(() => {
     if (!isOpen) {
       wasOpenRef.current = false;
@@ -85,18 +95,19 @@ export function useBrainstormScroll({
     const justOpened = !wasOpenRef.current;
     wasOpenRef.current = true;
     if (!justOpened) return;
-    autoFollowRef.current = true;
-    scrollToEnd();
+    autoFollowRef.current = isStreaming;
+    const settleScroll = isStreaming ? scrollToEnd : scrollToStart;
+    settleScroll();
     let cancelled = false;
     const raf1 = requestAnimationFrame(() => {
       if (cancelled) return;
-      scrollToEnd();
+      settleScroll();
     });
     return () => {
       cancelled = true;
       cancelAnimationFrame(raf1);
     };
-  }, [isOpen, scrollToEnd]);
+  }, [isOpen, isStreaming, scrollToEnd, scrollToStart]);
 
   // 外层头脑风暴滚动区：内容变化时，**仅当 autoFollow 仍开启**才滚到底。
   // 不再因"距底部很近"就自动重启 autoFollow ——用户已经主动上滑（onScroll 把
@@ -105,12 +116,12 @@ export function useBrainstormScroll({
     if (!isOpen) return;
     const el = scrollRef.current;
     if (!el) return;
-    if (autoFollowRef.current) {
+    if (isStreaming && autoFollowRef.current) {
       el.scrollTop = el.scrollHeight;
       lastScrollTopRef.current = el.scrollTop;
     }
     setEdgeFade(getEdgeFadeState(el));
-  }, [steps, isOpen, scrollToEnd]);
+  }, [steps, isOpen, isStreaming]);
 
   useEffect(() => {
     if (!isOpen) return;

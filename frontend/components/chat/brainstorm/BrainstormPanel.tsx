@@ -29,7 +29,11 @@ export function BrainstormPanel({
 }: BrainstormPanelProps) {
   const isOpen = !collapsed;
   const [toolIoExpanded, setToolIoExpanded] = useState<Record<string, boolean>>({});
-  const { scrollRef, edgeFade, onScroll, onWheel } = useBrainstormScroll({ steps, isOpen });
+  const { scrollRef, edgeFade, onScroll, onWheel } = useBrainstormScroll({
+    steps,
+    isOpen,
+    isStreaming,
+  });
 
   const toggleToolIo = useCallback((stepId: string) => {
     setToolIoExpanded((prev) => ({ ...prev, [stepId]: !prev[stepId] }));
