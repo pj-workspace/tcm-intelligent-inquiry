@@ -161,33 +161,43 @@ export function exportAssistantAsPdf(title: string, markdown: string) {
 
 /** 助手正文已用 remark-gfm 解析为 table 元素；需显式边框与横向滚动，否则会像「挤成一行的纯文本」。 */
 export const assistantMarkdownComponents: Components = {
-  table: ({ node: _n, children, ...props }) => (
-    <div className="no-scrollbar my-4 w-full max-w-full overflow-x-auto rounded-lg border border-[var(--border-color)] bg-[var(--bg)]">
-      <table
-        className="w-full min-w-[min(100%,520px)] border-collapse text-[0.95rem] leading-snug"
+  table: ({ node, children, ...props }) => {
+    void node;
+    return (
+      <div className="no-scrollbar my-3 w-full max-w-full overflow-x-auto rounded-xl border border-[#e6ded2] bg-white/70 shadow-[0_1px_2px_rgba(28,25,23,0.04)]">
+        <table
+          className="w-full min-w-[min(100%,520px)] border-collapse text-[0.92rem] leading-snug"
+          {...props}
+        >
+          {children}
+        </table>
+      </div>
+    );
+  },
+  thead: ({ node, children, ...props }) => {
+    void node;
+    return <thead {...props}>{children}</thead>;
+  },
+  th: ({ node, children, ...props }) => {
+    void node;
+    return (
+      <th
+        className="border border-[#e6ded2] bg-[#f7f2ea] px-3 py-2 text-left font-semibold text-[#2b2721]"
         {...props}
       >
         {children}
-      </table>
-    </div>
-  ),
-  thead: ({ node: _n, children, ...props }) => (
-    <thead {...props}>{children}</thead>
-  ),
-  th: ({ node: _n, children, ...props }) => (
-    <th
-      className="border border-[var(--border-color)] bg-[var(--muted)] px-3 py-2 text-left font-semibold text-[var(--fg)]"
-      {...props}
-    >
-      {children}
-    </th>
-  ),
-  td: ({ node: _n, children, ...props }) => (
-    <td
-      className="border border-[var(--border-color)] px-3 py-2 align-top text-[var(--fg)]"
-      {...props}
-    >
-      {children}
-    </td>
-  ),
+      </th>
+    );
+  },
+  td: ({ node, children, ...props }) => {
+    void node;
+    return (
+      <td
+        className="border border-[#e6ded2] px-3 py-2 align-top text-[#2f2a23]"
+        {...props}
+      >
+        {children}
+      </td>
+    );
+  },
 };

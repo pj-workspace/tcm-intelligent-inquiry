@@ -6,7 +6,7 @@
   word-break: break-word;
 }
 
-/* 统一 Markdown 块级节奏，避免 trace 后接标题/段落/列表时出现不同的顶部空隙 */
+/* 统一 Markdown 块级节奏：聊天回答需要有文档感，但不应像正文编辑器那样松散。 */
 .ai-content > :first-child {
   margin-top: 0 !important;
 }
@@ -17,7 +17,7 @@
 
 .ai-content p {
   margin-top: 0;
-  margin-bottom: 0.9rem;
+  margin-bottom: 0.78rem;
   max-width: 100%;
   overflow-wrap: anywhere;
 }
@@ -26,23 +26,24 @@
 .ai-content h2,
 .ai-content h3,
 .ai-content h4 {
-  margin-top: 1.05rem;
-  margin-bottom: 0.55rem;
+  margin-top: 0.95rem;
+  margin-bottom: 0.42rem;
   font-weight: 600;
-  line-height: 1.35;
+  line-height: 1.32;
+  letter-spacing: 0.01em;
 }
 
 .ai-content h1 {
-  font-size: 1.35em;
+  font-size: 1.24em;
 }
 
 .ai-content h2 {
-  font-size: 1.22em;
+  font-size: 1.14em;
 }
 
 .ai-content h3,
 .ai-content h4 {
-  font-size: 1.08em;
+  font-size: 1.04em;
 }
 
 .ai-content strong {
@@ -54,15 +55,15 @@
 }
 
 .ai-content blockquote {
-  @apply border-l-4 border-muted pl-4 italic text-muted-foreground;
-  margin-top: 0.9rem;
-  margin-bottom: 0.9rem;
+  @apply border-l-2 border-[#d9d1c4] pl-3 text-muted-foreground;
+  margin-top: 0.85rem;
+  margin-bottom: 0.85rem;
 }
 
 .ai-content ul {
   @apply list-disc list-outside pl-6;
   margin-top: 0;
-  margin-bottom: 0.9rem;
+  margin-bottom: 0.82rem;
 }
 
 /* 不用浏览器 outside marker：在 flex/overflow 等布局下 marker 常与正文错行；改为 li 内绝对定位编号 */
@@ -71,8 +72,13 @@
   counter-reset: ai-ol;
   @apply pl-0;
   margin-top: 0;
-  margin-bottom: 0.9rem;
+  margin-bottom: 0.82rem;
   margin-left: 0;
+}
+
+.ai-content li {
+  margin-top: 0.18rem;
+  margin-bottom: 0.18rem;
 }
 
 .ai-content ol > li {
@@ -96,7 +102,12 @@
 
 .ai-content ol ol {
   counter-reset: ai-ol;
-  @apply mt-2 mb-2;
+}
+
+.ai-content li > ul,
+.ai-content li > ol {
+  margin-top: 0.35rem;
+  margin-bottom: 0.35rem;
 }
 
 /* 列表项内段落默认 mb 过大，收紧以免条目间距松散 */
@@ -109,9 +120,10 @@
 }
 
 .ai-content code {
-  @apply font-mono text-sm rounded-md;
-  background-color: color-mix(in srgb, var(--muted) 72%, transparent);
-  padding: 0.1em 0.28em;
+  @apply font-mono rounded-md;
+  background-color: color-mix(in srgb, var(--muted) 68%, transparent);
+  font-size: 0.92em;
+  padding: 0.08em 0.28em;
   overflow-wrap: anywhere;
   word-break: break-word;
   box-decoration-break: clone;
@@ -119,10 +131,25 @@
 }
 
 .ai-content pre {
-  @apply bg-[#1e1e1e] text-white p-4 rounded-lg overflow-x-auto my-4 font-mono text-sm;
+  @apply bg-[#1f1f1f] text-white p-3.5 rounded-xl overflow-x-auto font-mono text-sm;
+  margin-top: 0.9rem;
+  margin-bottom: 0.9rem;
   max-width: 100%;
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+.ai-content hr {
+  margin: 1.05rem 0;
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--border-color) 84%, transparent);
+}
+
+.ai-content a {
+  color: #8a4b18;
+  text-decoration: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.18em;
 }
 
 .ai-content pre::-webkit-scrollbar {
