@@ -57,6 +57,7 @@ _AUTO_MIGRATE_DDL: tuple[str, ...] = (
     "ALTER TABLE knowledge_bases ADD COLUMN IF NOT EXISTS embedding_dim INTEGER",
     # mcp_servers：请求头列
     "ALTER TABLE mcp_servers ADD COLUMN IF NOT EXISTS headers JSONB NOT NULL DEFAULT '{}'",
+    "ALTER TABLE messages ADD COLUMN IF NOT EXISTS citations JSONB",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255)",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT false",
     "CREATE UNIQUE INDEX IF NOT EXISTS ux_users_email_notnull ON users (email) WHERE email IS NOT NULL",

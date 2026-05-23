@@ -10,6 +10,7 @@ export const KNOWN_SSE_EVENT_TYPES = [
   "ask-user-start",
   "tool-call",
   "tool-result",
+  "source-registry",
   "summary-start",
   "widget",
   "title-updated",

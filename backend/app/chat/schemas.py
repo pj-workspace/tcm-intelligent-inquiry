@@ -145,6 +145,10 @@ class MessageItem(BaseModel):
     created_at: datetime
     duration_sec: float | None = None
     model_name: str | None = None
+    citations: list[dict] | None = Field(
+        default=None,
+        description="仅存于 assistant：本条回复的结构化引用来源",
+    )
     follow_up_suggestions: list[str] | None = Field(
         default=None,
         description="仅存于 assistant：生成并持久化的快速追问话术",

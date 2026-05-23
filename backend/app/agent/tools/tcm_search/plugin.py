@@ -2,6 +2,7 @@
 
 from langchain_core.tools import tool
 
+from app.agent.tools._internal.citations import register_citation_source
 from app.agent.tools.registry import tool_registry
 from app.core.chat_context import chat_agent_kb_id, chat_user_id
 from app.core.config import get_settings
@@ -129,5 +130,19 @@ async def search_tcm_knowledge(
     lines: list[str] = []
     for i, (doc, score) in enumerate(pairs, start=1):
         src = doc.metadata.get("source", "")
-        lines.append(f"[{i}]（相关分数 {score:.4f}，来源: {src}）\n{doc.page_content.strip()}")
+        snippet = doc.page_content.strip()
+        citation = register_citation_source(
+            kind="knowledge",
+            title=str(src or f"知识库片段 {i}"),
+            source=str(src or ""),
+            snippet=snippet,
+            score=float(score),
+            metadata={
+                "kb_id": resolved,
+                "kb_doc_id": doc.metadata.get("kb_doc_id"),
+            },
+        )
+        lines.append(
+            f"[{citation['id']}]（相关分数 {score:.4f}，来源: {src}）\n{snippet}"
+        )
     return "\n\n".join(lines)

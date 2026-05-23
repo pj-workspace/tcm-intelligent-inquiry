@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.agent.tools._internal.citations import register_citation_source
+
 
 def _searx_diagnostics_for_llm(payload: dict[str, Any]) -> str:
     """results 为空时，把 SearXNG 的引擎级错误写进回执，便于排查「联网搜索没结果」。"""
@@ -64,7 +66,15 @@ def format_searx_results_for_llm(payload: dict[str, Any], max_results: int) -> s
         content = str(item.get("content", "")).strip()
         eng = str(item.get("engine", "")).strip()
         meta = f" [{eng}]" if eng else ""
-        chunk = f"[{n_shown}]{meta} {title}\n{url}\n{content}"
+        citation = register_citation_source(
+            kind="web",
+            title=title,
+            source=eng or "SearXNG",
+            url=url,
+            snippet=content,
+            metadata={"engine": eng} if eng else None,
+        )
+        chunk = f"[{citation['id']}]{meta} {title}\n{url}\n{content}"
         lines.append(chunk.strip())
     if not lines:
         return "SearXNG 返回的结果格式异常，无法解析。"

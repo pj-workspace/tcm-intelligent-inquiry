@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
+from app.agent.tools._internal.citations import reset_citation_sources
 from app.agent.tools.searx_web_search import format_searx_results_for_llm, run_searx_web_search
 from app.agent.tools.searx_web_search import plugin as searx_plugin
 from app.agent.tools.searx_web_search import run as searx_run
@@ -36,6 +37,7 @@ def test_format_searx_results_empty():
 
 
 def test_format_searx_results_skips_non_dict():
+    reset_citation_sources()
     payload = {
         "results": [
             "bad",
@@ -43,7 +45,7 @@ def test_format_searx_results_skips_non_dict():
         ]
     }
     out = format_searx_results_for_llm(payload, 5)
-    assert "[1]" in out
+    assert "[W1]" in out
     assert "T" in out
     assert "https://a" in out
     assert "duckduckgo" in out

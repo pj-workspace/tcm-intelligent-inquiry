@@ -82,7 +82,8 @@ openapi: "{BASE}/openapi.json"
 | `text-delta` | `textDelta` | — | 助手正文增量 |
 | `thinking-delta` | `textDelta` | — | 思考/推理增量（展示用；**不落库为最终正文**） |
 | `tool-call` | `name` | `input`, `runId` | 工具开始；`input` 为已安全化对象 |
-| `tool-result` | `name` | `outputPreview`, `runId`, `status` | 工具结束；`outputPreview` 为摘要字符串 |
+| `tool-result` | `name` | `outputPreview`, `runId`, `status`, `sources` | 工具结束；`outputPreview` 为摘要字符串；`sources` 为该工具新增的结构化引用来源 |
+| `source-registry` | `sources` | — | 本轮到目前为止累计的结构化引用来源；前端用于正文引用标记与来源面板 |
 | `widget` | `widgetId`, `question` | `widgetType`, `choices`, `allowFreeText` | 交互选择框（如 ask_user 工具） |
 | `title-updated` | `conversationId`, `title` | — | 会话标题更新（异步生成或兜底） |
 | `llm-usage` | `type`, `usage` | `usageEventId`, `providerId`, `chatModel` 等 | Token 用量增量（前端累计展示） |

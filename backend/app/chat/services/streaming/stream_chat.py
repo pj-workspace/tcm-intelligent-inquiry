@@ -12,6 +12,10 @@ from langchain_core.messages import ToolMessage
 from sqlalchemy import delete, select
 
 from app.agent.executor import build_agent_graph_for_chat_request
+from app.agent.tools._internal.citations import (
+    citation_sources_snapshot,
+    reset_citation_sources,
+)
 from app.agent.tools._internal.mark_summary import MARK_SUMMARY_TOOL_NAME
 from app.mcp.bridge.tool_bridge import mcp_tool_sse_metadata
 from app.chat.images.vl_sanitize import (
@@ -236,6 +240,8 @@ async def stream_chat(
     trace_thinking_parts: list[str] = []
     flush_thinking_fn = None
     flush_assistant_fn = None
+    reset_citation_sources()
+    last_source_emit_index = 0
 
     # 已开始但未结束的工具调用：用于在中止/异常时持久化为「已终止」状态，
     # 保证前端刷新后历史仍能看到该次工具调用而不是凭空消失。
@@ -481,6 +487,7 @@ async def stream_chat(
                     await session.commit()
                 return
             lbl = meta_chat_model_label(resolved)
+            citations = citation_sources_snapshot()
             async with async_session_factory() as session:
                 session.add(
                     MessageRecord(
@@ -489,6 +496,7 @@ async def stream_chat(
                         role="assistant",
                         content=text,
                         model_name=lbl,
+                        citations=citations or None,
                     )
                 )
                 await session.commit()
@@ -566,10 +574,12 @@ async def stream_chat(
                         streamed = True
                         if kind == "text":
                             if resolved.effective_deep_think and not in_summary_phase:
-                                # 兜底：模型忘记调用 mark_summary 却已经开始输出可见文本。
-                                # deep-think 协议规定可见 text 只能属于最终答案，因此这里自动收口。
-                                if await enter_summary_phase("auto mark_summary fallback before text"):
-                                    yield sse({"type": "summary-start"})
+                                # 兜底（已暂时关闭）：模型忘记 mark_summary 却已经开始输出可见文本时，
+                                # 自动发 summary-start。关闭后改由 mark_summary 显式触发，或流结束时
+                                # 前端 promotePendingInterim 兜底；避免 ask_user 短提示误触 summary。
+                                # if await enter_summary_phase("auto mark_summary fallback before text"):
+                                #     yield sse({"type": "summary-start"})
+                                pass
                             else:
                                 await flush_thinking_segment()
                             assistant_parts.append(delta)
@@ -599,8 +609,10 @@ async def stream_chat(
                         delta = extract_text(chunk)
                         if delta:
                             if resolved.effective_deep_think and not in_summary_phase:
-                                if await enter_summary_phase("auto mark_summary fallback before text"):
-                                    yield sse({"type": "summary-start"})
+                                # 同上：auto mark_summary fallback 已暂时关闭
+                                # if await enter_summary_phase("auto mark_summary fallback before text"):
+                                #     yield sse({"type": "summary-start"})
+                                pass
                             else:
                                 await flush_thinking_segment()
                             assistant_parts.append(delta)
@@ -779,6 +791,11 @@ async def stream_chat(
                     "name": tr_name,
                     "status": tool_status,
                 }
+                current_sources = citation_sources_snapshot()
+                new_sources = current_sources[last_source_emit_index:]
+                if new_sources:
+                    tr["sources"] = json_safe_for_sse(new_sources)
+                    last_source_emit_index = len(current_sources)
                 if run_id is not None:
                     tr["runId"] = run_id
                 if preview:
@@ -823,9 +840,18 @@ async def stream_chat(
                     _break_after_widget = True
                 else:
                     yield sse(tr)
+                    if new_sources:
+                        yield sse(
+                            {
+                                "type": "source-registry",
+                                "sources": json_safe_for_sse(current_sources),
+                            }
+                        )
 
                     rec: dict[str, Any] = {"name": tr_name, "outputPreview": preview}
                     rec.update(mcp_tool_sse_metadata(tr_name))
+                    if new_sources:
+                        rec["sources"] = json_safe_for_sse(new_sources)
                     if tr_input is not None:
                         rec["input"] = tr_input
                     if run_key:

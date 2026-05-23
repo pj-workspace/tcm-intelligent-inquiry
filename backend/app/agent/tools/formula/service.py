@@ -13,6 +13,7 @@ from typing import Any
 from sqlalchemy import bindparam, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agent.tools._internal.citations import register_citation_source
 from app.agent.tools.formula.models import FormulaRecord
 from app.agent.tools.formula.synonyms import expand_clinical_text
 from app.core.logging import get_logger
@@ -37,14 +38,23 @@ def _as_str_list(raw: Any) -> list[str]:
 
 
 def _format_formula_block(row: FormulaRecord, rank: int | None = None) -> str:
+    src = (row.source_ref or "").strip()
+    citation = register_citation_source(
+        kind="formula",
+        title=row.name,
+        source=src or "本地方剂库",
+        snippet=f"组成：{row.composition.strip()}\n功效：{row.efficacy.strip()}\n主治：{row.indications.strip()}",
+        metadata={"formula_id": getattr(row, "id", row.name)},
+    )
     head = f"【{row.name}】"
     if rank is not None:
-        head = f"[{rank}] {head}"
+        head = f"[{citation['id']}] {head}"
+    else:
+        head = f"[{citation['id']}] {head}"
     aliases = _as_str_list(row.aliases)
     alias_line = f"别名：{'、'.join(aliases)}" if aliases else ""
     patterns = _as_str_list(row.pattern_tags)
     pat_line = f"常见证型/病机标签：{'、'.join(patterns)}" if patterns else ""
-    src = (row.source_ref or "").strip()
     src_line = f"文献出处：{src}" if src else ""
     parts = [
         head,

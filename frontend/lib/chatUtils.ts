@@ -1,6 +1,8 @@
 import type {
   ApiMessageRow,
   ChatMessage,
+  CitationKind,
+  CitationSource,
   FlatMessage,
   Message,
   TraceMessage,
@@ -19,6 +21,42 @@ export function toolIoToPreview(v: unknown): string | undefined {
   } catch {
     return String(v);
   }
+}
+
+const CITATION_KINDS = new Set<CitationKind>([
+  "knowledge",
+  "web",
+  "formula",
+  "external",
+]);
+
+export function normalizeCitationSources(v: unknown): CitationSource[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const out: CitationSource[] = [];
+  for (const raw of v) {
+    if (!raw || typeof raw !== "object") continue;
+    const item = raw as Record<string, unknown>;
+    const id = typeof item.id === "string" ? item.id.trim() : "";
+    const kind = typeof item.kind === "string" ? item.kind : "";
+    const title = typeof item.title === "string" ? item.title.trim() : "";
+    if (!id || !title || !CITATION_KINDS.has(kind as CitationKind)) continue;
+    const source: CitationSource = {
+      id,
+      kind: kind as CitationKind,
+      title,
+    };
+    if (typeof item.source === "string" && item.source.trim()) source.source = item.source;
+    if (typeof item.url === "string" && item.url.trim()) source.url = item.url;
+    if (typeof item.snippet === "string" && item.snippet.trim()) source.snippet = item.snippet;
+    if (typeof item.score === "number" && Number.isFinite(item.score)) {
+      source.score = item.score;
+    }
+    if (item.metadata && typeof item.metadata === "object" && !Array.isArray(item.metadata)) {
+      source.metadata = item.metadata as Record<string, unknown>;
+    }
+    out.push(source);
+  }
+  return out.length ? out : undefined;
 }
 
 export function sumThinkingDurations(steps: BrainstormStep[]): number | undefined {
@@ -396,6 +434,7 @@ export function mapApiRowToMessage(msg: ApiMessageRow): FlatMessage {
           typeof payload.outputPreview === "string" && payload.outputPreview
             ? payload.outputPreview
             : undefined,
+        sources: normalizeCitationSources((payload as { sources?: unknown }).sources),
         createdAt,
       } satisfies ToolStep;
     } catch {
@@ -460,6 +499,7 @@ export function mapApiRowToMessage(msg: ApiMessageRow): FlatMessage {
       const items = fus.filter((x): x is string => typeof x === "string" && x.trim().length > 0);
       return items.length > 0 ? { followUpSuggestions: items } : {};
     })(),
+    citations: normalizeCitationSources(msg.citations),
     ...(createdAt ? { createdAt } : {}),
   };
 }

@@ -22,6 +22,7 @@ SSE_EVENT_TYPES = frozenset(
         "ask-user-start",
         "tool-call",
         "tool-result",
+        "source-registry",
         "summary-start",
         "widget",
         "title-updated",
@@ -92,6 +93,7 @@ def test_json_safe_for_sse_nested():
         {"type": "ask-user-start", "name": "ask_user", "runId": "r"},
         {"type": "tool-call", "name": "t"},
         {"type": "tool-result", "name": "t", "status": "success"},
+        {"type": "source-registry", "sources": []},
         {"type": "summary-start"},
         {
             "type": "widget",

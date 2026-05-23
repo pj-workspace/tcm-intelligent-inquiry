@@ -17,6 +17,13 @@ def _normalized_follow_up_suggestions(v: object | None) -> list[str] | None:
     return out if out else None
 
 
+def _normalized_citations(v: object | None) -> list[dict] | None:
+    if not isinstance(v, list):
+        return None
+    out = [x for x in v if isinstance(x, dict)]
+    return out if out else None
+
+
 def _last_assistant_model_subquery():
     """每个 conversation_id 对应最新一条 assistant 的 model_name。"""
     return (
@@ -89,6 +96,7 @@ async def list_messages_for_conversation(
             created_at=m.created_at,
             duration_sec=m.duration_sec,
             model_name=m.model_name,
+            citations=_normalized_citations(m.citations),
             follow_up_suggestions=_normalized_follow_up_suggestions(m.follow_up_suggestions),
         )
         for m in rows

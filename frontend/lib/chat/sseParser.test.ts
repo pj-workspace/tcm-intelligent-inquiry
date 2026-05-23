@@ -38,6 +38,7 @@ describe("KNOWN_SSE_EVENT_TYPES", () => {
       "ask-user-start",
       "tool-call",
       "tool-result",
+      "source-registry",
       "summary-start",
       "widget",
       "title-updated",
@@ -46,7 +47,7 @@ describe("KNOWN_SSE_EVENT_TYPES", () => {
     ]) {
       expect(isKnownSseEventType(t)).toBe(true);
     }
-    expect(KNOWN_SSE_EVENT_TYPES).toHaveLength(12);
+    expect(KNOWN_SSE_EVENT_TYPES).toHaveLength(13);
   });
 
   it("summary-start 是 think 模式 mark_summary 工具触发的内部信号", () => {

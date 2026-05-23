@@ -42,6 +42,14 @@ export function preprocessAssistantMarkdown(md: string): string {
   return mergeOrphanOrderedListMarkers(normalizeGfmPipes(md));
 }
 
+const CITATION_TOKEN_RE = /【([KWF]\d{1,3})】/g;
+
+export function injectCitationMarkdownLinks(md: string): string {
+  return md.replace(CITATION_TOKEN_RE, (_m, id: string) => {
+    return `[${id}](citation:${id})`;
+  });
+}
+
 /** 用于复制 / 朗读 / PDF 的纯文本（弱化 Markdown 标记） */
 export function markdownToPlainText(md: string): string {
   return md
@@ -49,6 +57,7 @@ export function markdownToPlainText(md: string): string {
     .replace(/`([^`]+)`/g, "$1")
     .replace(/\*\*([^*]+)\*\*/g, "$1")
     .replace(/\*([^*]+)\*/g, "$1")
+    .replace(CITATION_TOKEN_RE, "")
     .replace(/^#+\s+/gm, "")
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
     .replace(/\s+/g, " ")

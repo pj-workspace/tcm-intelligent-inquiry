@@ -1,10 +1,12 @@
 "use client";
 
 import type { RefObject } from "react";
+import { useMemo, useState } from "react";
 import clsx from "clsx";
 import { motion, AnimatePresence } from "framer-motion";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import type { Components } from "react-markdown";
 import {
   Copy,
   Check,
@@ -17,9 +19,16 @@ import {
 } from "lucide-react";
 import {
   assistantMarkdownComponents,
+  injectCitationMarkdownLinks,
   preprocessAssistantMarkdown,
   exportAssistantAsPdf,
 } from "@/lib/markdown-utils";
+import type { CitationSource } from "@/types/chat";
+import {
+  CitationMarker,
+  CitationSourcePanel,
+  CitationSourcesButton,
+} from "./CitationSources";
 
 /** 较慢、末尾更柔和的缓动（ease-out） */
 const softEase = [0.33, 1, 0.68, 1] as const;
@@ -58,6 +67,7 @@ interface AssistantBubbleProps {
   onAssistantRegenerate?: () => void;
   /** 服务端已返回追问条；仅在有内容时渲染，请求中不出现骨架 */
   followUpItems?: string[];
+  citations?: CitationSource[];
   onFollowUpClick?: (text: string) => void;
   noTopPad?: boolean;
   noBottomPad?: boolean;
@@ -73,6 +83,8 @@ interface AssistantBubbleProps {
   assistantToolbarReserve?: boolean;
   /** 工具调用拆段时隐藏中间段的复制/朗读等，仅在末段展示 */
   suppressAssistantToolbar?: boolean;
+  /** 输出完成后才展示引用来源入口（流式生成中隐藏） */
+  showCitationSources?: boolean;
 }
 
 /** 近似 3 条追问骨架/按钮纵向占位，仅在追问展示期间起效，减少对贴底滚动时的视感位移 */
@@ -97,7 +109,10 @@ export function AssistantBubble({
   menuRef,
   assistantToolbarReserve,
   suppressAssistantToolbar,
+  citations,
+  showCitationSources,
 }: AssistantBubbleProps) {
+  const [sourcesOpen, setSourcesOpen] = useState(false);
   const showFollowUpRegion = !!(
     followUpItems &&
     followUpItems.length > 0 &&
@@ -106,6 +121,39 @@ export function AssistantBubble({
 
   const showToolbarReserve =
     assistantActionsDisabled && assistantToolbarReserve === true;
+  const citationById = useMemo(() => {
+    const map = new Map<string, CitationSource>();
+    for (const item of citations ?? []) map.set(item.id, item);
+    return map;
+  }, [citations]);
+  const markdownComponents = useMemo<Components>(() => {
+    return {
+      ...assistantMarkdownComponents,
+      a: ({ node, href, children, ...props }) => {
+        void node;
+        if (typeof href === "string" && href.startsWith("citation:")) {
+          const id = decodeURIComponent(href.slice("citation:".length));
+          return (
+            <CitationMarker
+              id={id}
+              source={citationById.get(id)}
+              onOpenPanel={() => setSourcesOpen(true)}
+            />
+          );
+        }
+        return (
+          <a href={href} target="_blank" rel="noreferrer" {...props}>
+            {children}
+          </a>
+        );
+      },
+    };
+  }, [citationById]);
+  const renderedContent = preprocessAssistantMarkdown(
+    injectCitationMarkdownLinks(
+      content + (interrupted ? "\n\n> *输出已被终止*" : ""),
+    ),
+  );
 
   return (
     <div
@@ -123,11 +171,12 @@ export function AssistantBubble({
         >
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
-            components={assistantMarkdownComponents}
+            components={markdownComponents}
+            urlTransform={(url) =>
+              url.startsWith("citation:") ? url : defaultUrlTransform(url)
+            }
           >
-            {preprocessAssistantMarkdown(
-              content + (interrupted ? "\n\n> *输出已被终止*" : "")
-            )}
+            {renderedContent}
           </ReactMarkdown>
         </div>
 
@@ -227,6 +276,12 @@ export function AssistantBubble({
                 </div>
               )}
             </div>
+            {showCitationSources && citations && citations.length > 0 ? (
+              <CitationSourcesButton
+                count={citations.length}
+                onClick={() => setSourcesOpen(true)}
+              />
+            ) : null}
           </div>
           ) : null)}
 
@@ -270,6 +325,13 @@ export function AssistantBubble({
           </AnimatePresence>
         </div>
       </div>
+      {citations && citations.length > 0 ? (
+        <CitationSourcePanel
+          sources={citations}
+          open={sourcesOpen}
+          onClose={() => setSourcesOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }

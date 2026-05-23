@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { groupMessagesIntoTraces, mapApiRowToMessage } from "@/lib/chatUtils";
+import {
+  groupMessagesIntoTraces,
+  mapApiRowToMessage,
+  normalizeCitationSources,
+} from "@/lib/chatUtils";
 import type { ApiMessageRow, FlatMessage } from "@/types/chat";
 
 const userMsg = (id: string, content = "hi"): FlatMessage => ({
@@ -420,6 +424,39 @@ describe("groupMessagesIntoTraces", () => {
     if (mapped.type !== "tool") throw new Error("expected tool step");
     expect(mapped.status).toBe("error");
     expect(mapped.aborted).toBeUndefined();
+  });
+
+  it("maps assistant citations from history rows", () => {
+    const row: ApiMessageRow = {
+      id: "a-cite",
+      role: "assistant",
+      content: "结论【K1】",
+      created_at: "2026-05-23T08:00:00Z",
+      citations: [
+        {
+          id: "K1",
+          kind: "knowledge",
+          title: "伤寒论片段",
+          source: "shanghan.pdf",
+          snippet: "太阳病，桂枝汤主之。",
+        },
+      ],
+    };
+    const mapped = mapApiRowToMessage(row);
+    if (mapped.type !== "message" || mapped.role !== "assistant") {
+      throw new Error("expected assistant message");
+    }
+    expect(mapped.citations?.[0]?.id).toBe("K1");
+  });
+
+  it("normalizes citation sources and drops malformed entries", () => {
+    expect(
+      normalizeCitationSources([
+        { id: "K1", kind: "knowledge", title: "ok" },
+        { id: "X1", kind: "bad", title: "bad" },
+        { id: "", kind: "web", title: "bad" },
+      ]),
+    ).toEqual([{ id: "K1", kind: "knowledge", title: "ok" }]);
   });
 
   it("sequential assistants without steps stay as separate top-level messages", () => {

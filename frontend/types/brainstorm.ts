@@ -1,3 +1,5 @@
+import type { CitationSource } from "@/types/chat";
+
 export type BrainstormStep =
   | {
       id: string;
@@ -21,6 +23,8 @@ export type BrainstormStep =
       inputPreview?: string;
       /** 工具返回摘要（SSE tool-result 或历史消息） */
       outputPreview?: string;
+      /** 工具返回的结构化引用来源 */
+      sources?: CitationSource[];
       createdAt?: string;
     }
   | {

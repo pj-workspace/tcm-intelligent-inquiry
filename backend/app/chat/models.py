@@ -69,6 +69,8 @@ class MessageRecord(Base):
     model_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
     #: 仅 role=assistant：模型生成的追问建议（持久化便于刷新后继续展示）
     follow_up_suggestions: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    #: 仅 role=assistant：本轮最终答案可引用的结构化来源（知识库/网页/方剂等）
+    citations: Mapped[list[dict] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

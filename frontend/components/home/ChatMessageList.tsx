@@ -154,6 +154,12 @@ export function ChatMessageList({
               ? followUpSuggestions.items
               : undefined
           }
+          citations={msg.role === "assistant" ? msg.citations : undefined}
+          showCitationSources={
+            msg.role === "assistant" &&
+            genState === "idle" &&
+            assistantSegmentShowsToolbar(messages, idx)
+          }
           onFollowUpClick={
             msg.role === "assistant" && msg.id === lastAssistantMessageId
               ? onFollowUpClick

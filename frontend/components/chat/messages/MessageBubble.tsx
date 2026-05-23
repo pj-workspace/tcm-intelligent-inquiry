@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { markdownToPlainText } from "@/lib/markdown-utils";
 import { UserBubble } from "./UserBubble";
 import { AssistantBubble } from "./AssistantBubble";
+import type { CitationSource } from "@/types/chat";
 
 export { markdownToPlainText };
 
@@ -18,6 +19,7 @@ interface MessageBubbleProps {
   onAssistantRegenerate?: () => void;
   /** 仅最后一条助手：追问文案（已返回后渲染；加载中不出现骨架） */
   followUpItems?: string[];
+  citations?: CitationSource[];
   /** 点击追问填入输入框 */
   onFollowUpClick?: (text: string) => void;
   /** 用户消息：将内容与附图一并恢复到输入栏 */
@@ -31,6 +33,8 @@ interface MessageBubbleProps {
   assistantToolbarReserve?: boolean;
   /** 同一轮里工具调用会把正文拆成多条助手消息；仅在「最后一段」展示工具栏 */
   suppressAssistantToolbar?: boolean;
+  /** 输出完成后才展示引用来源入口 */
+  showCitationSources?: boolean;
   /** 消息 id：用户气泡用作 data-msg-id，让发送后的滚动定位精确到这条消息 */
   messageId?: string;
 }
@@ -43,6 +47,7 @@ export function MessageBubble({
   assistantActionsDisabled,
   onAssistantRegenerate,
   followUpItems,
+  citations,
   onFollowUpClick,
   onUserEdit,
   noTopPad,
@@ -50,6 +55,7 @@ export function MessageBubble({
   interrupted,
   assistantToolbarReserve,
   suppressAssistantToolbar,
+  showCitationSources,
   messageId,
 }: MessageBubbleProps) {
   const isUser = role === "user";
@@ -149,6 +155,7 @@ export function MessageBubble({
       assistantActionsDisabled={assistantActionsDisabled}
       onAssistantRegenerate={onAssistantRegenerate}
       followUpItems={followUpItems}
+      citations={citations}
       onFollowUpClick={onFollowUpClick}
       noTopPad={noTopPad}
       noBottomPad={noBottomPad}
@@ -162,6 +169,7 @@ export function MessageBubble({
       menuRef={menuRef}
       assistantToolbarReserve={assistantToolbarReserve}
       suppressAssistantToolbar={suppressAssistantToolbar}
+      showCitationSources={showCitationSources}
     />
   );
 }

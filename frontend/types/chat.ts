@@ -1,5 +1,18 @@
 import type { BrainstormStep } from "@/types/brainstorm";
 
+export type CitationKind = "knowledge" | "web" | "formula" | "external";
+
+export type CitationSource = {
+  id: string;
+  kind: CitationKind;
+  title: string;
+  source?: string;
+  url?: string;
+  snippet?: string;
+  score?: number;
+  metadata?: Record<string, unknown>;
+};
+
 export type ChatMessage = {
   id: string;
   role: "user" | "assistant";
@@ -11,6 +24,8 @@ export type ChatMessage = {
   modelName?: string;
   /** 助手消息：后端持久化的快速追问话术 */
   followUpSuggestions?: string[];
+  /** 助手消息：本条回复可引用的结构化来源 */
+  citations?: CitationSource[];
   /** 助手消息：用户点击终止后标记为 true */
   interrupted?: boolean;
   /** 后端 created_at ISO；用于历史聚合时还原 trace 总时长 */
@@ -89,6 +104,7 @@ export type ApiMessageRow = {
   duration_sec?: number | null;
   model_name?: string | null;
   follow_up_suggestions?: string[] | null;
+  citations?: CitationSource[] | null;
 };
 
 export type GenerationState = "idle" | "waiting" | "thinking" | "tool" | "typing";

@@ -5,7 +5,11 @@ import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.
 import { API_BASE } from "@/lib/api";
 import { chatPathConversation } from "@/lib/chatRoutes";
 import { parseSseDataLine } from "@/lib/chat/sseParser";
-import { toolIoToPreview, sumThinkingDurations } from "@/lib/chatUtils";
+import {
+  normalizeCitationSources,
+  toolIoToPreview,
+  sumThinkingDurations,
+} from "@/lib/chatUtils";
 import {
   agentIdForChatRequest,
   applyFinalizeThinkingStepToMessages,
@@ -15,6 +19,7 @@ import {
 } from "@/hooks/chat/chatHelpers";
 import type {
   ChatMessage,
+  CitationSource,
   Message,
   ServerConversation,
   ToolStep,
@@ -236,6 +241,20 @@ export function useChatStream(deps: UseChatStreamDeps) {
       let pendingInterimStepId: string | null = null;
       let pendingInterimText = "";
       let inSummaryPhase = false;
+      let activeCitationSources: CitationSource[] = [];
+
+      const attachCitationsToTurnAssistants = (sources: CitationSource[]) => {
+        if (!sources.length) return;
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.type === "message" &&
+            msg.role === "assistant" &&
+            bubblesCreatedThisTurn.has(msg.id)
+              ? { ...msg, citations: sources }
+              : msg,
+          ),
+        );
+      };
 
       /**
        * Think 模式收口：把当前 pending interim step 从 trace 内拎出来，
@@ -284,6 +303,9 @@ export function useChatStream(deps: UseChatStreamDeps) {
             type: "message",
             content,
             modelName: pendingChatModelRef.current,
+            ...(activeCitationSources.length
+              ? { citations: activeCitationSources }
+              : {}),
             ...(interrupted ? { interrupted: true } : {}),
           });
           return next;
@@ -636,6 +658,9 @@ export function useChatStream(deps: UseChatStreamDeps) {
                   typeof data.outputPreview === "string" && data.outputPreview
                     ? data.outputPreview
                     : undefined;
+                const sourcesFromEvent = normalizeCitationSources(
+                  (data as { sources?: unknown }).sources,
+                );
                 setMessages((prev) =>
                   prev.map((msg) => {
                     if (msg.type !== "trace" || msg.id !== currentTraceId) return msg;
@@ -662,12 +687,21 @@ export function useChatStream(deps: UseChatStreamDeps) {
                               ...step,
                               status: nextStatus,
                               outputPreview: outputPreviewFromEvent ?? step.outputPreview,
+                              sources: sourcesFromEvent ?? step.sources,
                             }
                           : step
                       ),
                     };
                   })
                 );
+              } else if (data.type === "source-registry") {
+                const sources = normalizeCitationSources(
+                  (data as { sources?: unknown }).sources,
+                );
+                if (sources?.length) {
+                  activeCitationSources = sources;
+                  attachCitationsToTurnAssistants(sources);
+                }
               } else if (data.type === "text-delta") {
                 const piece =
                   typeof data.textDelta === "string" ? data.textDelta : "";
@@ -685,6 +719,9 @@ export function useChatStream(deps: UseChatStreamDeps) {
                         type: "message",
                         content: piece,
                         modelName: pendingChatModelRef.current,
+                        ...(activeCitationSources.length
+                          ? { citations: activeCitationSources }
+                          : {}),
                       },
                     ]);
                   } else {
@@ -692,7 +729,13 @@ export function useChatStream(deps: UseChatStreamDeps) {
                     setMessages((prev) =>
                       prev.map((msg) =>
                         msg.type === "message" && msg.id === currentAssistantMsgId
-                          ? { ...msg, content: (msg.content || "") + piece }
+                          ? {
+                              ...msg,
+                              content: (msg.content || "") + piece,
+                              ...(activeCitationSources.length
+                                ? { citations: activeCitationSources }
+                                : {}),
+                            }
                           : msg,
                       ),
                     );
