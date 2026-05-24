@@ -12,7 +12,12 @@ import { API_BASE } from "@/lib/api";
 import { chatPathConversation } from "@/lib/chatRoutes";
 import { parseSseDataLine } from "@/lib/chat/sseParser";
 import {
+  clearPreparingUserInputSteps,
+  finalizeRunningAskUserTools,
+  findRunningToolStepIndex,
+  mergeWidgetUserInputStep,
   normalizeCitationSources,
+  supersedeRunningToolSteps,
   toolIoToPreview,
   sumThinkingDurations,
 } from "@/lib/chatUtils";
@@ -26,6 +31,7 @@ import {
 import type {
   ChatMessage,
   CitationSource,
+  FormFieldDef,
   Message,
   ServerConversation,
   ToolStep,
@@ -184,6 +190,7 @@ export function useChatStream(deps: UseChatStreamDeps) {
         resumeTraceId?: string;
         resumeWidgetId?: string;
         resumeKind?: "ask_user";
+        formSubmission?: Record<string, string>;
       }
     ) => {
       if (!token) return;
@@ -341,9 +348,10 @@ export function useChatStream(deps: UseChatStreamDeps) {
             conversation_id: conversationIdRef.current ?? conversationId,
             // ask_user 恢复是一次新的用户输入（但不渲染独立气泡），不能走 regenerate；
             // 否则后端会拿它和最后一条已持久化 user 消息比较，触发“不一致”错误。
-            regenerate_last_reply: streamOpts?.resumeTraceId
-              ? false
-              : streamOpts?.regenerateLastReply ?? false,
+            regenerate_last_reply:
+              streamOpts?.resumeTraceId || streamOpts?.resumeWidgetId
+                ? false
+                : streamOpts?.regenerateLastReply ?? false,
             ...(streamOpts?.regenerateFromUserId
               ? { regenerate_from_user_id: streamOpts.regenerateFromUserId }
               : {}),
@@ -361,6 +369,9 @@ export function useChatStream(deps: UseChatStreamDeps) {
               : {}),
             ...(streamOpts?.resumeTraceId
               ? { resume_trace_id: streamOpts.resumeTraceId }
+              : {}),
+            ...(streamOpts?.formSubmission
+              ? { form_submission: streamOpts.formSubmission }
               : {}),
             ...(effectiveLlmPick
               ? {
@@ -658,11 +669,25 @@ export function useChatStream(deps: UseChatStreamDeps) {
                     runId: sseStr(data.runId) || runKey,
                     inputPreview: toolIoToPreview((data as { input?: unknown }).input),
                   };
-                  return upsertTraceWithStep(base, traceIdResolved, toolStep);
+                  return upsertTraceWithStep(
+                    base.map((m) => {
+                      if (m.type !== "trace" || m.id !== traceIdResolved) return m;
+                      return {
+                        ...m,
+                        steps: supersedeRunningToolSteps(m.steps, toolName),
+                      };
+                    }),
+                    traceIdResolved,
+                    toolStep,
+                  );
                 });
               } else if (data.type === "tool-result") {
                 openThinkingStepId = null;
                 const rid = sseStr(data.runId) || undefined;
+                const toolName = sseStr(data.name) || "";
+                const isAskUserError =
+                  (toolName === "ask_user" || toolName === "ask_user_form") &&
+                  (data.status as string | undefined) === "error";
                 const outputPreviewFromEvent =
                   typeof data.outputPreview === "string" && data.outputPreview
                     ? data.outputPreview
@@ -673,18 +698,13 @@ export function useChatStream(deps: UseChatStreamDeps) {
                 setMessages((prev) =>
                   prev.map((msg) => {
                     if (msg.type !== "trace" || msg.id !== currentTraceId) return msg;
-                    let idx = -1;
-                    if (rid != null) {
-                      idx = msg.steps.findIndex(
-                        (step) =>
-                          step.type === "tool" && step.status === "running" && step.runId === rid
-                      );
+                    if (isAskUserError) {
+                      return {
+                        ...msg,
+                        steps: clearPreparingUserInputSteps(msg.steps),
+                      };
                     }
-                    if (idx === -1) {
-                      idx = msg.steps.findIndex(
-                        (step) => step.type === "tool" && step.status === "running"
-                      );
-                    }
+                    let idx = findRunningToolStepIndex(msg.steps, rid, toolName);
                     if (idx === -1) return msg;
                     const nextStatus =
                       (data.status as string | undefined) === "error" ? "error" : "success";
@@ -806,99 +826,76 @@ export function useChatStream(deps: UseChatStreamDeps) {
               } else if (data.type === "widget") {
                 const widgetId = String(data.widgetId || `w-${Date.now()}`);
                 const widgetQuestion = String(data.question || "");
-                const widgetChoices = Array.isArray(data.choices) ? data.choices.map(String) : [];
-                const widgetAllowFreeText = data.allowFreeText !== false;
-                const widgetMsg: WidgetMessage = {
-                  id: widgetId,
-                  type: "widget",
-                  widgetType: "choice",
-                  question: widgetQuestion,
-                  choices: widgetChoices,
-                  allowFreeText: widgetAllowFreeText,
-                };
+                const isFormWidget = data.widgetType === "form";
+                const widgetMsg: WidgetMessage = isFormWidget
+                  ? {
+                      id: widgetId,
+                      type: "widget",
+                      widgetType: "form",
+                      question: widgetQuestion,
+                      fields: (Array.isArray(data.fields) ? data.fields : [])
+                        .map((raw) => {
+                          const row = raw as Record<string, unknown>;
+                          const name = typeof row.name === "string" ? row.name : "";
+                          const label = typeof row.label === "string" ? row.label : "";
+                          if (!name || !label) return null;
+                          const t = row.type;
+                          const fieldType: FormFieldDef["type"] =
+                            t === "password" ||
+                            t === "email" ||
+                            t === "number" ||
+                            t === "text"
+                              ? t
+                              : "text";
+                          return {
+                            name,
+                            label,
+                            type: fieldType,
+                            required: row.required !== false,
+                            placeholder:
+                              typeof row.placeholder === "string"
+                                ? row.placeholder
+                                : undefined,
+                          } satisfies FormFieldDef;
+                        })
+                        .filter((x): x is FormFieldDef => x !== null),
+                    }
+                  : {
+                      id: widgetId,
+                      type: "widget",
+                      widgetType: "choice",
+                      question: widgetQuestion,
+                      choices: Array.isArray(data.choices)
+                        ? data.choices.map(String)
+                        : [],
+                      allowFreeText: data.allowFreeText !== false,
+                    };
+                const widgetChoices =
+                  widgetMsg.widgetType === "choice" ? widgetMsg.choices : undefined;
+                const widgetAllowFreeText =
+                  widgetMsg.widgetType === "choice"
+                    ? widgetMsg.allowFreeText
+                    : undefined;
+                const widgetFields =
+                  widgetMsg.widgetType === "form" ? widgetMsg.fields : undefined;
                 streamEndedWithWidget = true;
-                if (isThinkMode) {
-                  const traceIdResolved = ensureCurrentTraceId();
-                  const stepSnap = openThinkingStepId;
-                  openThinkingStepId = null;
-                  const tracedWidgetMsg: WidgetMessage = {
-                    ...widgetMsg,
-                    traceId: traceIdResolved,
-                  };
-                  setMessages((prev) => {
-                    // 移除 insertNewStreamingTrace 在工具调用后插入的空 continuation 气泡，
-                    // ask_user 在 deep think 中只作为 trace 节点展示，不再拆出外部气泡。
-                    const cleaned = prev.filter(
-                      (m) =>
-                        !(
-                          m.type === "message" &&
-                          m.role === "assistant" &&
-                          m.id === currentAssistantMsgId &&
-                          !(m.content || "").trim()
-                        ),
-                    );
-                    const base = stepSnap
-                      ? applyFinalizeThinkingStepToMessages(
-                          cleaned,
-                          traceIdResolved,
-                          stepSnap,
-                          thinkingStepStartedAt.current,
-                        )
-                      : cleaned;
-                    const existingIdx = base.findIndex(
-                      (m): m is TraceMessage =>
-                        m.type === "trace" &&
-                        m.id === traceIdResolved &&
-                        m.steps.some(
-                          (step) =>
-                            step.type === "user_input" &&
-                            step.status === "preparing",
-                        ),
-                    );
-                    const nextBase =
-                      existingIdx === -1
-                        ? upsertTraceWithStep(base, traceIdResolved, {
-                            id: `user-input-${widgetId}`,
-                            type: "user_input",
-                            widgetId,
-                            question: widgetQuestion,
-                            choices: widgetChoices,
-                            allowFreeText: widgetAllowFreeText,
-                            status: "waiting",
-                          })
-                        : base.map((m) => {
-                            if (m.type !== "trace" || m.id !== traceIdResolved) return m;
-                            let replaced = false;
-                            return {
-                              ...m,
-                              status: "streaming" as const,
-                              steps: m.steps.map((step) => {
-                                if (
-                                  replaced ||
-                                  step.type !== "user_input" ||
-                                  step.status !== "preparing"
-                                ) {
-                                  return step;
-                                }
-                                replaced = true;
-                                return {
-                                  ...step,
-                                  widgetId,
-                                  question: widgetQuestion,
-                                  choices: widgetChoices,
-                                  allowFreeText: widgetAllowFreeText,
-                                  status: "waiting" as const,
-                                };
-                              }),
-                            };
-                          });
-                    return [...nextBase, tracedWidgetMsg];
-                  });
-                  continue;
-                }
+                const traceIdResolved = ensureCurrentTraceId();
+                const stepSnap = openThinkingStepId;
+                openThinkingStepId = null;
+                const widgetPatch = {
+                  question: widgetQuestion,
+                  ...(widgetChoices ? { choices: widgetChoices } : {}),
+                  ...(widgetAllowFreeText !== undefined
+                    ? { allowFreeText: widgetAllowFreeText }
+                    : {}),
+                  ...(widgetFields
+                    ? { fields: widgetFields, widgetKind: "form" as const }
+                    : {}),
+                };
+                const tracedWidgetMsg: WidgetMessage = isThinkMode
+                  ? { ...widgetMsg, traceId: traceIdResolved }
+                  : widgetMsg;
                 setMessages((prev) => {
-                  // 移除 insertNewStreamingTrace 在工具调用后插入的空 continuation 气泡，
-                  // 避免空气泡携带 toolbar 和 follow-up 建议显示在 widget 前面
                   const cleaned = prev.filter(
                     (m) =>
                       !(
@@ -908,8 +905,50 @@ export function useChatStream(deps: UseChatStreamDeps) {
                         !(m.content || "").trim()
                       ),
                   );
-                  return [...cleaned, widgetMsg];
+                  const base = stepSnap
+                    ? applyFinalizeThinkingStepToMessages(
+                        cleaned,
+                        traceIdResolved,
+                        stepSnap,
+                        thinkingStepStartedAt.current,
+                      )
+                    : cleaned;
+                  const traceExists = base.some(
+                    (m): m is TraceMessage =>
+                      m.type === "trace" && m.id === traceIdResolved,
+                  );
+                  const nextBase = traceExists
+                    ? base.map((m) => {
+                        if (m.type !== "trace" || m.id !== traceIdResolved) return m;
+                        return {
+                          ...m,
+                          status: "streaming" as const,
+                          steps: finalizeRunningAskUserTools(
+                            mergeWidgetUserInputStep(
+                              m.steps,
+                              widgetId,
+                              widgetPatch,
+                            ),
+                          ),
+                        };
+                      })
+                    : upsertTraceWithStep(base, traceIdResolved, {
+                        id: `user-input-${widgetId}`,
+                        type: "user_input",
+                        widgetId,
+                        question: widgetQuestion,
+                        ...(widgetChoices ? { choices: widgetChoices } : {}),
+                        ...(widgetAllowFreeText !== undefined
+                          ? { allowFreeText: widgetAllowFreeText }
+                          : {}),
+                        ...(widgetFields
+                          ? { fields: widgetFields, widgetKind: "form" as const }
+                          : {}),
+                        status: "waiting",
+                      });
+                  return [...nextBase, tracedWidgetMsg];
                 });
+                continue;
               } else if (data.type === "title-updated") {
                 const cid =
                   typeof data.conversationId === "string" ? data.conversationId : null;

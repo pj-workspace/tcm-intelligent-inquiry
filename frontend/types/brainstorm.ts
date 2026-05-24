@@ -3,7 +3,7 @@
  * ``ToolStep.sources`` 保存该次工具 SSE 附带的结构化引用，供历史回放与导出。
  */
 
-import type { CitationSource } from "@/types/chat";
+import type { CitationSource, FormFieldDef } from "@/types/chat";
 
 export type BrainstormStep =
   | {
@@ -37,8 +37,10 @@ export type BrainstormStep =
       type: "user_input";
       widgetId: string;
       question: string;
+      widgetKind?: "choice" | "form";
       choices?: string[];
       allowFreeText?: boolean;
+      fields?: FormFieldDef[];
       status: "preparing" | "waiting" | "answered" | "dismissed";
       answer?: string;
       createdAt?: string;

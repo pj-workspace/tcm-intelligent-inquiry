@@ -8,6 +8,7 @@ import type {
   CitationKind,
   CitationSource,
   FlatMessage,
+  FormFieldDef,
   Message,
   TraceMessage,
   ToolStep,
@@ -15,6 +16,176 @@ import type {
 } from "@/types/chat";
 import type { BrainstormStep } from "@/types/brainstorm";
 import { toolActionLabel } from "@/lib/brainstorm-utils";
+
+/** widget 到达时合并 trace 内 user_input：preparing → waiting，无 preparing 则追加。 */
+export function mergeWidgetUserInputStep(
+  steps: BrainstormStep[],
+  widgetId: string,
+  patch: {
+    question: string;
+    choices?: string[];
+    allowFreeText?: boolean;
+    fields?: FormFieldDef[];
+    widgetKind?: "choice" | "form";
+  },
+): BrainstormStep[] {
+  let replaced = false;
+  const mapped = steps.map((step) => {
+    if (replaced || step.type !== "user_input" || step.status !== "preparing") {
+      return step;
+    }
+    replaced = true;
+    return {
+      ...step,
+      widgetId,
+      question: patch.question,
+      ...(patch.choices ? { choices: patch.choices } : {}),
+      ...(patch.allowFreeText !== undefined
+        ? { allowFreeText: patch.allowFreeText }
+        : {}),
+      ...(patch.fields
+        ? { fields: patch.fields, widgetKind: patch.widgetKind ?? ("form" as const) }
+        : {}),
+      status: "waiting" as const,
+    };
+  });
+  if (replaced) return mapped;
+  return [
+    ...mapped,
+    {
+      id: `user-input-${widgetId}`,
+      type: "user_input",
+      widgetId,
+      question: patch.question,
+      ...(patch.choices
+        ? {
+            choices: patch.choices,
+            allowFreeText: patch.allowFreeText ?? true,
+            widgetKind: "choice" as const,
+          }
+        : {}),
+      ...(patch.fields
+        ? { fields: patch.fields, widgetKind: patch.widgetKind ?? ("form" as const) }
+        : {}),
+      status: "waiting" as const,
+    },
+  ];
+}
+
+/** 用户作答/跳过时更新 trace 内 user_input；widgetId 不匹配时回退到最后一条 preparing/waiting。 */
+export function resolveUserInputStepOnAnswer(
+  steps: BrainstormStep[],
+  widgetId: string,
+  answer: string | null,
+  dismissed: boolean,
+): BrainstormStep[] {
+  let matched = false;
+  const mapped = steps.map((step) => {
+    if (step.type === "user_input" && step.widgetId === widgetId) {
+      matched = true;
+      return {
+        ...step,
+        status: dismissed ? ("dismissed" as const) : ("answered" as const),
+        answer: answer ?? undefined,
+      };
+    }
+    return step;
+  });
+  if (matched) return mapped;
+  for (let i = mapped.length - 1; i >= 0; i--) {
+    const step = mapped[i];
+    if (
+      step.type === "user_input" &&
+      (step.status === "preparing" || step.status === "waiting")
+    ) {
+      return mapped.map((s, idx) =>
+        idx === i
+          ? {
+              ...step,
+              widgetId,
+              status: dismissed ? ("dismissed" as const) : ("answered" as const),
+              answer: answer ?? undefined,
+            }
+          : s,
+      );
+    }
+  }
+  return mapped;
+}
+
+/** ask_user 失败等场景：移除尚未就绪的 preparing 占位步骤。 */
+export function clearPreparingUserInputSteps(
+  steps: BrainstormStep[],
+): BrainstormStep[] {
+  return steps.filter(
+    (step) => !(step.type === "user_input" && step.status === "preparing"),
+  );
+}
+
+/** widget 已展示：收口仍在 running 的 ask_user / ask_user_form 工具步骤。 */
+export function finalizeRunningAskUserTools(
+  steps: BrainstormStep[],
+): BrainstormStep[] {
+  return steps.map((step) => {
+    if (
+      step.type === "tool" &&
+      step.status === "running" &&
+      (step.toolName === "ask_user" || step.toolName === "ask_user_form")
+    ) {
+      return {
+        ...step,
+        status: "success" as const,
+        outputPreview: step.outputPreview ?? "[已展示交互]",
+      };
+    }
+    return step;
+  });
+}
+
+/** 同工具再次调用前，将上一轮同名的 running 步骤标为 error（模型重试场景）。 */
+export function supersedeRunningToolSteps(
+  steps: BrainstormStep[],
+  toolName: string,
+): BrainstormStep[] {
+  if (!toolName) return steps;
+  return steps.map((step) => {
+    if (
+      step.type === "tool" &&
+      step.status === "running" &&
+      step.toolName === toolName
+    ) {
+      return {
+        ...step,
+        status: "error" as const,
+        outputPreview: step.outputPreview ?? "已重试",
+      };
+    }
+    return step;
+  });
+}
+
+/** 定位应接收 tool-result 的 running 工具步骤。 */
+export function findRunningToolStepIndex(
+  steps: BrainstormStep[],
+  runId: string | undefined,
+  toolName: string,
+): number {
+  if (runId) {
+    const byRun = steps.findIndex(
+      (s) => s.type === "tool" && s.status === "running" && s.runId === runId,
+    );
+    if (byRun >= 0) return byRun;
+  }
+  if (toolName) {
+    for (let i = steps.length - 1; i >= 0; i--) {
+      const s = steps[i];
+      if (s.type === "tool" && s.status === "running" && s.toolName === toolName) {
+        return i;
+      }
+    }
+  }
+  return steps.findIndex((s) => s.type === "tool" && s.status === "running");
+}
 
 /** 将 SSE / 历史记录中的工具入参转为可展示字符串 */
 export function toolIoToPreview(v: unknown): string | undefined {
@@ -260,8 +431,13 @@ export function groupMessagesIntoTraces(
           type: "user_input",
           widgetId: item.id,
           question: item.question,
-          choices: item.choices,
-          allowFreeText: item.allowFreeText,
+          ...(item.widgetType === "form"
+            ? { widgetKind: "form" as const, fields: item.fields }
+            : {
+                widgetKind: "choice" as const,
+                choices: item.choices,
+                allowFreeText: item.allowFreeText,
+              }),
           status: "waiting",
         });
         flushTrace(true);
@@ -286,14 +462,24 @@ export function groupMessagesIntoTraces(
   const resumedTraceIndices = new Set<number>();
   for (let i = 0; i < grouped.length; i++) {
     const cur = grouped[i];
-    if (cur.type !== "widget" || cur.answer !== undefined || cur.dismissed) continue;
+    if (cur.type !== "widget") continue;
+    if (cur.widgetType === "form") {
+      if (cur.submitted) continue;
+    } else if (cur.answer !== undefined || cur.dismissed) {
+      continue;
+    }
     let found = false;
     for (let j = i + 1; j < grouped.length; j++) {
       const next = grouped[j];
       if (next.type === "trace") continue;
       if (next.type === "message" && next.role === "user") {
-        grouped[i] = { ...cur, answer: next.content };
-        applyWidgetAnswerToTrace(cur.id, next.content, false);
+        if (cur.widgetType === "form") {
+          grouped[i] = { ...cur, submitted: true };
+          applyWidgetAnswerToTrace(cur.id, "已提交表单", false);
+        } else {
+          grouped[i] = { ...cur, answer: next.content };
+          applyWidgetAnswerToTrace(cur.id, next.content, false);
+        }
         widgetAnswerIndices.add(j);
         if (cur.traceId) {
           for (let k = j + 1; k < grouped.length; k++) {
@@ -325,6 +511,7 @@ export function groupMessagesIntoTraces(
       break;
     }
     if (!found) {
+      if (cur.widgetType === "form") continue;
       grouped[i] = { ...cur, dismissed: true };
       applyWidgetAnswerToTrace(cur.id, null, true);
     }
@@ -464,7 +651,43 @@ export function mapApiRowToMessage(msg: ApiMessageRow): FlatMessage {
         question?: string;
         choices?: string[];
         allowFreeText?: boolean;
+        fields?: Array<{
+          name?: string;
+          label?: string;
+          type?: string;
+          required?: boolean;
+          placeholder?: string;
+        }>;
       };
+      if (payload.widgetType === "form") {
+        const fields = (Array.isArray(payload.fields) ? payload.fields : [])
+          .map((f) => {
+            const name = typeof f.name === "string" ? f.name : "";
+            const label = typeof f.label === "string" ? f.label : "";
+            if (!name || !label) return null;
+            const t = f.type;
+            const fieldType =
+              t === "password" || t === "email" || t === "number" || t === "text"
+                ? t
+                : "text";
+            return {
+              name,
+              label,
+              type: fieldType,
+              required: f.required !== false,
+              placeholder:
+                typeof f.placeholder === "string" ? f.placeholder : undefined,
+            };
+          })
+          .filter((x): x is NonNullable<typeof x> => x !== null);
+        return {
+          id: msg.id,
+          type: "widget",
+          widgetType: "form",
+          question: typeof payload.question === "string" ? payload.question : "",
+          fields,
+        } satisfies WidgetMessage;
+      }
       return {
         id: msg.id,
         type: "widget",

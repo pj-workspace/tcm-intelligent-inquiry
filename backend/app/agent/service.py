@@ -39,6 +39,8 @@ _TOOL_META: dict[str, dict[str, str]] = {
     "formula_lookup":       {"label": "方剂查询",   "category": "formula"},
     "recommend_formulas":   {"label": "方剂推荐",   "category": "formula"},
     "searx_web_search":     {"label": "联网搜索",   "category": "web"},
+    "ask_user":             {"label": "用户选择",   "category": "system"},
+    "ask_user_form":        {"label": "用户表单",   "category": "system"},
 }
 
 

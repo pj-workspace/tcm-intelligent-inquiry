@@ -90,21 +90,41 @@ export type TraceMessage = {
   summaryAcknowledged?: boolean;
 };
 
-/** AI 发送的交互控件（目前仅支持选择框） */
-export type WidgetMessage = {
+/** 表单字段定义（ask_user_form） */
+export type FormFieldDef = {
+  name: string;
+  label: string;
+  type: "text" | "password" | "email" | "number";
+  required?: boolean;
+  placeholder?: string;
+};
+
+/** 选择题 Widget（ask_user） */
+export type ChoiceWidgetMessage = {
   id: string;
   type: "widget";
   widgetType: "choice";
   question: string;
   choices: string[];
   allowFreeText: boolean;
-  /** 用户作答后填入 */
   answer?: string;
-  /** 用户点击跳过后为 true */
   dismissed?: boolean;
-  /** deep think 中该 widget 归属的 trace；存在时不再渲染为外部消息卡片 */
   traceId?: string;
 };
+
+/** 表单 Widget（ask_user_form） */
+export type FormWidgetMessage = {
+  id: string;
+  type: "widget";
+  widgetType: "form";
+  question: string;
+  fields: FormFieldDef[];
+  submitted?: boolean;
+  traceId?: string;
+};
+
+/** AI 发送的交互控件 */
+export type WidgetMessage = ChoiceWidgetMessage | FormWidgetMessage;
 
 /** 渲染层使用的顶层消息联合。 */
 export type Message = ChatMessage | TraceMessage | WidgetMessage;

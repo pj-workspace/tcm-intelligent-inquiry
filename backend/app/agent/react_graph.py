@@ -10,6 +10,7 @@ from langchain_core.tools import BaseTool
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import create_react_agent
 
+from app.agent.tools.secret_ref_wrapper import apply_secret_ref_resolution
 from app.agent.tools.timeout_wrapper import apply_default_tool_timeout
 
 # v2 对每个 tool_call 发 Send，单个工具返回后会立刻回到 agent，
@@ -30,7 +31,8 @@ def build_react_agent_graph(
     """
     base_tools = [t for t in tools if isinstance(t, BaseTool)]
     other_tools = [t for t in tools if not isinstance(t, BaseTool)]
-    bounded = apply_default_tool_timeout(base_tools)
+    with_secrets = apply_secret_ref_resolution(base_tools)
+    bounded = apply_default_tool_timeout(with_secrets)
     final_tools: list[BaseTool | dict[str, Any]] = [*bounded, *other_tools]
     return create_react_agent(
         llm,

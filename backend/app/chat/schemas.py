@@ -59,8 +59,12 @@ class ChatRequest(BaseModel):
         default=None,
         description="前端 trace id，仅用于 SSE/日志关联；后端不依赖它做权限判断。",
     )
+    form_submission: dict[str, str] | None = Field(
+        default=None,
+        description="ask_user 表单恢复：字段名 → 值（HTTPS 传输，服务端加密存 Vault，15 分钟有效）",
+    )
     deep_think: bool = Field(
-        default=False,
+        default=True,
         description="为 True 时在系统提示中追加「深度思考」指令：逐步推理；若模型支持思考通道则展示推理过程。",
     )
     web_search_enabled: bool = Field(
@@ -111,7 +115,13 @@ class ChatRequest(BaseModel):
         if len(cleaned) > 8:
             raise ValueError("本轮最多附带 8 张图片")
         if not msg and not cleaned:
-            raise ValueError("请输入文字或上传图片")
+            is_form_resume = (
+                self.resume_kind == "ask_user"
+                and bool((self.resume_widget_id or "").strip())
+                and bool(self.form_submission)
+            )
+            if not is_form_resume:
+                raise ValueError("请输入文字或上传图片")
         self.message = msg
         self.image_urls = cleaned
         return self

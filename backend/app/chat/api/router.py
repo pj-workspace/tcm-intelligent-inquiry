@@ -60,6 +60,7 @@ async def chat(
             web_search_mode=req.web_search_mode,
             group_id=req.group_id,
             image_urls=list(req.image_urls),
+            form_submission=req.form_submission,
         ),
         media_type="text/event-stream",
     )

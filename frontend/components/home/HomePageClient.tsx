@@ -16,6 +16,7 @@ import {
 } from "@/components/chat";
 import type { SidebarFilter } from "@/components/chat/sidebar/Sidebar";
 import { WidgetCard } from "@/components/chat/messages/WidgetCard";
+import { FormWidgetCard } from "@/components/chat/messages/FormWidgetCard";
 import { ChatMessageList } from "@/components/home/ChatMessageList";
 import { ChatWorkspaceModals } from "@/components/home/ChatWorkspaceModals";
 import { useAuth } from "@/contexts/auth-context";
@@ -163,6 +164,7 @@ export function HomePageClient() {
     handleStop,
     handleRegenerateAssistant,
     handleWidgetAnswer,
+    handleWidgetFormSubmit,
     handleNewChat,
     handleSelectConversation,
     openDeleteDialog,
@@ -223,10 +225,11 @@ export function HomePageClient() {
     () =>
       [...messages]
         .reverse()
-        .find(
-          (m): m is WidgetMessage =>
-            m.type === "widget" && !m.answer && !m.dismissed,
-        ) ?? null,
+        .find((m): m is WidgetMessage => {
+          if (m.type !== "widget") return false;
+          if (m.widgetType === "form") return !m.submitted;
+          return !m.answer && !m.dismissed;
+        }) ?? null,
     [messages],
   );
 
@@ -985,19 +988,33 @@ export function HomePageClient() {
                 className="absolute bottom-0 left-0 right-0 z-20 flex flex-col items-center bg-gradient-to-t from-[#fdfdfc] from-50% via-[#fdfdfc]/90 to-transparent px-4 pb-5 pt-10 md:px-8"
               >
                 <div className="w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl max-h-[min(75vh,36rem)] overflow-y-auto">
-                  <WidgetCard
-                    question={activeWidget.question}
-                    choices={activeWidget.choices}
-                    allowFreeText={activeWidget.allowFreeText}
-                    answer={activeWidget.answer}
-                    dismissed={activeWidget.dismissed}
-                    disabled={genState !== "idle"}
-                    onAnswer={(ans) => handleWidgetAnswer(activeWidget.id, ans)}
-                  />
+                  {activeWidget.widgetType === "form" ? (
+                    <FormWidgetCard
+                      question={activeWidget.question}
+                      fields={activeWidget.fields}
+                      submitted={activeWidget.submitted}
+                      disabled={genState !== "idle"}
+                      onSubmit={(values) =>
+                        handleWidgetFormSubmit(activeWidget.id, values)
+                      }
+                    />
+                  ) : (
+                    <WidgetCard
+                      question={activeWidget.question}
+                      choices={activeWidget.choices}
+                      allowFreeText={activeWidget.allowFreeText}
+                      answer={activeWidget.answer}
+                      dismissed={activeWidget.dismissed}
+                      disabled={genState !== "idle"}
+                      onAnswer={(ans) => handleWidgetAnswer(activeWidget.id, ans)}
+                    />
+                  )}
                 </div>
-                <p className="mt-2 text-center text-[11px] text-gray-400 select-none">
-                  ↑↓ 导航&nbsp;&nbsp;·&nbsp;&nbsp;Enter 选择&nbsp;&nbsp;·&nbsp;&nbsp;Esc 跳过
-                </p>
+                {activeWidget.widgetType === "choice" ? (
+                  <p className="mt-2 text-center text-[11px] text-gray-400 select-none">
+                    ↑↓ 导航&nbsp;&nbsp;·&nbsp;&nbsp;Enter 选择&nbsp;&nbsp;·&nbsp;&nbsp;Esc 跳过
+                  </p>
+                ) : null}
               </motion.div>
             )}
           </AnimatePresence>

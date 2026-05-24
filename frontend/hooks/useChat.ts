@@ -20,6 +20,8 @@ import {
   toolIoToPreview,
   groupMessagesIntoTraces,
   mapApiRowToMessage,
+  resolveUserInputStepOnAnswer,
+  finalizeRunningAskUserTools,
   sumThinkingDurations,
   lastAssistantFollowUpFromMessages,
 } from "@/lib/chatUtils";
@@ -143,7 +145,7 @@ export function useChat(opts: {
   const [followUpsLoadingForId, setFollowUpsLoadingForId] = useState<string | null>(null);
 
   // ── Feature toggles (passed in from caller via setter pattern) ─────────────
-  const [deepThinkEnabled, setDeepThinkEnabled] = useState(false);
+  const [deepThinkEnabled, setDeepThinkEnabled] = useState(true);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const [webSearchMode, setWebSearchMode] = useState<"force" | "auto">("force");
 
@@ -647,20 +649,17 @@ export function useChat(opts: {
         null;
       setMessages((prev) =>
         prev.map((m) => {
-          if (m.type === "widget" && m.id === widgetId) {
+          if (m.type === "widget" && m.id === widgetId && m.widgetType === "choice") {
             return { ...m, answer: answer ?? undefined, dismissed: answer === null };
           }
           if (m.type === "trace") {
             return {
               ...m,
-              steps: m.steps.map((step) =>
-                step.type === "user_input" && step.widgetId === widgetId
-                  ? {
-                      ...step,
-                      status: answer === null ? "dismissed" : "answered",
-                      answer: answer ?? undefined,
-                    }
-                  : step,
+              steps: resolveUserInputStepOnAnswer(
+                m.steps,
+                widgetId,
+                answer,
+                answer === null,
               ),
             };
           }
@@ -669,8 +668,6 @@ export function useChat(opts: {
       );
       setHasStarted(true);
       autoFollowMainRef.current = true;
-      // appendUserMessage=false：答案已显示在 widget/trace 紧凑状态，不再额外显示用户气泡。
-      // 跳过也要恢复模型，否则 ask_user 暂停后不会继续输出。
       runChatStream(answer ?? "用户选择跳过此问题，请基于已有信息继续。", false, {
         resumeKind: "ask_user",
         resumeWidgetId: widgetId,
@@ -678,6 +675,46 @@ export function useChat(opts: {
       });
     },
     [messages, autoFollowMainRef, runChatStream]
+  );
+
+  /** 用户提交 ask_user_form 表单：加密传后端，恢复 Agent 流 */
+  const handleWidgetFormSubmit = useCallback(
+    (widgetId: string, values: Record<string, string>) => {
+      const resumeTraceId =
+        messages.find(
+          (m): m is WidgetMessage => m.type === "widget" && m.id === widgetId,
+        )?.traceId ??
+        null;
+      const fieldCount = Object.keys(values).length;
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (m.type === "widget" && m.id === widgetId && m.widgetType === "form") {
+            return { ...m, submitted: true };
+          }
+          if (m.type === "trace") {
+            return {
+              ...m,
+              steps: resolveUserInputStepOnAnswer(
+                finalizeRunningAskUserTools(m.steps),
+                widgetId,
+                `已提交 ${fieldCount} 项`,
+                false,
+              ),
+            };
+          }
+          return m;
+        }),
+      );
+      setHasStarted(true);
+      autoFollowMainRef.current = true;
+      runChatStream("", false, {
+        resumeKind: "ask_user",
+        resumeWidgetId: widgetId,
+        formSubmission: values,
+        ...(resumeTraceId ? { resumeTraceId } : {}),
+      });
+    },
+    [messages, autoFollowMainRef, runChatStream],
   );
 
   const handleSend = useCallback(
@@ -1383,6 +1420,7 @@ export function useChat(opts: {
     fetchAiImageQuickPrompts,
     // handlers
     handleWidgetAnswer,
+    handleWidgetFormSubmit,
     handleSend,
     handleStop,
     handleRegenerateAssistant,

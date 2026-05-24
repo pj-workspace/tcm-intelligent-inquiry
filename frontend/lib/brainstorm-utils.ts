@@ -101,14 +101,17 @@ export function toolAbortedLabel(
 
 /** trace 头部：流式中实时反映当前活跃 step 的语义 */
 export function streamingTraceHeadline(steps: BrainstormStep[]): string {
+  const lastUserInput = [...steps]
+    .reverse()
+    .find((s): s is Extract<BrainstormStep, { type: "user_input" }> => s.type === "user_input");
+  if (lastUserInput?.status === "preparing") {
+    return "准备询问用户...";
+  }
+  if (lastUserInput?.status === "waiting") {
+    return "等待用户补充...";
+  }
   for (let i = steps.length - 1; i >= 0; i--) {
     const step = steps[i];
-    if (step.type === "user_input" && step.status === "preparing") {
-      return "准备询问用户...";
-    }
-    if (step.type === "user_input" && step.status === "waiting") {
-      return "等待用户补充...";
-    }
     if (step.type === "tool" && step.status === "running") {
       return runningToolLabel(step.toolName, step.mcpRemoteName);
     }

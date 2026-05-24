@@ -123,4 +123,26 @@ describe("streamingTraceHeadline", () => {
       ]),
     ).toBe("处理中...");
   });
+
+  it("ignores stale preparing when latest user_input was dismissed", () => {
+    expect(
+      streamingTraceHeadline([
+        {
+          id: "ui-preparing",
+          type: "user_input",
+          widgetId: "pending-1",
+          question: "正在准备问题",
+          status: "preparing",
+        },
+        {
+          id: "ui-dismissed",
+          type: "user_input",
+          widgetId: "w-1",
+          question: "请输入学号和密码",
+          status: "dismissed",
+        },
+        tool("jxnu.auth.status", "running", "jxnu.auth.status"),
+      ]),
+    ).toContain("jxnu.auth.status");
+  });
 });

@@ -27,6 +27,8 @@ from app.chat.images.vl_sanitize import (
 )
 from app.chat.models import ConversationRecord, MessageRecord
 from app.chat.policy.turns import ResolvedChatTurn
+from app.chat.secrets import build_form_resume_hint, store_form_secrets
+from app.chat.secrets.constants import FORM_SUBMIT_USER_PLACEHOLDER
 from app.chat.schemas import ChatMessage
 from app.chat.services.groups import assert_own_group
 from app.chat.services.streaming.chunk_parsers import (
@@ -60,7 +62,7 @@ from app.core.ai_chat_trace import (
     format_tool_event_raw,
     serialize_tool_output_for_raw_log,
 )
-from app.core.chat_context import chat_agent_kb_id, chat_user_id
+from app.core.chat_context import chat_agent_kb_id, chat_conversation_id, chat_user_id
 from app.core.config import get_settings
 from app.core.database import async_session_factory
 from app.core.logging import get_logger
@@ -179,6 +181,7 @@ async def stream_chat(
     web_search_mode: Literal["force", "auto"] = "force",
     group_id: str | None = None,
     image_urls: list[str] | None = None,
+    form_submission: dict[str, str] | None = None,
 ) -> AsyncIterator[str]:
     """流式执行一轮对话并通过 SSE 帧增量推送事件。
 
@@ -201,6 +204,7 @@ async def stream_chat(
         web_search_mode: 联网检索策略（``force`` / ``auto``）。
         group_id: 会话分组 ID。
         image_urls: 附图 OSS 签名 URL 列表。
+        form_submission: ask_user 表单恢复时的字段值（加密存 Vault，15 分钟有效）。
 
     Yields:
         SSE 格式字符串（``sse()`` / ``sse_done()`` 产出）。
@@ -221,7 +225,9 @@ async def stream_chat(
     msg_in = message.strip()
     if not msg_in and urls:
         msg_in = "（附图）"
-    if not msg_in and not urls:
+    is_ask_user_resume = resume_kind == "ask_user" and bool(resume_widget_id)
+    is_form_resume = is_ask_user_resume and bool(form_submission)
+    if not msg_in and not urls and not is_form_resume:
         if had_request_images:
             yield sse(
                 {
@@ -234,10 +240,30 @@ async def stream_chat(
         yield sse_done()
         return
 
-    persist_user_body = persist_user_turn_content(msg_in, urls)
+    if is_form_resume:
+        if not conversation_id:
+            yield sse({"type": "error", "message": "表单恢复需要已有会话（conversation_id）。"})
+            yield sse_done()
+            return
+        try:
+            stored_fields = await store_form_secrets(
+                conversation_id=conversation_id,
+                widget_id=resume_widget_id or "",
+                fields=form_submission or {},
+            )
+        except ValueError as exc:
+            yield sse({"type": "error", "message": str(exc)})
+            yield sse_done()
+            return
+        msg_in = build_form_resume_hint(resume_widget_id or "", stored_fields)
+        persist_user_body = FORM_SUBMIT_USER_PLACEHOLDER.format(
+            widget_id=resume_widget_id or ""
+        )
+    else:
+        persist_user_body = persist_user_turn_content(msg_in, urls)
+
     # 恢复 ask_user 是一条新的用户输入，不是重新生成。这里在后端强制兜底，
     # 避免客户端旧状态把 regenerate_last_reply=true 一起带上导致内容比对误报。
-    is_ask_user_resume = resume_kind == "ask_user" and bool(resume_widget_id)
     if is_ask_user_resume:
         regenerate_last_reply = False
     regenerate_from_user_id = (regenerate_from_user_id or "").strip() or None
@@ -253,6 +279,7 @@ async def stream_chat(
         return
 
     ctx_token = chat_user_id.set(user_id)
+    conv_ctx_token: object | None = None
     kb_ctx_token: object | None = None
     conv_id: str | None = conversation_id
     effective_agent_id = agent_id
@@ -430,6 +457,7 @@ async def stream_chat(
                 if arow is not None and getattr(arow, "default_kb_id", None):
                     agent_kb_id = str(arow.default_kb_id).strip() or None
         kb_ctx_token = chat_agent_kb_id.set(agent_kb_id)
+        conv_ctx_token = chat_conversation_id.set(conv_id)
 
         graph = await build_agent_graph_for_chat_request(
             effective_agent_id,
@@ -722,7 +750,7 @@ async def stream_chat(
                 raw_in = data.get("input")
                 if raw_in is None:
                     raw_in = data.get("tool_input")
-                if name == "ask_user":
+                if name in ("ask_user", "ask_user_form"):
                     payload: dict[str, Any] = {
                         "type": "ask-user-start",
                         "name": name,
@@ -788,21 +816,34 @@ async def stream_chat(
                     try:
                         _wparsed = json.loads(_raw_out_str)
                         if isinstance(_wparsed, dict) and _wparsed.get("__widget__") is True:
+                            wt = str(_wparsed.get("widgetType") or "choice")
                             _widget_sse = {
                                 "type": "widget",
                                 "widgetId": str(_wparsed.get("widgetId") or ""),
-                                "widgetType": str(_wparsed.get("widgetType") or "choice"),
+                                "widgetType": wt,
                                 "question": str(_wparsed.get("question") or ""),
-                                "choices": [str(c) for c in (_wparsed.get("choices") or [])],
-                                "allowFreeText": bool(_wparsed.get("allowFreeText", True)),
                             }
+                            if wt == "form":
+                                _widget_sse["fields"] = _wparsed.get("fields") or []
+                            else:
+                                _widget_sse["choices"] = [
+                                    str(c) for c in (_wparsed.get("choices") or [])
+                                ]
+                                _widget_sse["allowFreeText"] = bool(
+                                    _wparsed.get("allowFreeText", True)
+                                )
                     except (json.JSONDecodeError, TypeError):
                         pass
-                preview = (
-                    f"[选择框] {_widget_sse['question']}"
-                    if _widget_sse
-                    else serialize_tool_output(out)
-                )
+                preview = ""
+                if _widget_sse:
+                    if _widget_sse.get("widgetType") == "form":
+                        preview = f"[表单] {_widget_sse['question']}"
+                    else:
+                        preview = f"[选择框] {_widget_sse['question']}"
+                elif _raw_out_str:
+                    preview = serialize_tool_output(out)
+                if not preview and _raw_out_str:
+                    preview = serialize_tool_output(out)
                 tool_status: str = "success"
                 if isinstance(out, ToolMessage):
                     tool_status = out.status or "success"
@@ -848,6 +889,18 @@ async def stream_chat(
                 if _widget_sse:
                     await flush_thinking_segment()
                     await flush_assistant_segment()
+                    persist_payload: dict[str, Any] = {
+                        "widgetId": _widget_sse["widgetId"],
+                        "widgetType": _widget_sse["widgetType"],
+                        "question": _widget_sse["question"],
+                    }
+                    if _widget_sse.get("widgetType") == "form":
+                        persist_payload["fields"] = _widget_sse.get("fields") or []
+                    else:
+                        persist_payload["choices"] = _widget_sse.get("choices") or []
+                        persist_payload["allowFreeText"] = _widget_sse.get(
+                            "allowFreeText", True
+                        )
                     async with async_session_factory() as session:
                         session.add(
                             MessageRecord(
@@ -855,18 +908,13 @@ async def stream_chat(
                                 conversation_id=conv_id,
                                 role="widget",
                                 content=json.dumps(
-                                    {
-                                        "widgetId": _widget_sse["widgetId"],
-                                        "widgetType": _widget_sse["widgetType"],
-                                        "question": _widget_sse["question"],
-                                        "choices": _widget_sse["choices"],
-                                        "allowFreeText": _widget_sse["allowFreeText"],
-                                    },
+                                    persist_payload,
                                     ensure_ascii=False,
                                 ),
                             )
                         )
                         await session.commit()
+                    yield sse(tr)
                     yield sse(_widget_sse)
                     _break_after_widget = True
                 else:
@@ -1031,4 +1079,6 @@ async def stream_chat(
                 logger.exception("写入 interrupt-mark 失败")
         if kb_ctx_token is not None:
             chat_agent_kb_id.reset(kb_ctx_token)
+        if conv_ctx_token is not None:
+            chat_conversation_id.reset(conv_ctx_token)
         chat_user_id.reset(ctx_token)

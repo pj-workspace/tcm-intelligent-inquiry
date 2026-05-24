@@ -125,6 +125,33 @@ describe("groupMessagesIntoTraces", () => {
     ]);
   });
 
+  it("form widget inside trace does not crash on traceId", () => {
+    const out = groupMessagesIntoTraces([
+      userMsg("u1"),
+      toolStep("tool1"),
+      {
+        id: "w-form1",
+        type: "widget",
+        widgetType: "form",
+        question: "请填写学号与密码",
+        fields: [
+          { name: "student_id", label: "学号", type: "text" },
+          { name: "password", label: "密码", type: "password" },
+        ],
+      },
+      userMsg("u2", "【用户已通过表单提交敏感信息】"),
+    ]);
+    expect(out.some((m) => m.type === "widget" && m.id === "w-form1")).toBe(true);
+    const formWidget = out.find(
+      (m) => m.type === "widget" && m.id === "w-form1",
+    );
+    if (!formWidget || formWidget.type !== "widget" || formWidget.widgetType !== "form") {
+      throw new Error("expected form widget");
+    }
+    expect(formWidget.submitted).toBe(true);
+    expect(formWidget.traceId).toMatch(/^trace-/);
+  });
+
   it("trailing assistant with no steps stays as plain message", () => {
     const out = groupMessagesIntoTraces([
       userMsg("u1"),

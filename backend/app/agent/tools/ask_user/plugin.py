@@ -7,11 +7,32 @@
 from __future__ import annotations
 
 import json
+import re
 import uuid
 
 from langchain_core.tools import tool
 
 from app.agent.tools.registry import tool_registry
+
+# 凭证/多字段场景应走 ask_user_form，不应走选择题
+_CREDENTIAL_PATTERN = re.compile(
+    r"密码|password|api[\s_-]?key|token|凭证|secret|学号|账号|username|login|登录",
+    re.IGNORECASE,
+)
+
+
+def _should_use_form_instead(question: str, choices: list[str]) -> bool:
+    """判断 ask_user 是否误用于凭证/多字段收集。"""
+    q = (question or "").strip()
+    if _CREDENTIAL_PATTERN.search(q):
+        return True
+    norm_choices = [str(c).strip() for c in (choices or []) if str(c).strip()]
+    cred_hits = sum(1 for c in norm_choices if _CREDENTIAL_PATTERN.search(c))
+    if cred_hits >= 2:
+        return True
+    if cred_hits >= 1 and len(norm_choices) >= 2:
+        return True
+    return False
 
 
 @tool_registry.register
@@ -32,6 +53,7 @@ def ask_user(
     - 信息虽不完整，但可以给出通用科普、风险提醒或明确说明"需进一步辨证"。
     - 用户已经给出足够信息回答当前问题。
     - 只是为了收集更多背景，而不是解决关键决策分歧。
+    - 需要收集账号、密码、学号、API Key、Token 等敏感凭证，或需同时填写多个字段（应改用 ask_user_form）。
 
     调用规则：
     - 本工具应单独调用，不要与其他工具并发。
@@ -43,6 +65,16 @@ def ask_user(
     - choices: 选项列表，2 至 6 个，每项不超过 20 字
     - allow_free_text: 是否允许用户自由填写（默认 True）
     """
+    if _should_use_form_instead(question, choices):
+        return json.dumps(
+            {
+                "error": (
+                    "此场景应使用 ask_user_form 收集敏感/多字段信息（如学号+密码），"
+                    "不要用 ask_user 选择题。请改用 ask_user_form，fields 定义各字段。"
+                )
+            },
+            ensure_ascii=False,
+        )
     widget_id = f"w-{uuid.uuid4().hex[:10]}"
     payload = {
         "__widget__": True,
