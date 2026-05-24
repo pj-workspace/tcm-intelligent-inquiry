@@ -3,12 +3,31 @@
  */
 "use client";
 
+import { useCallback } from "react";
 import { Plus, Plug } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { SettingsEmptyResults } from "@/components/settings/shell/SettingsEmptyResults";
+import { SettingsListToolbar } from "@/components/settings/shell/SettingsListToolbar";
+import { SettingsPagination } from "@/components/settings/shell/SettingsPagination";
+import { useSettingsListControls } from "@/components/settings/shell/useSettingsListControls";
 import { useMcp } from "@/hooks/useMcp";
+import type { McpServer } from "@/types/mcp";
 import { McpAddForm } from "./McpAddForm";
 import { McpServerCard } from "./McpServerCard";
+
+const PAGE_SIZE = 6;
+
+function serverMatchesQuery(server: McpServer, query: string): boolean {
+  const endpoint =
+    server.transport === "stdio" && server.stdio
+      ? `${server.stdio.command} ${server.stdio.args.join(" ")}`
+      : (server.url ?? "");
+  const haystack = [server.name, server.description ?? "", endpoint, server.transport]
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(query);
+}
 
 /** MCP 服务器管理 Tab。 */
 export function McpTab() {
@@ -33,6 +52,16 @@ export function McpTab() {
     toggleTools,
   } = useMcp(token);
 
+  const filterFn = useCallback(
+    (server: McpServer, query: string) => serverMatchesQuery(server, query),
+    [],
+  );
+
+  const list = useSettingsListControls(servers, {
+    pageSize: PAGE_SIZE,
+    filter: filterFn,
+  });
+
   if (loading) {
     return (
       <div className="flex justify-center p-12">
@@ -55,8 +84,8 @@ export function McpTab() {
         onCancel={() => !isDeleting && setDeleteId(null)}
       />
 
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <h2 className="text-lg font-semibold text-gray-900">MCP 服务</h2>
           <p className="mt-1 text-sm text-gray-500">
             连接 MCP 服务器（HTTP 远端或 stdio 本地 command，与 Cursor mcp.json 格式兼容），动态扩展大模型能力。
@@ -65,7 +94,7 @@ export function McpTab() {
         {!showAddForm && (
           <button
             onClick={() => setShowAddForm(true)}
-            className="flex items-center gap-2 rounded-lg bg-black px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-gray-800"
+            className="flex w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-black px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-gray-800 sm:w-auto"
           >
             <Plus className="h-4 w-4" />
             添加服务
@@ -89,6 +118,16 @@ export function McpTab() {
         />
       )}
 
+      {!showAddForm && servers.length > 0 && (
+        <SettingsListToolbar
+          query={list.query}
+          onQueryChange={list.setQuery}
+          placeholder="搜索服务名称、端点或描述…"
+          totalCount={list.totalCount}
+          filteredCount={list.filteredCount}
+        />
+      )}
+
       <div className="grid gap-4">
         {!showAddForm && servers.length === 0 && !error ? (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 py-12 text-center text-sm text-gray-500">
@@ -96,8 +135,11 @@ export function McpTab() {
             <p>暂无 MCP 服务</p>
             <p className="mt-1 text-xs">点击右上角添加新服务并连接远端工具</p>
           </div>
+        ) : !showAddForm && list.filteredCount === 0 ? (
+          <SettingsEmptyResults query={list.query} onClear={() => list.setQuery("")} />
         ) : (
-          servers.map((server) => (
+          !showAddForm &&
+          list.paginatedItems.map((server) => (
             <McpServerCard
               key={server.id}
               server={server}
@@ -110,6 +152,16 @@ export function McpTab() {
           ))
         )}
       </div>
+
+      {!showAddForm && (
+        <SettingsPagination
+          page={list.page}
+          totalPages={list.totalPages}
+          onPageChange={list.setPage}
+          filteredCount={list.filteredCount}
+          pageSize={list.pageSize}
+        />
+      )}
     </div>
   );
 }

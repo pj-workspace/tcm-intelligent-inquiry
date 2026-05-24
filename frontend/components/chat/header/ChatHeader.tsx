@@ -16,6 +16,7 @@ import {
   PanelLeftOpen,
   FolderOpen,
   ArrowLeft,
+  Search,
 } from "lucide-react";
 import type { ServerConversation } from "@/types/chat";
 import type { ChatSurfacePhase } from "@/types/chat-ui";
@@ -47,6 +48,10 @@ type ChatHeaderProps = {
   onEditTitleBlur: () => void;
   onEditTitleKeyDown: (e: React.KeyboardEvent) => void;
   onLogout: () => void;
+  /** 移动端打开侧栏抽屉 */
+  onOpenMobileSidebar?: () => void;
+  /** 移动端打开会话搜索 */
+  onOpenSearch?: () => void;
   /** 当前会话属于选中侧栏分组时显示，返回分组管理工作台（有分组面包屑时不再显示） */
   showBackToGroupWorkspace?: boolean;
   onBackToGroupWorkspace?: () => void;
@@ -83,6 +88,8 @@ export function ChatHeader({
   onEditTitleBlur,
   onEditTitleKeyDown,
   onLogout,
+  onOpenMobileSidebar,
+  onOpenSearch,
   showBackToGroupWorkspace,
   onBackToGroupWorkspace,
   conversationGroupTrail,
@@ -94,11 +101,21 @@ export function ChatHeader({
   );
 
   return (
-    <header className="z-10 flex h-14 flex-shrink-0 items-center justify-between bg-white/80 px-4 backdrop-blur-sm md:px-6">
+    <header className="z-10 flex h-14 flex-shrink-0 items-center justify-between bg-white/80 px-3 backdrop-blur-sm sm:px-4 md:px-6">
       <div className="flex items-center gap-1 min-w-0 flex-1 md:flex-initial">
+        {onOpenMobileSidebar && (
+          <button
+            type="button"
+            onClick={onOpenMobileSidebar}
+            title="打开会话列表"
+            aria-label="打开会话列表"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 active:scale-95 transition-colors md:hidden"
+          >
+            <PanelLeftOpen className="h-[1.05rem] w-[1.05rem]" />
+          </button>
+        )}
         {/* 移动端：分组内会话显示「分组/标题」面包屑 */}
-        <div className="flex min-w-0 flex-1 items-center gap-2 shrink-0 md:hidden">
-          <AppLogo size={28} className="shrink-0 rounded-md ring-1 ring-black/[0.06]" />
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 shrink-0 md:hidden">
           {showConvBreadcrumb && conversationGroupTrail ? (
             <nav
               className="flex min-w-0 flex-1 items-center gap-1 text-xs font-medium leading-snug text-gray-800"
@@ -135,6 +152,7 @@ export function ChatHeader({
             </nav>
           ) : (
             <>
+              <AppLogo size={28} className="shrink-0 rounded-md ring-1 ring-black/[0.06]" />
               <span className="shrink-0 font-semibold text-sm">中医智询</span>
               {showBackToGroupWorkspace && onBackToGroupWorkspace && (
                 <button
@@ -385,10 +403,24 @@ export function ChatHeader({
         <button
           type="button"
           onClick={onNewChat}
-          className="p-2 md:hidden text-gray-600 hover:bg-gray-100 hover:text-gray-800 active:scale-95 rounded-md transition-colors"
+          title="新建会话"
+          aria-label="新建会话"
+          className="flex h-10 w-10 items-center justify-center rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-800 active:scale-95 md:hidden"
         >
           <Plus className="w-5 h-5" />
         </button>
+
+        {onOpenSearch && (
+          <button
+            type="button"
+            onClick={onOpenSearch}
+            title="搜索对话"
+            aria-label="搜索对话"
+            className="flex h-10 w-10 items-center justify-center rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-800 active:scale-95 md:hidden"
+          >
+            <Search className="w-5 h-5" />
+          </button>
+        )}
 
         {/* 用户菜单 */}
         {authLoading ? (

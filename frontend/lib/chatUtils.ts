@@ -675,7 +675,7 @@ export function mapApiRowToMessage(msg: ApiMessageRow): FlatMessage {
             const label = typeof f.label === "string" ? f.label : "";
             if (!name || !label) return null;
             const t = f.type;
-            const fieldType =
+            const fieldType: FormFieldDef["type"] =
               t === "password" || t === "email" || t === "number" || t === "text"
                 ? t
                 : "text";
@@ -686,9 +686,9 @@ export function mapApiRowToMessage(msg: ApiMessageRow): FlatMessage {
               required: f.required !== false,
               placeholder:
                 typeof f.placeholder === "string" ? f.placeholder : undefined,
-            };
+            } satisfies FormFieldDef;
           })
-          .filter((x): x is NonNullable<typeof x> => x !== null);
+          .filter((x) => x !== null) as FormFieldDef[];
         return {
           id: msg.id,
           type: "widget",

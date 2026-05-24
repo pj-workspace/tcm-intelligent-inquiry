@@ -66,6 +66,7 @@ class UsageEventItemOut(BaseModel):
     provider_id: str
     chat_model: str | None
     conversation_id: str | None
+    conversation_title: str | None = None
     prompt_tokens: int | None
     completion_tokens: int | None
     total_tokens: int | None

@@ -6,6 +6,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { AlertCircle, Loader2, PieChart, RefreshCw } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
+import { SettingsEmptyResults } from "@/components/settings/shell/SettingsEmptyResults";
+import { SettingsListToolbar } from "@/components/settings/shell/SettingsListToolbar";
+import { SettingsPagination } from "@/components/settings/shell/SettingsPagination";
+import { useSettingsListControls } from "@/components/settings/shell/useSettingsListControls";
 import {
   fetchBillingUsageEvents,
   fetchBillingUsageSummary,
@@ -14,7 +18,31 @@ import {
 import type { BalanceSnapshotJson, UsageSummaryResponse } from "@/types/billing";
 
 const DAYS_OPTIONS = [7, 30, 90] as const;
-const EVENTS_PAGE = 25;
+const EVENTS_FETCH_LIMIT = 100;
+const EVENTS_UI_PAGE_SIZE = 15;
+
+type UsageEventRow = Awaited<
+  ReturnType<typeof fetchBillingUsageEvents>
+>["items"][number];
+
+function eventMatchesQuery(row: UsageEventRow, query: string): boolean {
+  const haystack = [
+    row.provider_id,
+    row.chat_model ?? "",
+    row.conversation_title ?? "",
+    fmtIsoShort(row.created_at),
+  ]
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(query);
+}
+
+/** 用量事件关联会话的展示标题。 */
+function eventConversationLabel(row: UsageEventRow): string {
+  if (row.conversation_title?.trim()) return row.conversation_title.trim();
+  if (row.conversation_id) return "未命名";
+  return "—";
+}
 
 /** 本地化数字展示。 */
 function fmtNum(n: number): string {
@@ -61,13 +89,21 @@ export function BillingTab() {
   const [balanceLoading, setBalanceLoading] = useState(true);
   const [balanceError, setBalanceError] = useState<string | null>(null);
 
-  const [eventsOffset, setEventsOffset] = useState(0);
   const [eventsRows, setEventsRows] = useState<
     Awaited<ReturnType<typeof fetchBillingUsageEvents>>["items"]
   >([]);
   const [eventsLoading, setEventsLoading] = useState(false);
   const [eventsError, setEventsError] = useState<string | null>(null);
-  const [eventsHasMore, setEventsHasMore] = useState(false);
+
+  const eventFilterFn = useCallback(
+    (row: UsageEventRow, query: string) => eventMatchesQuery(row, query),
+    [],
+  );
+
+  const eventsList = useSettingsListControls(eventsRows, {
+    pageSize: EVENTS_UI_PAGE_SIZE,
+    filter: eventFilterFn,
+  });
 
   const loadSummary = useCallback(async () => {
     if (!token) return;
@@ -103,43 +139,20 @@ export function BillingTab() {
     if (!token) return;
     setEventsLoading(true);
     setEventsError(null);
-    setEventsOffset(0);
     setEventsRows([]);
     try {
       const page = await fetchBillingUsageEvents(token, {
-        limit: EVENTS_PAGE,
+        limit: EVENTS_FETCH_LIMIT,
         offset: 0,
       });
       setEventsRows(page.items);
-      setEventsHasMore(page.items.length === page.limit);
     } catch (e) {
       setEventsRows([]);
-      setEventsHasMore(false);
       setEventsError(e instanceof Error ? e.message : "加载用量明细失败");
     } finally {
       setEventsLoading(false);
     }
   }, [token]);
-
-  const loadMoreEvents = useCallback(async () => {
-    if (!token || eventsLoading || !eventsHasMore) return;
-    const nextOff = eventsOffset + EVENTS_PAGE;
-    setEventsLoading(true);
-    setEventsError(null);
-    try {
-      const page = await fetchBillingUsageEvents(token, {
-        limit: EVENTS_PAGE,
-        offset: nextOff,
-      });
-      setEventsRows((prev) => [...prev, ...page.items]);
-      setEventsOffset(nextOff);
-      setEventsHasMore(page.items.length === page.limit && page.items.length > 0);
-    } catch (e) {
-      setEventsError(e instanceof Error ? e.message : "加载更多失败");
-    } finally {
-      setEventsLoading(false);
-    }
-  }, [token, eventsLoading, eventsHasMore, eventsOffset]);
 
   useEffect(() => {
     void loadSummary();
@@ -164,9 +177,9 @@ export function BillingTab() {
         <div className="min-w-0 flex-1">
           <h2 className="text-lg font-semibold text-gray-900">计费与用量</h2>
           <p className="mt-1 text-sm leading-relaxed text-gray-500">
-            用量按<strong className="font-medium text-gray-700">当前登录账号</strong>
-            聚合；匿名会话写入的事件不会计入此处。
-            当前入库主要来自 DeepSeek 等流式路径，不等同于「全厂商」口径。
+            查看你的 AI 使用情况和账户余额。仅统计
+            <strong className="font-medium text-gray-700">当前登录账号</strong>
+            下的对话，未登录时的聊天不会计入。
           </p>
         </div>
       </header>
@@ -223,11 +236,6 @@ export function BillingTab() {
                       <span className="tabular-nums text-gray-600">
                         总计 <strong className="text-gray-900">{line.total_balance || "—"}</strong>
                       </span>
-                      {(line.granted_balance || line.topped_up_balance) && (
-                        <span className="text-xs text-gray-400">
-                          赠送 {line.granted_balance || "—"} · 充值 {line.topped_up_balance || "—"}
-                        </span>
-                      )}
                     </li>
                   ))}
                 </ul>
@@ -246,7 +254,7 @@ export function BillingTab() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-sm font-semibold text-gray-900">我的用量</h3>
           <div
-            className="inline-flex rounded-lg border border-gray-200 bg-[#fbfaf7] p-0.5"
+            className="inline-flex max-w-full flex-wrap rounded-lg border border-gray-200 bg-[#fbfaf7] p-0.5"
             role="group"
             aria-label="统计区间天数"
           >
@@ -318,7 +326,51 @@ export function BillingTab() {
                 </div>
               </div>
 
-              <div className="mt-6 overflow-x-auto rounded-xl border border-gray-100">
+              {/* Mobile: provider cards */}
+              <div className="mt-6 space-y-3 md:hidden">
+                {summary!.by_provider.length === 0 ? (
+                  <p className="rounded-xl border border-gray-100 px-4 py-8 text-center text-sm text-gray-400">
+                    该区间内暂无用量记录
+                  </p>
+                ) : (
+                  summary!.by_provider.map((row) => (
+                    <div
+                      key={row.provider_id}
+                      className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm"
+                    >
+                      <div className="font-medium text-gray-800">{row.provider_id}</div>
+                      <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+                        <div>
+                          <dt className="text-gray-400">请求</dt>
+                          <dd className="tabular-nums font-medium text-gray-900">
+                            {fmtNum(row.requests)}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-gray-400">合计 tokens</dt>
+                          <dd className="tabular-nums font-medium text-gray-900">
+                            {fmtNum(row.total_tokens)}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-gray-400">Prompt</dt>
+                          <dd className="tabular-nums text-gray-700">
+                            {fmtNum(row.prompt_tokens)}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-gray-400">Completion</dt>
+                          <dd className="tabular-nums text-gray-700">
+                            {fmtNum(row.completion_tokens)}
+                          </dd>
+                        </div>
+                      </dl>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="mt-6 hidden overflow-x-auto rounded-xl border border-gray-100 md:block">
                 <table className="min-w-full text-left text-sm">
                   <thead className="bg-[#f7f6f3] text-xs font-semibold uppercase tracking-wide text-gray-500">
                     <tr>
@@ -369,27 +421,83 @@ export function BillingTab() {
 
       {/* 最近请求 */}
       <section className="rounded-2xl border border-[#e8e4dc] bg-white p-5 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="text-sm font-semibold text-gray-900">最近请求</h3>
-          <button
-            type="button"
-            onClick={() => void resetAndLoadEvents()}
-            disabled={eventsLoading || !token}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-50"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${eventsLoading ? "animate-spin" : ""}`} />
-            刷新列表
-          </button>
-        </div>
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="text-sm font-semibold text-gray-900">最近请求</h3>
+            <button
+              type="button"
+              onClick={() => void resetAndLoadEvents()}
+              disabled={eventsLoading || !token}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${eventsLoading ? "animate-spin" : ""}`} />
+              刷新列表
+            </button>
+          </div>
 
-        <div className="mt-4 overflow-x-auto rounded-xl border border-gray-100">
+          {eventsRows.length > 0 && (
+            <SettingsListToolbar
+              query={eventsList.query}
+              onQueryChange={eventsList.setQuery}
+              placeholder="搜索厂商、模型或会话标题…"
+              totalCount={eventsList.totalCount}
+              filteredCount={eventsList.filteredCount}
+            />
+          )}
+
+          {/* Mobile: event cards */}
+          <div className="space-y-3 md:hidden">
+          {eventsLoading && eventsRows.length === 0 ? (
+            <p className="rounded-xl border border-gray-100 px-4 py-8 text-center text-sm text-gray-400">
+              <Loader2 className="inline h-4 w-4 animate-spin" /> 加载中…
+            </p>
+          ) : eventsError ? (
+            <div className="flex gap-2 rounded-xl border border-red-100 bg-red-50/80 p-3 text-sm text-red-800">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              {eventsError}
+            </div>
+          ) : eventsRows.length === 0 ? (
+            <p className="rounded-xl border border-gray-100 px-4 py-8 text-center text-sm text-gray-400">
+              暂无事件
+            </p>
+          ) : eventsList.filteredCount === 0 ? (
+            <SettingsEmptyResults
+              query={eventsList.query}
+              onClear={() => eventsList.setQuery("")}
+            />
+          ) : (
+            eventsList.paginatedItems.map((ev) => (
+              <div
+                key={ev.usage_event_id}
+                className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm"
+              >
+                <div className="text-xs text-gray-500">{fmtIsoShort(ev.created_at)}</div>
+                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                  <span className="font-medium text-gray-800">{ev.provider_id}</span>
+                  <span className="text-gray-300">·</span>
+                  <span className="truncate text-gray-600">{ev.chat_model ?? "—"}</span>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-2 text-xs">
+                  <span className="min-w-0 truncate text-gray-600">
+                    {eventConversationLabel(ev)}
+                  </span>
+                  <span className="shrink-0 tabular-nums font-medium text-gray-900">
+                    {fmtNum(effectiveEventTokens(ev))} tokens
+                  </span>
+                </div>
+              </div>
+            ))
+          )}
+          </div>
+
+          <div className="hidden overflow-x-auto rounded-xl border border-gray-100 md:block">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-[#f7f6f3] text-xs font-semibold uppercase tracking-wide text-gray-500">
               <tr>
                 <th className="px-4 py-3">时间</th>
                 <th className="px-4 py-3">厂商</th>
                 <th className="px-4 py-3">模型</th>
-                <th className="px-4 py-3">会话 ID</th>
+                <th className="px-4 py-3">会话</th>
                 <th className="px-4 py-3 text-right">Tokens</th>
               </tr>
             </thead>
@@ -415,8 +523,17 @@ export function BillingTab() {
                     暂无事件
                   </td>
                 </tr>
+              ) : eventsList.filteredCount === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-6">
+                    <SettingsEmptyResults
+                      query={eventsList.query}
+                      onClear={() => eventsList.setQuery("")}
+                    />
+                  </td>
+                </tr>
               ) : (
-                eventsRows.map((ev) => (
+                eventsList.paginatedItems.map((ev) => (
                   <tr key={ev.usage_event_id} className="hover:bg-gray-50/80">
                     <td className="whitespace-nowrap px-4 py-2.5 text-gray-600">
                       {fmtIsoShort(ev.created_at)}
@@ -425,8 +542,8 @@ export function BillingTab() {
                     <td className="max-w-[12rem] truncate px-4 py-2.5 text-gray-600">
                       {ev.chat_model ?? "—"}
                     </td>
-                    <td className="max-w-[14rem] truncate px-4 py-2.5 font-mono text-xs text-gray-500">
-                      {ev.conversation_id ?? "—"}
+                    <td className="max-w-[14rem] truncate px-4 py-2.5 text-gray-700">
+                      {eventConversationLabel(ev)}
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums text-gray-900">
                       {fmtNum(effectiveEventTokens(ev))}
@@ -436,20 +553,16 @@ export function BillingTab() {
               )}
             </tbody>
           </table>
-        </div>
-
-        {eventsHasMore && eventsRows.length > 0 ? (
-          <div className="mt-4 flex justify-center">
-            <button
-              type="button"
-              onClick={() => void loadMoreEvents()}
-              disabled={eventsLoading}
-              className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50"
-            >
-              {eventsLoading ? "加载中…" : "加载更多"}
-            </button>
           </div>
-        ) : null}
+
+          <SettingsPagination
+            page={eventsList.page}
+            totalPages={eventsList.totalPages}
+            onPageChange={eventsList.setPage}
+            filteredCount={eventsList.filteredCount}
+            pageSize={eventsList.pageSize}
+          />
+        </div>
       </section>
     </div>
   );

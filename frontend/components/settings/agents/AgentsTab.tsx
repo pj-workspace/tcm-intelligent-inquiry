@@ -3,12 +3,27 @@
  */
 "use client";
 
+import { useCallback } from "react";
 import { Plus, Bot } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { SettingsEmptyResults } from "@/components/settings/shell/SettingsEmptyResults";
+import { SettingsListToolbar } from "@/components/settings/shell/SettingsListToolbar";
+import { SettingsPagination } from "@/components/settings/shell/SettingsPagination";
+import { useSettingsListControls } from "@/components/settings/shell/useSettingsListControls";
 import { useAgents } from "@/hooks/useAgents";
+import type { Agent } from "@/types/agent";
 import { AgentForm } from "./AgentForm";
 import { AgentCard } from "./AgentCard";
+
+const PAGE_SIZE = 8;
+
+function agentMatchesQuery(agent: Agent, query: string): boolean {
+  const haystack = [agent.name, agent.description ?? "", ...(agent.tool_names ?? [])]
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(query);
+}
 
 /** Agent 列表与 CRUD 入口 Tab。 */
 export function AgentsTab() {
@@ -40,6 +55,16 @@ export function AgentsTab() {
     confirmDelete,
   } = useAgents(token);
 
+  const filterFn = useCallback(
+    (agent: Agent, query: string) => agentMatchesQuery(agent, query),
+    [],
+  );
+
+  const list = useSettingsListControls(agents, {
+    pageSize: PAGE_SIZE,
+    filter: filterFn,
+  });
+
   if (loading) {
     return (
       <div className="flex justify-center p-12">
@@ -62,14 +87,14 @@ export function AgentsTab() {
         onCancel={() => !isDeleting && setDeleteId(null)}
       />
 
-      <div className="flex items-start justify-between">
-        <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <h2 className="text-lg font-semibold text-gray-900">Agent 管理</h2>
           <p className="mt-1 text-sm text-gray-500">
             自定义系统提示词、工具集与默认知识库，创建多用途的 AI 助手。
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
           {agents.length > 0 && (
             <div className="hidden items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1.5 text-xs text-gray-500 ring-1 ring-inset ring-gray-200 sm:flex">
               共 <span className="font-semibold text-gray-700">{agents.length}</span> 个 Agent
@@ -77,7 +102,7 @@ export function AgentsTab() {
           )}
           <button
             onClick={handleStartCreate}
-            className="flex items-center gap-2 rounded-lg bg-black px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-gray-800"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-black px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-gray-800 sm:w-auto"
           >
             <Plus className="h-4 w-4" />
             创建 Agent
@@ -91,6 +116,16 @@ export function AgentsTab() {
         </div>
       )}
 
+      {agents.length > 0 && (
+        <SettingsListToolbar
+          query={list.query}
+          onQueryChange={list.setQuery}
+          placeholder="搜索 Agent 名称、说明或工具…"
+          totalCount={list.totalCount}
+          filteredCount={list.filteredCount}
+        />
+      )}
+
       <div className="grid gap-4">
         {agents.length === 0 && !error ? (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 py-12 text-center text-sm text-gray-500">
@@ -98,8 +133,10 @@ export function AgentsTab() {
             <p>暂无自定义 Agent</p>
             <p className="mt-1 text-xs">点击右上角创建新的智能助手</p>
           </div>
+        ) : list.filteredCount === 0 ? (
+          <SettingsEmptyResults query={list.query} onClear={() => list.setQuery("")} />
         ) : (
-          agents.map((agent) => (
+          list.paginatedItems.map((agent) => (
             <AgentCard
               key={agent.id}
               agent={agent}
@@ -114,6 +151,14 @@ export function AgentsTab() {
           ))
         )}
       </div>
+
+      <SettingsPagination
+        page={list.page}
+        totalPages={list.totalPages}
+        onPageChange={list.setPage}
+        filteredCount={list.filteredCount}
+        pageSize={list.pageSize}
+      />
 
       {editingId !== null && (
         <AgentForm

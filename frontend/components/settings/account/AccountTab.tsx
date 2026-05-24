@@ -533,18 +533,18 @@ export function AccountTab() {
                   >
                     邮箱验证码
                   </label>
-                  <div
-                    className={`relative mt-1.5 min-h-[44px] overflow-hidden rounded-xl border bg-[#fdfdfc] pl-3 transition focus-within:border-gray-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-orange-500/15 ${
-                      cpCode.length > 0 && cpCode.length < 6 ? "border-amber-300" : "border-[#e7e5e4]"
-                    }`}
-                  >
+                  <div className="mt-1.5 space-y-2 sm:relative sm:min-h-[44px] sm:overflow-hidden sm:rounded-xl sm:border sm:bg-[#fdfdfc] sm:pl-3 sm:transition focus-within:sm:border-gray-400 focus-within:sm:bg-white focus-within:sm:ring-2 focus-within:sm:ring-orange-500/15 sm:focus-within:ring-2 sm:focus-within:ring-orange-500/15">
                     <input
                       id="cp-code-modal"
                       type="text"
                       inputMode="numeric"
                       autoComplete="one-time-code"
                       aria-invalid={cpCode.length > 0 && cpCode.length !== 6}
-                      className="h-[42px] w-full border-0 bg-transparent py-2 pl-0 pr-[8.75rem] text-[14px] outline-none placeholder:text-gray-400"
+                      className={`h-[42px] w-full rounded-xl border bg-[#fdfdfc] px-3 py-2 text-[14px] outline-none placeholder:text-gray-400 sm:border-0 sm:bg-transparent sm:py-2 sm:pl-0 sm:pr-[8.75rem] ${
+                        cpCode.length > 0 && cpCode.length < 6
+                          ? "border-amber-300"
+                          : "border-[#e7e5e4]"
+                      }`}
                       value={cpCode}
                       onChange={(e) => setCpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                       placeholder="6 位数字"
@@ -554,7 +554,7 @@ export function AccountTab() {
                       type="button"
                       disabled={changePwCd.left > 0 || pwSendBusy || pwSubmitBusy || checkPwBusy}
                       onClick={() => void sendChangePwCode()}
-                      className="absolute right-1.5 top-1/2 max-w-[min(10rem,calc(100%-8px))] -translate-y-1/2 truncate rounded-full border border-orange-200/95 bg-gradient-to-b from-orange-50 to-orange-100/85 px-3.5 py-1.5 text-[12px] font-semibold text-orange-950 shadow-sm hover:from-orange-100 hover:to-orange-100/90 disabled:pointer-events-none disabled:opacity-50"
+                      className="w-full truncate rounded-full border border-orange-200/95 bg-gradient-to-b from-orange-50 to-orange-100/85 px-3.5 py-2 text-[12px] font-semibold text-orange-950 shadow-sm hover:from-orange-100 hover:to-orange-100/90 disabled:pointer-events-none disabled:opacity-50 sm:absolute sm:right-1.5 sm:top-1/2 sm:w-auto sm:max-w-[min(10rem,calc(100%-8px))] sm:-translate-y-1/2 sm:py-1.5"
                       title={changePwCd.left > 0 ? `${changePwCd.left} 秒后可发送` : undefined}
                     >
                       {pwSendBusy
@@ -629,20 +629,18 @@ export function AccountTab() {
               </p>
             </div>
             <div className="space-y-5 p-6">
-              <div
-                className={`relative min-h-[44px] overflow-hidden rounded-xl border bg-[#fdfdfc] pl-3 transition focus-within:border-gray-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-orange-500/15 ${
-                  (unbindCode[unbindModalProvider]?.length ?? 0) > 0 &&
-                  (unbindCode[unbindModalProvider]?.length ?? 0) < 6
-                    ? "border-amber-300"
-                    : "border-[#e7e5e4]"
-                }`}
-              >
+              <div className="space-y-2 sm:relative sm:min-h-[44px] sm:overflow-hidden sm:rounded-xl sm:border sm:bg-[#fdfdfc] sm:pl-3 sm:transition focus-within:sm:border-gray-400 focus-within:sm:bg-white focus-within:sm:ring-2 focus-within:sm:ring-orange-500/15">
                 <input
                   type="text"
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   placeholder="请输入 6 位验证码"
-                  className="h-[42px] w-full border-0 bg-transparent py-2 pl-0 pr-[9.5rem] text-[14px] tracking-wide outline-none placeholder:text-gray-400 sm:pr-[10.5rem]"
+                  className={`h-[42px] w-full rounded-xl border bg-[#fdfdfc] px-3 py-2 text-[14px] tracking-wide outline-none placeholder:text-gray-400 sm:border-0 sm:bg-transparent sm:py-2 sm:pl-0 sm:pr-[10.5rem] ${
+                    (unbindCode[unbindModalProvider]?.length ?? 0) > 0 &&
+                    (unbindCode[unbindModalProvider]?.length ?? 0) < 6
+                      ? "border-amber-300"
+                      : "border-[#e7e5e4]"
+                  }`}
                   value={unbindCode[unbindModalProvider] ?? ""}
                   maxLength={8}
                   onChange={(e) =>
@@ -659,7 +657,7 @@ export function AccountTab() {
                     unbindSendingFor === unbindModalProvider ||
                     unbindVerifyingFor === unbindModalProvider
                   }
-                  className="absolute right-1.5 top-1/2 max-w-[calc(100%-12px)] -translate-y-1/2 truncate rounded-full border border-orange-200/95 bg-gradient-to-b from-orange-50 to-orange-100/85 px-3 py-1.5 text-[11px] font-semibold text-orange-950 shadow-sm hover:from-orange-100 hover:to-orange-100/90 disabled:pointer-events-none disabled:opacity-50 sm:text-[12px]"
+                  className="w-full truncate rounded-full border border-orange-200/95 bg-gradient-to-b from-orange-50 to-orange-100/85 px-3 py-2 text-[12px] font-semibold text-orange-950 shadow-sm hover:from-orange-100 hover:to-orange-100/90 disabled:pointer-events-none disabled:opacity-50 sm:absolute sm:right-1.5 sm:top-1/2 sm:w-auto sm:max-w-[calc(100%-12px)] sm:-translate-y-1/2 sm:py-1.5"
                   title={unbindCd.left > 0 ? `${unbindCd.left} 秒后可发送` : "发送解绑验证码到邮箱"}
                   onClick={() => void sendUnbindCodeFor(unbindModalProvider)}
                 >

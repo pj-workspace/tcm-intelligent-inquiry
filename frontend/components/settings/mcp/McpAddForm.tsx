@@ -339,7 +339,7 @@ export function McpAddForm({
         </>
       )}
 
-      <div className="mt-5 flex justify-end gap-3">
+      <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
         <button
           type="button"
           onClick={onCancel}

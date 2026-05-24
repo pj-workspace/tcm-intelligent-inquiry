@@ -14,8 +14,6 @@ export function useKnowledgeBases(token: string | null) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [newDesc, setNewDesc] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [editingKb, setEditingKb] = useState<KnowledgeBase | null>(null);
@@ -48,33 +46,35 @@ export function useKnowledgeBases(token: string | null) {
     };
   }, [token, fetchKbs]);
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!token || !newName.trim()) return;
-    setCreating(true);
-    setError(null);
-    try {
-      const res = await fetch(`${API_BASE}/api/knowledge`, {
-        method: "POST",
-        headers: apiJsonHeaders(token),
-        body: JSON.stringify({
-          name: newName.trim(),
-          description: newDesc.trim(),
-        }),
-      });
-      if (!res.ok) throw new Error(await parseApiError(res));
-      setNewName("");
-      setNewDesc("");
-      await fetchKbs();
-      toast.success("知识库已创建");
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setError(msg);
-      toast.error(msg);
-    } finally {
-      setCreating(false);
-    }
-  };
+  const createKnowledgeBase = useCallback(
+    async (data: { name: string; description: string }) => {
+      if (!token || !data.name.trim()) return false;
+      setCreating(true);
+      setError(null);
+      try {
+        const res = await fetch(`${API_BASE}/api/knowledge`, {
+          method: "POST",
+          headers: apiJsonHeaders(token),
+          body: JSON.stringify({
+            name: data.name.trim(),
+            description: data.description.trim(),
+          }),
+        });
+        if (!res.ok) throw new Error(await parseApiError(res));
+        await fetchKbs();
+        toast.success("知识库已创建");
+        return true;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        setError(msg);
+        toast.error(msg);
+        return false;
+      } finally {
+        setCreating(false);
+      }
+    },
+    [token, fetchKbs],
+  );
 
   const handleUpdate = useCallback(
     async (
@@ -115,11 +115,7 @@ export function useKnowledgeBases(token: string | null) {
     error,
     setError,
     creating,
-    newName,
-    setNewName,
-    newDesc,
-    setNewDesc,
-    handleCreate,
+    createKnowledgeBase,
     deleteId,
     setDeleteId,
     isDeleting,

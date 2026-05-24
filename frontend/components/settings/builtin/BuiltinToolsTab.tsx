@@ -3,8 +3,9 @@
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence } from "framer-motion";
+import clsx from "clsx";
 import {
   BookOpen,
   ChevronRight,
@@ -16,8 +17,14 @@ import {
 } from "lucide-react";
 import { API_BASE, apiHeaders } from "@/lib/api";
 import { useAuth } from "@/contexts/auth-context";
+import { SettingsEmptyResults } from "@/components/settings/shell/SettingsEmptyResults";
+import { SettingsListToolbar } from "@/components/settings/shell/SettingsListToolbar";
+import { SettingsPagination } from "@/components/settings/shell/SettingsPagination";
+import { useSettingsListControls } from "@/components/settings/shell/useSettingsListControls";
 import { ToolInvokeModal } from "./ToolInvokeModal";
 import type { BuiltinToolInfo, ToolCategory } from "@/types/tool";
+
+const PAGE_SIZE = 10;
 
 const CATEGORY_META: Record<
   ToolCategory,
@@ -30,7 +37,19 @@ const CATEGORY_META: Record<
   mcp:       { label: "MCP",    color: "text-violet-600",  bg: "bg-violet-50",  Icon: Terminal },
 };
 
-// ── 单张工具卡片（纯展示，点击开模态框）────────────────────────────────────────
+function toolMatchesQuery(tool: BuiltinToolInfo, query: string): boolean {
+  const summary = tool.description.split("\n").map((l) => l.trim()).filter(Boolean)[0] ?? "";
+  const haystack = [
+    tool.label,
+    tool.name,
+    summary,
+    CATEGORY_META[tool.category]?.label ?? tool.category,
+  ]
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(query);
+}
+
 /** 内置工具卡片：点击打开试调用模态。 */
 function ToolCard({
   tool,
@@ -47,7 +66,7 @@ function ToolCard({
     <button
       type="button"
       onClick={onClick}
-      className="group w-full rounded-xl border border-[#e5e5e5] bg-white p-5 text-left shadow-sm transition-all hover:border-orange-200 hover:shadow-md"
+      className="group w-full rounded-xl border border-[#e5e5e5] bg-white p-4 text-left shadow-sm transition-all hover:border-orange-200 hover:shadow-md sm:p-5"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
@@ -94,7 +113,6 @@ function ToolCard({
   );
 }
 
-// ── 主组件 ────────────────────────────────────────────────────────────────────
 /** 内置工具 Tab：卡片网格 + 试调用模态。 */
 export function BuiltinToolsTab() {
   const { token } = useAuth();
@@ -102,6 +120,27 @@ export function BuiltinToolsTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTool, setActiveTool] = useState<BuiltinToolInfo | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<ToolCategory | "all">("all");
+
+  const filterFn = useCallback(
+    (tool: BuiltinToolInfo, query: string) => toolMatchesQuery(tool, query),
+    [],
+  );
+
+  const categoryScopedTools = useMemo(() => {
+    if (categoryFilter === "all") return tools;
+    return tools.filter((t) => t.category === categoryFilter);
+  }, [tools, categoryFilter]);
+
+  const list = useSettingsListControls(categoryScopedTools, {
+    pageSize: PAGE_SIZE,
+    filter: filterFn,
+  });
+
+  const categories = useMemo(
+    () => Array.from(new Set(tools.map((t) => t.category))) as ToolCategory[],
+    [tools],
+  );
 
   useEffect(() => {
     if (!token) return;
@@ -123,7 +162,9 @@ export function BuiltinToolsTab() {
       }
     };
     void load();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [token]);
 
   if (loading) {
@@ -141,20 +182,20 @@ export function BuiltinToolsTab() {
   }
 
   const totalAgentRefs = tools.reduce((s, t) => s + t.used_by_agents, 0);
-  const categories = Array.from(new Set(tools.map((t) => t.category))) as ToolCategory[];
+  const showGrouped =
+    !list.isFiltering && categoryFilter === "all" && !list.hasPagination;
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
-      {/* 头部 */}
-      <div className="flex items-start justify-between">
-        <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <h2 className="text-lg font-semibold text-gray-900">内置工具</h2>
           <p className="mt-1 text-sm text-gray-500">
             系统核心功能所依赖的工具集，点击卡片查看详情和在线试用。
           </p>
         </div>
         {tools.length > 0 && (
-          <div className="flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1.5 text-xs text-gray-500 ring-1 ring-inset ring-gray-200">
+          <div className="flex w-full shrink-0 items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1.5 text-xs text-gray-500 ring-1 ring-inset ring-gray-200 sm:w-auto">
             共 <span className="font-semibold text-gray-700">{tools.length}</span> 个工具 ·
             Agent 引用{" "}
             <span className="font-semibold text-gray-700">{totalAgentRefs}</span> 次
@@ -162,11 +203,62 @@ export function BuiltinToolsTab() {
         )}
       </div>
 
+      {tools.length > 0 && (
+        <SettingsListToolbar
+          query={list.query}
+          onQueryChange={list.setQuery}
+          placeholder="搜索工具名称、标识或描述…"
+          totalCount={list.totalCount}
+          filteredCount={list.filteredCount}
+        >
+          <div className="no-scrollbar flex gap-1.5 overflow-x-auto pb-0.5">
+            <button
+              type="button"
+              onClick={() => setCategoryFilter("all")}
+              className={clsx(
+                "shrink-0 rounded-full px-3 py-1 text-xs font-medium transition",
+                categoryFilter === "all"
+                  ? "bg-orange-100 text-orange-800 ring-1 ring-orange-200"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200",
+              )}
+            >
+              全部
+            </button>
+            {categories.map((cat) => {
+              const meta = CATEGORY_META[cat] ?? CATEGORY_META.system;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setCategoryFilter(cat)}
+                  className={clsx(
+                    "shrink-0 rounded-full px-3 py-1 text-xs font-medium transition",
+                    categoryFilter === cat
+                      ? "bg-orange-100 text-orange-800 ring-1 ring-orange-200"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200",
+                  )}
+                >
+                  {meta.label}
+                </button>
+              );
+            })}
+          </div>
+        </SettingsListToolbar>
+      )}
+
       {tools.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-200 p-8 text-center text-sm text-gray-500">
           暂无内置工具
         </div>
-      ) : (
+      ) : list.filteredCount === 0 ? (
+        <SettingsEmptyResults
+          query={list.query || CATEGORY_META[categoryFilter as ToolCategory]?.label || "筛选"}
+          onClear={() => {
+            list.setQuery("");
+            setCategoryFilter("all");
+          }}
+        />
+      ) : showGrouped ? (
         categories.map((cat) => {
           const group = tools.filter((t) => t.category === cat);
           const catMeta = CATEGORY_META[cat] ?? CATEGORY_META.system;
@@ -185,6 +277,21 @@ export function BuiltinToolsTab() {
             </div>
           );
         })
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {list.paginatedItems.map((tool) => (
+              <ToolCard key={tool.name} tool={tool} onClick={() => setActiveTool(tool)} />
+            ))}
+          </div>
+          <SettingsPagination
+            page={list.page}
+            totalPages={list.totalPages}
+            onPageChange={list.setPage}
+            filteredCount={list.filteredCount}
+            pageSize={list.pageSize}
+          />
+        </>
       )}
 
       {activeTool && (

@@ -14,6 +14,7 @@ import {
   GroupWorkspace,
   Sidebar,
 } from "@/components/chat";
+import { SidebarMobileDrawer } from "@/components/chat/sidebar/SidebarMobileDrawer";
 import type { SidebarFilter } from "@/components/chat/sidebar/Sidebar";
 import { WidgetCard } from "@/components/chat/messages/WidgetCard";
 import { FormWidgetCard } from "@/components/chat/messages/FormWidgetCard";
@@ -44,6 +45,7 @@ export function HomePageClient() {
   const pathname = usePathname() ?? "";
   const [input, setInput] = useState("");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -207,6 +209,29 @@ export function HomePageClient() {
   useEffect(() => {
     hasStartedRef.current = hasStarted;
   }, [hasStarted]);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const closeOnDesktop = () => {
+      if (mq.matches) setMobileSidebarOpen(false);
+    };
+    closeOnDesktop();
+    mq.addEventListener("change", closeOnDesktop);
+    return () => mq.removeEventListener("change", closeOnDesktop);
+  }, []);
+
+  useEffect(() => {
+    setMobileSidebarOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!mobileSidebarOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [mobileSidebarOpen]);
 
   const [historyAnimUnlocked, setHistoryAnimUnlocked] = useState(false);
   useEffect(() => {
@@ -746,7 +771,7 @@ export function HomePageClient() {
           !(serverConversations.find((c) => c.id === conversationId)?.title ?? "").trim())));
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-[#fdfdfc]">
+    <div className="flex h-dvh max-h-dvh w-full max-w-[100vw] overflow-hidden bg-[#fdfdfc]">
       <ChatWorkspaceModals
         deleteTargetId={deleteTargetId}
         deletePending={deletePending}
@@ -828,6 +853,52 @@ export function HomePageClient() {
         conversationsLoading={listLoading}
       />
 
+      <SidebarMobileDrawer
+        open={mobileSidebarOpen}
+        onClose={() => setMobileSidebarOpen(false)}
+        folders={conversationFolders}
+        conversationsFull={token ? serverConversations : []}
+        displayedConversations={displayedSidebarConversations}
+        activeId={conversationId}
+        sidebarFilter={sidebarFilter}
+        onSidebarFilterChange={handleSidebarFilterChange}
+        onNewChat={handleNewChat}
+        onSelect={selectConversationSyncSidebar}
+        onDelete={openDeleteDialog}
+        onRenameRequest={(id, currentTitle) =>
+          setRenameConvModal({ id, draft: currentTitle || "" })
+        }
+        onExportConversation={handleExportSidebarConversation}
+        onTogglePin={togglePinConversation}
+        onMoveToGroup={moveConversationToGroup}
+        onCreateFolder={() => {
+          setNewGroupNameDraft("");
+          setNewGroupModalOpen(true);
+        }}
+        onRenameFolder={(groupId, currentName) =>
+          setRenameFolderModal({ id: groupId, draft: currentName })
+        }
+        onDeleteFolder={(groupId) => {
+          const name = conversationFolders.find((f) => f.id === groupId)?.name ?? "分组";
+          setDeleteFolderConfirm({ id: groupId, name });
+        }}
+        pinnedIds={pinnedIds}
+        batchMode={sidebarBatchMode}
+        onToggleBatchMode={handleToggleSidebarBatchMode}
+        selectedIds={sidebarSelectedIds}
+        onToggleSelect={handleToggleSidebarSelect}
+        onSelectAllDisplayed={handleSelectAllDisplayed}
+        onClearBatchSelection={handleClearSidebarSelection}
+        onBulkDelete={() => setBulkDeleteConfirmOpen(true)}
+        bulkDeletePending={bulkDeletePending}
+        streamBusy={genState !== "idle"}
+        isGeneratingTitle={isGeneratingTitle}
+        onOpenSearch={() => setSearchOpen(true)}
+        movePendingId={movePendingId}
+        onPrefetchConversation={prefetchConversationRoute}
+        conversationsLoading={listLoading}
+      />
+
       <ConversationSearchModal
         open={searchOpen}
         conversations={token ? serverConversations : []}
@@ -842,7 +913,7 @@ export function HomePageClient() {
         }}
       />
 
-      <main className="flex-1 flex flex-col relative min-w-0">
+      <main className="relative flex min-h-0 min-w-0 flex-1 flex-col">
         <ChatHeader
           token={token}
           authLoading={authLoading}
@@ -889,6 +960,8 @@ export function HomePageClient() {
             else if (e.key === "Escape") setIsEditingTitle(false);
           }}
           onLogout={logout}
+          onOpenMobileSidebar={() => setMobileSidebarOpen(true)}
+          onOpenSearch={() => setSearchOpen(true)}
         />
 
         <div className="flex flex-1 flex-col relative min-h-0 overflow-hidden">
@@ -960,7 +1033,7 @@ export function HomePageClient() {
                   autoFollowMainRef.current = true;
                   scrollToBottom(true);
                 }}
-                className="absolute left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-[#e5e5e5] bg-white/92 px-3.5 py-2 text-sm text-gray-700 shadow-[0_8px_24px_rgba(0,0,0,0.08)] backdrop-blur bottom-40 md:bottom-44 hover:bg-gray-50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
+                className="absolute bottom-[calc(10rem+env(safe-area-inset-bottom,0px))] left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-[#e5e5e5] bg-white/92 px-3.5 py-2.5 text-sm text-gray-700 shadow-[0_8px_24px_rgba(0,0,0,0.08)] backdrop-blur md:bottom-44 hover:bg-gray-50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
               >
                 <ArrowDown className="h-4 w-4" />
                 <span>回到底部</span>

@@ -44,15 +44,15 @@ export function AgentForm({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={(e) => e.target === e.currentTarget && !isSubmitting && onCancel()}
     >
       <form
         onSubmit={onSubmit}
-        className="flex h-[88vh] w-full max-w-3xl flex-col rounded-2xl bg-white shadow-2xl"
+        className="flex h-dvh w-full max-w-3xl flex-col rounded-none bg-white shadow-2xl sm:h-[min(88dvh,100dvh)] sm:rounded-2xl"
       >
         {/* ── 头部 ── */}
-        <div className="flex items-start justify-between border-b border-gray-100 px-6 py-5">
+        <div className="flex items-start justify-between border-b border-gray-100 px-4 py-4 sm:px-6 sm:py-5">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-600">
               <Bot className="h-5 w-5" />
@@ -260,7 +260,7 @@ export function AgentForm({
         </div>
 
         {/* ── 底部 ── */}
-        <div className="flex shrink-0 justify-end gap-3 border-t border-gray-100 px-6 py-4">
+        <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-gray-100 px-4 py-4 sm:flex-row sm:justify-end sm:gap-3 sm:px-6">
           <button
             type="button"
             onClick={onCancel}

@@ -17,6 +17,7 @@ import {
   Trash2,
   Loader2,
   CheckSquare,
+  X,
 } from "lucide-react";
 import clsx from "clsx";
 import { useCallback, useMemo, useState } from "react";
@@ -77,6 +78,10 @@ type SidebarProps = {
   onPrefetchConversation?: (id: string) => void;
   /** 首次拉取会话列表中（避免闪「暂无会话」） */
   conversationsLoading?: boolean;
+  /** desktop：内联侧栏；drawer：移动端抽屉内全宽展示 */
+  variant?: "desktop" | "drawer";
+  /** drawer 模式下点击关闭按钮 */
+  onMobileClose?: () => void;
 };
 
 /** 左侧会话侧栏：文件夹、置顶、批量选择与 ⋮ 菜单。 */
@@ -114,7 +119,13 @@ export function Sidebar({
   movePendingId,
   onPrefetchConversation,
   conversationsLoading = false,
+  variant = "desktop",
+  onMobileClose,
 }: SidebarProps) {
+  const isDrawer = variant === "drawer";
+  const toolbarBtnClass = isDrawer
+    ? "flex h-10 w-10 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-200/70 hover:text-gray-700 active:scale-95 transition-colors"
+    : "flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-200/70 hover:text-gray-700 active:scale-95 transition-colors";
   const { loading: authLoading, token } = useAuth();
   const listAreaLoading = authLoading || conversationsLoading;
 
@@ -190,24 +201,42 @@ export function Sidebar({
 
   return (
     <div
-      style={{ width: collapsed ? 0 : 276 }}
-      className="transition-[width] duration-300 ease-in-out h-full bg-[#f9f9f8] border-r border-[#e5e5e5] flex-col flex-shrink-0 overflow-hidden hidden md:flex"
+      style={isDrawer ? undefined : { width: collapsed ? 0 : 276 }}
+      className={clsx(
+        "h-full flex-col flex-shrink-0 overflow-hidden bg-[#f9f9f8] border-r border-[#e5e5e5] flex",
+        !isDrawer && "transition-[width] duration-300 ease-in-out hidden md:flex",
+        isDrawer && "w-full border-r-0",
+      )}
     >
-      <div className="w-[276px] h-full flex flex-col">
+      <div className={clsx("h-full flex flex-col", isDrawer ? "w-full" : "w-[276px]")}>
         <div className="flex items-center gap-0.5 px-2 pt-2 pb-1">
-          <button
-            type="button"
-            onClick={onToggle}
-            title="收起侧栏"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-200/70 hover:text-gray-700 active:scale-95 transition-colors"
-          >
-            <PanelLeftClose className="w-[1.05rem] h-[1.05rem]" />
-          </button>
+          {isDrawer ? (
+            <button
+              type="button"
+              onClick={onMobileClose}
+              title="关闭侧栏"
+              aria-label="关闭侧栏"
+              className={toolbarBtnClass}
+            >
+              <X className="w-[1.05rem] h-[1.05rem]" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onToggle}
+              title="收起侧栏"
+              aria-label="收起侧栏"
+              className={toolbarBtnClass}
+            >
+              <PanelLeftClose className="w-[1.05rem] h-[1.05rem]" />
+            </button>
+          )}
           <button
             type="button"
             onClick={onNewChat}
             title="新建会话"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-200/70 hover:text-gray-700 active:scale-95 transition-colors"
+            aria-label="新建会话"
+            className={toolbarBtnClass}
           >
             <Plus className="w-[1.05rem] h-[1.05rem]" />
           </button>
@@ -215,7 +244,8 @@ export function Sidebar({
             type="button"
             onClick={onOpenSearch}
             title="搜索对话"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-200/70 hover:text-gray-700 active:scale-95 transition-colors"
+            aria-label="搜索对话"
+            className={toolbarBtnClass}
           >
             <Search className="w-[1.05rem] h-[1.05rem]" />
           </button>
@@ -240,7 +270,8 @@ export function Sidebar({
                 <div
                   key={g.id}
                   className={clsx(
-                    "group/gf relative flex min-h-[2.25rem] items-center rounded-lg px-2 py-1.5 text-sm transition-colors",
+                    "group/gf relative flex items-center rounded-lg px-2 py-1.5 text-sm transition-colors",
+                    isDrawer ? "min-h-[2.75rem]" : "min-h-[2.25rem]",
                     sidebarFilter === g.id
                       ? "bg-white shadow-sm border border-[#e5e5e5] text-gray-900 font-medium"
                       : "text-gray-600 hover:bg-gray-100/80 border border-transparent"
@@ -264,7 +295,10 @@ export function Sidebar({
                       <DropdownMenu.Trigger asChild>
                         <button
                           type="button"
-                          className="opacity-0 group-hover/gf:opacity-100 p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-200/60"
+                          className={clsx(
+                            "rounded p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60",
+                            isDrawer ? "opacity-100" : "opacity-0 group-hover/gf:opacity-100",
+                          )}
                           aria-label="分组操作"
                           onClick={(e) => e.stopPropagation()}
                         >

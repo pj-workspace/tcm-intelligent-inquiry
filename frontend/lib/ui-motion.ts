@@ -40,3 +40,11 @@ export const uiMenuPopover = {
   exit: { opacity: 0, scale: 0.98, y: -6 },
   transition: { duration: 0.2, ease: UI_EASE_POP },
 } as const;
+
+/** 自左侧滑入的抽屉面板（移动端侧栏等）。 */
+export const uiDrawerSlide = {
+  initial: { x: "-100%" },
+  animate: { x: 0 },
+  exit: { x: "-100%" },
+  transition: { duration: 0.28, ease: UI_EASE_POP },
+} as const;

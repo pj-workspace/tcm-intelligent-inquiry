@@ -44,6 +44,7 @@ export type UsageEventItemOut = {
   provider_id: string;
   chat_model: string | null;
   conversation_id: string | null;
+  conversation_title: string | null;
   prompt_tokens: number | null;
   completion_tokens: number | null;
   total_tokens: number | null;

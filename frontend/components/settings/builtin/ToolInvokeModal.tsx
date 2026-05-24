@@ -92,12 +92,12 @@ export const ToolInvokeModal = forwardRef<HTMLDivElement, ToolInvokeModalProps>(
   return (
     <motion.div
       ref={ref}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
       {...uiModalBackdrop}
     >
       <motion.div
-        className="flex h-[88vh] w-full max-w-2xl flex-col rounded-2xl bg-white shadow-2xl"
+        className="flex h-[min(90dvh,100dvh)] w-full max-w-2xl flex-col rounded-none bg-white shadow-2xl sm:h-[88vh] sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
         {...uiModalPanel}
       >

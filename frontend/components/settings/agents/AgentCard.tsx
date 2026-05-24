@@ -3,7 +3,7 @@
  */
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Bot,
   ChevronDown,
@@ -13,6 +13,7 @@ import {
   Star,
   Trash2,
 } from "lucide-react";
+import clsx from "clsx";
 import { toolDisplayName } from "@/lib/tool-labels";
 import type { Agent, KnowledgeBaseLite } from "@/types/agent";
 import type { BuiltinToolInfo } from "@/types/tool";
@@ -36,6 +37,36 @@ const CATEGORY_DOT: Record<string, string> = {
   mcp: "bg-violet-400",
 };
 
+const TOOLS_COLLAPSE_THRESHOLD = 4;
+const TOOLS_PREVIEW_COUNT = 3;
+
+function resolveToolMeta(
+  toolName: string,
+  toolInfoMap: Map<string, BuiltinToolInfo>,
+): { label: string; dot: string; title: string } {
+  const info = toolInfoMap.get(toolName);
+  const isMcp = info?.source === "mcp" || toolName.startsWith("mcp_");
+  const dot = info
+    ? (CATEGORY_DOT[info.category] ?? "bg-gray-400")
+    : isMcp
+      ? "bg-violet-400"
+      : "bg-gray-400";
+  const label = info?.mcp_remote_name ?? info?.label ?? toolDisplayName(toolName);
+  return { label, dot, title: toolName };
+}
+
+function ToolChip({ label, dot, title }: { label: string; dot: string; title: string }) {
+  return (
+    <span
+      className="inline-flex max-w-full items-center gap-1.5 rounded border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs text-gray-700"
+      title={title}
+    >
+      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
+      <span className="truncate">{label}</span>
+    </span>
+  );
+}
+
 /** 单个 Agent 配置卡片。 */
 export function AgentCard({
   agent,
@@ -48,9 +79,25 @@ export function AgentCard({
   onDelete,
 }: AgentCardProps) {
   const [showPrompt, setShowPrompt] = useState(false);
-  const toolInfoMap = new Map(toolInfos.map((t) => [t.name, t]));
+  const toolCount = agent.tool_names.length;
+  const [toolsExpanded, setToolsExpanded] = useState(
+    toolCount <= TOOLS_COLLAPSE_THRESHOLD,
+  );
+  const toolInfoMap = useMemo(
+    () => new Map(toolInfos.map((t) => [t.name, t])),
+    [toolInfos],
+  );
+  const toolMetas = useMemo(
+    () => agent.tool_names.map((t) => resolveToolMeta(t, toolInfoMap)),
+    [agent.tool_names, toolInfoMap],
+  );
   const trimmedPrompt = agent.system_prompt?.trim() ?? "";
   const hasPrompt = trimmedPrompt.length > 0;
+  const toolsCollapsible = toolCount > TOOLS_COLLAPSE_THRESHOLD;
+  const toolsPreviewText = toolMetas
+    .slice(0, TOOLS_PREVIEW_COUNT)
+    .map((t) => t.label)
+    .join("、");
 
   return (
     <div
@@ -60,7 +107,7 @@ export function AgentCard({
           : "border-[#e5e5e5]"
       }`}
     >
-      <div className="flex items-start justify-between p-5">
+      <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5">
         <div className="flex min-w-0 items-start gap-4">
           <div
             className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
@@ -86,38 +133,62 @@ export function AgentCard({
             </p>
 
             <div className="mt-3">
-              <div className="text-[11px] font-medium text-gray-400">
-                绑定工具（{agent.tool_names.length}）
-              </div>
-              <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {agent.tool_names.length > 0 ? (
-                  agent.tool_names.map((t) => {
-                    const info = toolInfoMap.get(t);
-                    const isMcp = info?.source === "mcp" || t.startsWith("mcp_");
-                    const dot = info
-                      ? CATEGORY_DOT[info.category] ?? "bg-gray-400"
-                      : isMcp
-                      ? "bg-violet-400"
-                      : "bg-gray-400";
-                    const label =
-                      info?.mcp_remote_name ??
-                      info?.label ??
-                      toolDisplayName(t);
-                    return (
-                      <span
-                        key={t}
-                        className="inline-flex items-center gap-1.5 rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-700"
-                        title={t}
-                      >
-                        <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
-                        {label}
-                      </span>
-                    );
-                  })
-                ) : (
-                  <span className="text-xs italic text-gray-400">无</span>
-                )}
-              </div>
+              {toolCount === 0 ? (
+                <>
+                  <div className="text-[11px] font-medium text-gray-400">绑定工具</div>
+                  <p className="mt-1 text-xs italic text-gray-400">无</p>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => toolsCollapsible && setToolsExpanded((v) => !v)}
+                    disabled={!toolsCollapsible}
+                    className={clsx(
+                      "flex items-center gap-1 text-[11px] font-medium text-gray-400",
+                      toolsCollapsible &&
+                        "rounded-md transition-colors hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/20",
+                    )}
+                  >
+                    绑定工具（{toolCount}）
+                    {toolsCollapsible && (
+                      <ChevronDown
+                        className={clsx(
+                          "h-3.5 w-3.5 transition-transform",
+                          toolsExpanded && "rotate-180",
+                        )}
+                        aria-hidden
+                      />
+                    )}
+                  </button>
+
+                  {toolsCollapsible && !toolsExpanded ? (
+                    <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-gray-500">
+                      {toolsPreviewText}
+                      {toolCount > TOOLS_PREVIEW_COUNT ? (
+                        <span className="text-gray-400"> 等 {toolCount} 个</span>
+                      ) : null}
+                    </p>
+                  ) : (
+                    <div
+                      className={clsx(
+                        "mt-1.5 flex flex-wrap gap-1.5",
+                        toolCount > TOOLS_COLLAPSE_THRESHOLD &&
+                          "max-h-28 overflow-y-auto pr-0.5",
+                      )}
+                    >
+                      {toolMetas.map((meta) => (
+                        <ToolChip
+                          key={meta.title}
+                          label={meta.label}
+                          dot={meta.dot}
+                          title={meta.title}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
             <div className="mt-3">
@@ -139,7 +210,7 @@ export function AgentCard({
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 self-end sm:self-auto">
           <button
             onClick={() => onSetDefault(isDefault ? null : agent.id)}
             title={isDefault ? "取消默认" : "设为默认"}

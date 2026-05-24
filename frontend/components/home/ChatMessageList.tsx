@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BrainstormPanel, ClaudeStar, MessageBubble } from "@/components/chat";
 import { WidgetCard } from "@/components/chat/messages/WidgetCard";
+import { FormWidgetCard } from "@/components/chat/messages/FormWidgetCard";
 import type { ChatMessage, Message } from "@/types/chat";
 import type { GenerationState } from "@/types/chat";
 
@@ -239,6 +240,27 @@ export function ChatMessageList({
     if (msg.traceId) return null;
     // 未回答的 widget 渲染到底部覆盖层（activeWidget），
     // scroll 区内只保留一个空 div 占位以维持滚动高度
+    if (msg.widgetType === "form") {
+      if (!msg.submitted) {
+        return <div key={msg.id} aria-hidden />;
+      }
+      return (
+        <motion.div
+          key={msg.id}
+          initial={skipHistoryEnter ? false : traceEnterInitial}
+          animate={{ opacity: 1, y: 0 }}
+          transition={messageTransition}
+        >
+          <FormWidgetCard
+            question={msg.question}
+            fields={msg.fields}
+            submitted
+            disabled
+            onSubmit={() => {}}
+          />
+        </motion.div>
+      );
+    }
     if (!msg.answer && !msg.dismissed) {
       return <div key={msg.id} aria-hidden />;
     }

@@ -75,18 +75,17 @@ export function KnowledgeDrawer({
       {open && kb ? (
         <motion.div
           key={kb.id}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm sm:p-6"
+          className="fixed inset-0 z-50 flex bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:justify-center sm:p-4 md:p-6"
           onClick={(e) => e.target === e.currentTarget && onClose()}
           {...uiModalBackdrop}
         >
           <motion.div
-            className="relative flex w-full max-w-3xl flex-col rounded-2xl bg-white shadow-2xl"
-            style={{ maxHeight: "calc(100vh - 48px)" }}
+            className="relative flex h-dvh w-full max-w-none flex-col rounded-none bg-white shadow-2xl sm:h-auto sm:max-h-[min(calc(100dvh-2rem),900px)] sm:max-w-3xl sm:rounded-2xl"
             onClick={(e) => e.stopPropagation()}
             {...uiModalPanel}
           >
           {/* Header */}
-          <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-6 py-4">
+          <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-4 py-4 sm:px-6">
             <div className="min-w-0 flex-1">
               <h2 className="truncate text-base font-semibold text-gray-900">{kb.name}</h2>
               <p className="mt-0.5 truncate text-xs text-gray-500">
@@ -104,8 +103,8 @@ export function KnowledgeDrawer({
           </div>
 
           {/* Tabs */}
-          <div className="shrink-0 border-b border-gray-100 px-6">
-            <nav className="-mb-px flex gap-6">
+          <div className="shrink-0 border-b border-gray-100 px-4 sm:px-6">
+            <nav className="no-scrollbar -mb-px flex gap-4 overflow-x-auto sm:gap-6">
               {(
                 [
                   { key: "docs", icon: FileText, label: "文档列表" },
@@ -139,7 +138,7 @@ export function KnowledgeDrawer({
           </div>
 
           {/* Content */}
-          <div className="min-h-0 flex-1 overflow-y-auto p-6">
+          <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:p-6">
             {activeTab === "docs" && (
               <>
                 {loadingDocs ? (

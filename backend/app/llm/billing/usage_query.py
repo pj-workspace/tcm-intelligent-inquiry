@@ -9,6 +9,7 @@ from typing import Any
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.chat.models import ConversationRecord
 from app.llm.billing.models import LlmUsageEventRecord
 
 
@@ -109,6 +110,14 @@ async def fetch_usage_summary_for_user(
     return start, end, totals, by_provider
 
 
+@dataclass(frozen=True)
+class UsageEventListRow:
+    """用量事件列表行（含可选会话标题）。"""
+
+    event: LlmUsageEventRecord
+    conversation_title: str | None
+
+
 async def fetch_usage_events_for_user(
     session: AsyncSession,
     *,
@@ -116,7 +125,7 @@ async def fetch_usage_events_for_user(
     limit: int,
     offset: int,
     provider_id: str | None = None,
-) -> list[LlmUsageEventRecord]:
+) -> list[UsageEventListRow]:
     """Fetch usage events for user。"""
     lim = max(1, min(int(limit), MAX_USAGE_EVENTS_LIMIT))
     off = max(0, int(offset))
@@ -127,14 +136,24 @@ async def fetch_usage_events_for_user(
         filt.append(LlmUsageEventRecord.provider_id == pid)
 
     stmt = (
-        select(LlmUsageEventRecord)
+        select(LlmUsageEventRecord, ConversationRecord.title)
+        .outerjoin(
+            ConversationRecord,
+            ConversationRecord.id == LlmUsageEventRecord.conversation_id,
+        )
         .where(and_(*filt))
         .order_by(LlmUsageEventRecord.created_at.desc())
         .limit(lim)
         .offset(off)
     )
     res = await session.execute(stmt)
-    return list(res.scalars().all())
+    return [
+        UsageEventListRow(
+            event=event,
+            conversation_title=(title.strip() if title and title.strip() else None),
+        )
+        for event, title in res.all()
+    ]
 
 
 async def fetch_usage_totals_for_conversation(

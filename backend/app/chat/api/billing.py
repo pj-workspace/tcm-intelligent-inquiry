@@ -153,16 +153,17 @@ async def billing_usage_events(
 
     items = [
         UsageEventItemOut(
-            usage_event_id=r.id,
-            created_at=r.created_at.isoformat() if r.created_at else "",
-            provider_id=r.provider_id,
-            chat_model=r.chat_model,
-            conversation_id=r.conversation_id,
-            prompt_tokens=r.prompt_tokens,
-            completion_tokens=r.completion_tokens,
-            total_tokens=r.total_tokens,
+            usage_event_id=row.event.id,
+            created_at=row.event.created_at.isoformat() if row.event.created_at else "",
+            provider_id=row.event.provider_id,
+            chat_model=row.event.chat_model,
+            conversation_id=row.event.conversation_id,
+            conversation_title=row.conversation_title,
+            prompt_tokens=row.event.prompt_tokens,
+            completion_tokens=row.event.completion_tokens,
+            total_tokens=row.event.total_tokens,
         )
-        for r in rows
+        for row in rows
     ]
     return UsageEventsResponse(items=items, limit=lim, offset=off)
 

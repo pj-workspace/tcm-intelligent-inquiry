@@ -38,8 +38,8 @@ export function McpServerCard({
 
   return (
     <div className="overflow-hidden rounded-xl border border-[#e5e5e5] bg-white shadow-sm transition-shadow hover:shadow-md">
-      <div className="flex items-start justify-between border-b border-gray-50 p-5">
-        <div className="flex items-start gap-3">
+      <div className="flex flex-col gap-3 border-b border-gray-50 p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5">
+        <div className="flex min-w-0 items-start gap-3">
           <div
             className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
               isStdio ? "bg-violet-50 text-violet-600" : "bg-blue-50 text-blue-600"
@@ -101,7 +101,7 @@ export function McpServerCard({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
           <button
             onClick={() => onRefresh(server.id)}
             disabled={isRefreshing}
