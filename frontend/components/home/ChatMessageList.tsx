@@ -120,6 +120,7 @@ export function ChatMessageList({
   const prevMsg = messages[idx - 1];
   const nextMsg = messages[idx + 1];
   if (msg.type === "message") {
+    /** trace 后首段 assistant：略收紧顶距，与 trace 底部 pb-2 合计 ~14px */
     const afterTrace = prevMsg?.type === "trace";
     const beforeTrace =
       msg.role === "assistant" && nextMsg?.type === "trace";

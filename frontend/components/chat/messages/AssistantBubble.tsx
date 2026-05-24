@@ -165,8 +165,8 @@ export function AssistantBubble({
     <div
       className={clsx(
         "flex w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-auto px-4 sm:px-5 md:px-6 lg:px-8 justify-start",
-        noTopPad ? "pt-0" : "pt-4",
-        noBottomPad ? "pb-1" : "pb-4",
+        noTopPad ? "pt-1.5" : "pt-3",
+        noBottomPad ? "pb-2" : "pb-3",
       )}
     >
       <div className="flex min-w-0 w-full max-w-full flex-col items-start gap-1.5">

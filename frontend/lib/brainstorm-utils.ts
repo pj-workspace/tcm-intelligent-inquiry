@@ -99,6 +99,15 @@ export function toolAbortedLabel(
   return `${name} 已终止`;
 }
 
+/** 用户终止后 trace 内工具行的中性文案（「输出已被终止」仅在 assistant 气泡展示）。 */
+export function toolInvokedLabel(
+  toolName: string,
+  mcpRemoteName?: string | null,
+): string {
+  const name = toolDisplayName(toolName, mcpRemoteName);
+  return `调用了 ${name}`;
+}
+
 /** trace 头部：流式中实时反映当前活跃 step 的语义 */
 export function streamingTraceHeadline(steps: BrainstormStep[]): string {
   const lastUserInput = [...steps]

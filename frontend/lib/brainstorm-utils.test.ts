@@ -8,6 +8,7 @@ import {
   summarizeTraceHeadline,
   toolAbortedLabel,
   toolFailureLabel,
+  toolInvokedLabel,
 } from "@/lib/brainstorm-utils";
 
 /** 构造测试用 thinking 步骤。 */
@@ -99,6 +100,15 @@ describe("toolAbortedLabel", () => {
     const aborted = toolAbortedLabel("mcp_a_x", "x");
     const failed = toolFailureLabel("mcp_a_x", "x");
     expect(aborted).not.toBe(failed);
+  });
+});
+
+describe("toolInvokedLabel", () => {
+  it("uses neutral invoked wording without 已终止", () => {
+    expect(toolInvokedLabel("search_tcm_knowledge")).toBe("调用了 知识库检索");
+    expect(toolInvokedLabel("mcp_a_search_pubmed", "search_pubmed")).toBe(
+      "调用了 search_pubmed",
+    );
   });
 });
 

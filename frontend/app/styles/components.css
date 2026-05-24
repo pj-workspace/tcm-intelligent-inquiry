@@ -1,23 +1,24 @@
 /* Custom styles for AI output */
 .ai-content {
-  @apply font-serif text-[1.05rem] leading-relaxed tracking-wide;
+  @apply font-serif text-[1.05rem] leading-[1.72];
   max-width: 100%;
   overflow-wrap: anywhere;
   word-break: break-word;
+  letter-spacing: 0.01em;
 }
 
-/* 统一 Markdown 块级节奏：聊天回答需要有文档感，但不应像正文编辑器那样松散。 */
+/* 统一 Markdown 块级节奏：段间距 ~10px，段后标题额外 ~12px，避免「上宽下窄」。 */
 .ai-content > :first-child {
   margin-top: 0 !important;
 }
 
 .ai-content > :last-child {
-  margin-bottom: 0.5rem !important;
+  margin-bottom: 0 !important;
 }
 
 .ai-content p {
   margin-top: 0;
-  margin-bottom: 0.78rem;
+  margin-bottom: 0.625rem;
   max-width: 100%;
   overflow-wrap: anywhere;
 }
@@ -26,11 +27,18 @@
 .ai-content h2,
 .ai-content h3,
 .ai-content h4 {
-  margin-top: 0.95rem;
-  margin-bottom: 0.42rem;
+  margin-top: 0;
+  margin-bottom: 0.45rem;
   font-weight: 600;
-  line-height: 1.32;
+  line-height: 1.35;
   letter-spacing: 0.01em;
+}
+
+.ai-content > h1:not(:first-child),
+.ai-content > h2:not(:first-child),
+.ai-content > h3:not(:first-child),
+.ai-content > h4:not(:first-child) {
+  margin-top: 0.75rem;
 }
 
 .ai-content h1 {
@@ -56,14 +64,18 @@
 
 .ai-content blockquote {
   @apply border-l-2 border-[#d9d1c4] pl-3 text-muted-foreground;
-  margin-top: 0.85rem;
-  margin-bottom: 0.85rem;
+  margin-top: 0;
+  margin-bottom: 0.625rem;
+}
+
+.ai-content > blockquote:not(:first-child) {
+  margin-top: 0.75rem;
 }
 
 .ai-content ul {
   @apply list-disc list-outside pl-6;
   margin-top: 0;
-  margin-bottom: 0.82rem;
+  margin-bottom: 0.625rem;
 }
 
 /* 不用浏览器 outside marker：在 flex/overflow 等布局下 marker 常与正文错行；改为 li 内绝对定位编号 */
@@ -72,8 +84,13 @@
   counter-reset: ai-ol;
   @apply pl-0;
   margin-top: 0;
-  margin-bottom: 0.82rem;
+  margin-bottom: 0.625rem;
   margin-left: 0;
+}
+
+.ai-content > ul:not(:first-child),
+.ai-content > ol:not(:first-child) {
+  margin-top: 0.75rem;
 }
 
 .ai-content li {
@@ -132,15 +149,19 @@
 
 .ai-content pre {
   @apply bg-[#1f1f1f] text-white p-3.5 rounded-xl overflow-x-auto font-mono text-sm;
-  margin-top: 0.9rem;
-  margin-bottom: 0.9rem;
+  margin-top: 0;
+  margin-bottom: 0.625rem;
   max-width: 100%;
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
+.ai-content > pre:not(:first-child) {
+  margin-top: 0.75rem;
+}
+
 .ai-content hr {
-  margin: 1.05rem 0;
+  margin: 0.75rem 0;
   border: 0;
   border-top: 1px solid color-mix(in srgb, var(--border-color) 84%, transparent);
 }

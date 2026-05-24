@@ -9,8 +9,8 @@ import { ChevronDown } from "lucide-react";
 import type { BrainstormStep } from "@/types/brainstorm";
 import {
   runningToolLabel,
-  toolAbortedLabel,
   toolFailureLabel,
+  toolInvokedLabel,
   toolSuccessLabel,
 } from "@/lib/brainstorm-utils";
 import { TimelineNode, type TimelineNodeKind } from "./TimelineNode";
@@ -100,8 +100,8 @@ export function BrainstormStepItem({
   }
 
   /* 工具行：极简一行 + 可展开 outputPreview */
-  const failed = step.status === "error";
-  const aborted = failed && step.aborted === true;
+  const aborted = step.status === "error" && step.aborted === true;
+  const failed = step.status === "error" && !aborted;
   const running = step.status === "running";
   const canExpand =
     step.status === "success" && !!(step.outputPreview ?? "").trim();
@@ -115,7 +115,7 @@ export function BrainstormStepItem({
   const toolLine = running
     ? runningToolLabel(step.toolName, step.mcpRemoteName)
     : aborted
-    ? toolAbortedLabel(step.toolName, step.mcpRemoteName)
+    ? toolInvokedLabel(step.toolName, step.mcpRemoteName)
     : failed
     ? toolFailureLabel(step.toolName, step.mcpRemoteName)
     : toolSuccessLabel(

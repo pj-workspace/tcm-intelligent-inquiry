@@ -129,7 +129,7 @@ export function UserBubble({ content, imageUrls, copied, onCopy, onEdit, message
     <div
       data-msg-id={messageId}
       className={clsx(
-        "flex w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-auto py-4 px-4 sm:px-5 md:px-6 lg:px-8",
+        "flex w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-auto py-3 px-4 sm:px-5 md:px-6 lg:px-8",
         "justify-end"
       )}
     >

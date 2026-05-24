@@ -399,13 +399,39 @@ describe("groupMessagesIntoTraces", () => {
       thinkingStep("t1"),
       interruptMark("im1"),
     ]);
-    // 末尾应该有一条 interrupted=true 的空 assistant 占位
+    // trace flush 后再 append 占位气泡
+    expect(out.map((m) => m.type)).toEqual(["message", "trace", "message"]);
     const last = out[out.length - 1];
     if (last.type !== "message" || last.role !== "assistant") {
       throw new Error("expected interrupted placeholder bubble");
     }
     expect(last.interrupted).toBe(true);
     expect(last.content).toBe("");
+  });
+
+  it("interrupt-mark before aborted tool keeps a single trace (not split)", () => {
+    const out = groupMessagesIntoTraces([
+      userMsg("u1"),
+      thinkingStep("t1"),
+      interruptMark("im1"),
+      {
+        id: "to1",
+        type: "tool",
+        toolName: "search_tcm_knowledge",
+        status: "error",
+        aborted: true,
+      } as FlatMessage,
+    ]);
+    expect(out.map((m) => m.type)).toEqual(["message", "trace", "message"]);
+    const trace = out[1];
+    if (trace.type !== "trace") throw new Error("expected trace");
+    expect(trace.steps.map((s) => s.type)).toEqual(["thinking", "tool"]);
+    expect(trace.aborted).toBe(true);
+    const tail = out[2];
+    if (tail.type !== "message" || tail.role !== "assistant") {
+      throw new Error("expected interrupted assistant placeholder");
+    }
+    expect(tail.interrupted).toBe(true);
   });
 
   it("interrupt-mark never appears as a standalone message in grouped output", () => {

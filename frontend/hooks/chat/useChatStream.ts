@@ -151,11 +151,11 @@ export function useChatStream(deps: UseChatStreamDeps) {
     [],
   );
 
-  /** 用户中止 / SSE 错误后，将 trace 内仍在 running 的工具收口为「已终止」状态。 */
+  /** 用户中止 / SSE 错误后，将 trace 内仍在 running 的工具收口为 aborted 终态。
+   *  终止文案仅在 assistant 气泡展示，trace 内不写「已终止」类 outputPreview。 */
   const markRunningToolsAborted = useCallback(
-    (traceId: string | null, reason: "aborted" | "error" = "aborted") => {
+    (traceId: string | null, _reason: "aborted" | "error" = "aborted") => {
       if (!traceId) return;
-      const label = reason === "aborted" ? "已终止" : "已中断";
       setMessages((prev) =>
         prev.map((m) => {
           if (m.type !== "trace" || m.id !== traceId) return m;
@@ -167,7 +167,6 @@ export function useChatStream(deps: UseChatStreamDeps) {
                     ...step,
                     status: "error" as const,
                     aborted: true,
-                    outputPreview: step.outputPreview ?? label,
                   }
                 : step,
             ),
@@ -834,7 +833,7 @@ export function useChatStream(deps: UseChatStreamDeps) {
                       widgetType: "form",
                       question: widgetQuestion,
                       fields: (Array.isArray(data.fields) ? data.fields : [])
-                        .map((raw) => {
+                        .map((raw): FormFieldDef | null => {
                           const row = raw as Record<string, unknown>;
                           const name = typeof row.name === "string" ? row.name : "";
                           const label = typeof row.label === "string" ? row.label : "";
@@ -856,7 +855,7 @@ export function useChatStream(deps: UseChatStreamDeps) {
                               typeof row.placeholder === "string"
                                 ? row.placeholder
                                 : undefined,
-                          } satisfies FormFieldDef;
+                          };
                         })
                         .filter((x): x is FormFieldDef => x !== null),
                     }
@@ -1046,17 +1045,23 @@ export function useChatStream(deps: UseChatStreamDeps) {
           }
         }
 
-        finalizeThinkingStep(currentTraceId, openThinkingStepId);
-        // think 模式：把最后那段 pending interim 升级为顶层 assistant 气泡
-        // 作为「最终总结」
-        if (isThinkMode && !streamEndedWithWidget) {
-          promotePendingInterim(false);
+        // 用户主动 abort 的收口统一在 finally 中处理，避免与正常结束路径
+        // 重复 promote/finalize，导致 trace 与 assistant 交错错乱。
+        if (!abortController.signal.aborted) {
+          finalizeThinkingStep(currentTraceId, openThinkingStepId);
+          // think 模式：把最后那段 pending interim 升级为顶层 assistant 气泡
+          // 作为「最终总结」
+          if (isThinkMode && !streamEndedWithWidget) {
+            promotePendingInterim(false);
+          }
+          // ask_user 会以 widget 暂停本轮流，但这不是 trace 结束：
+          // 保持 status=streaming，让标题继续由 streamingTraceHeadline 显示
+          // 「等待用户补充...」。用户回答/跳过后会 resume 到同一个 trace，
+          // 最终 summary/text 到达时再真正 finalize。
+          if (currentTraceId && !streamEndedWithWidget) {
+            finalizeTrace(currentTraceId, true);
+          }
         }
-        // ask_user 会以 widget 暂停本轮流，但这不是 trace 结束：
-        // 保持 status=streaming，让标题继续由 streamingTraceHeadline 显示
-        // 「等待用户补充...」。用户回答/跳过后会 resume 到同一个 trace，
-        // 最终 summary/text 到达时再真正 finalize。
-        if (currentTraceId && !streamEndedWithWidget) finalizeTrace(currentTraceId, true);
 
         if (
           !abortController.signal.aborted &&

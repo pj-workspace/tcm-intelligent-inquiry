@@ -53,8 +53,8 @@ export function BrainstormPanel({
     <div
       className={clsx(
         "flex w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl justify-start px-4 sm:px-5 md:mx-auto md:px-6 lg:px-8",
-        compactTopAfterAssistant ? "pt-0" : "pt-1.5",
-        compactBottomBeforeAssistant ? "pb-1" : "pb-4",
+        compactTopAfterAssistant ? "pt-1" : "pt-2",
+        compactBottomBeforeAssistant ? "pb-2" : "pb-3",
       )}
     >
       <div className="w-full max-w-full">
@@ -127,9 +127,7 @@ export function BrainstormPanel({
                     ))}
                     {/* trace 收口节点：
                         - summaryAcknowledged=true（模型显式调用了 mark_summary） → ✓ 完成
-                        - aborted=true：被中止的 tool 行自己挂"XXX 已终止"，下方
-                          assistant 气泡又会附"输出已被终止" blockquote，footer 再加
-                          一条会和上面那条「调用工具的东西」视觉重复，干脆不显示。
+                        - aborted=true：终止提示仅在 assistant 气泡展示，footer 不重复
                         - 其他情况 → trace 静默收口 */}
                     {!isStreaming && steps.length > 0 && summaryAcknowledged && !aborted && (
                       <div className="relative pl-7 mt-3">

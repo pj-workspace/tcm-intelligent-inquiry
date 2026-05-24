@@ -307,6 +307,10 @@ export function groupMessagesIntoTraces(
   let pendingSteps: BrainstormStep[] = [];
   /** 当前积累 step 期间是否遇到过 summary-mark：flush 时把 trace 打 summaryAcknowledged。 */
   let pendingSummaryAcknowledged = false;
+  /** 本轮已遇到 interrupt-mark：flush 时 trace 打 aborted，且不在此处提前 flush 撕开 trace。 */
+  let pendingRoundInterrupted = false;
+  /** interrupt-mark 时本轮尚无 assistant，占位气泡 id 推迟到 trace flush 之后再 append。 */
+  let pendingInterruptedPlaceholderId: string | null = null;
 
   const flushTrace = (collapsed: boolean, endIsoCandidate?: string) => {
     if (!pendingSteps.length) return;
@@ -320,11 +324,12 @@ export function groupMessagesIntoTraces(
       status: "done",
       totalDurationSec: computeTraceDuration(pendingSteps, endIsoCandidate),
       collapsed,
-      ...(hasAbortedTool ? { aborted: true } : {}),
+      ...(hasAbortedTool || pendingRoundInterrupted ? { aborted: true } : {}),
       ...(pendingSummaryAcknowledged ? { summaryAcknowledged: true } : {}),
     } satisfies TraceMessage);
     pendingSteps = [];
     pendingSummaryAcknowledged = false;
+    pendingRoundInterrupted = false;
   };
 
   /** 把 summaryAcknowledged 信号附加到「最近一个 trace」上：
@@ -349,13 +354,12 @@ export function groupMessagesIntoTraces(
    *
    *  关键边界：向前扫到 user / widget 即停（它们是"轮次分隔符"）。这避免把上一轮
    *  已完成的 assistant 误标为 interrupted——典型场景是本轮 abort 时只有 trace
-   *  还没产生任何 assistant 文本。这时追加一条空 assistant 占位气泡承载「输出已被
-   *  终止」标识，与实时流 abort 时的 UI 一致。 */
+   *  还没产生任何 assistant 文本。这时在 trace flush 之后再追加空 assistant 占位。
+   *
+   *  不在此处 flush pendingSteps：abort 写库顺序可能导致 interrupt-mark 落在
+   *  aborted tool 之前；若提前 flush 会把 thinking 与 tool 撕成两个 trace。 */
   const markLastAssistantInterrupted = (markerId: string) => {
-    // pendingSteps 不为空时，先 flush trace（让 interrupt-mark 之前的 trace 收口）
-    if (pendingSteps.length > 0) {
-      flushTrace(true);
-    }
+    pendingRoundInterrupted = true;
     for (let i = grouped.length - 1; i >= 0; i--) {
       const m = grouped[i];
       if (m.type === "message" && m.role === "assistant") {
@@ -369,14 +373,8 @@ export function groupMessagesIntoTraces(
       if (m.type === "widget") break;
       // trace 跳过继续往前找
     }
-    // 本轮没找到 assistant 消息：追加占位气泡承载「已终止」尾巴
-    grouped.push({
-      id: `${markerId}-interrupted-placeholder`,
-      role: "assistant",
-      type: "message",
-      content: "",
-      interrupted: true,
-    });
+    // 本轮没找到 assistant 消息：trace flush 后再 append 占位气泡
+    pendingInterruptedPlaceholderId = `${markerId}-interrupted-placeholder`;
   };
 
   const applyWidgetAnswerToTrace = (
@@ -455,6 +453,17 @@ export function groupMessagesIntoTraces(
 
   // 末尾残留：默认折叠（与新的流式 finalize 行为统一，用户可手动展开）
   flushTrace(true);
+
+  if (pendingInterruptedPlaceholderId) {
+    grouped.push({
+      id: pendingInterruptedPlaceholderId,
+      role: "assistant",
+      type: "message",
+      content: "",
+      interrupted: true,
+    });
+    pendingInterruptedPlaceholderId = null;
+  }
 
   // 历史加载：根据 widget 后紧跟的第一条用户消息推断答案状态，并将该用户消息从列表中移除
   // （widget 紧凑状态已展示答案，无需再显示用户气泡，与实时流体验保持一致）

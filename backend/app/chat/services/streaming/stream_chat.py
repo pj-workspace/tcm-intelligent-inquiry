@@ -92,7 +92,6 @@ def _build_aborted_tool_record(
         "name": name,
         "status": "error",
         "aborted": True,
-        "outputPreview": "已终止",
     }
     rec.update(mcp_tool_sse_metadata(name))
     inp = meta.get("input")
