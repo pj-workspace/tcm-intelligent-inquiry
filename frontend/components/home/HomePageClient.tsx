@@ -964,20 +964,16 @@ export function HomePageClient() {
           onOpenSearch={() => setSearchOpen(true)}
         />
 
-        <div className="flex flex-1 flex-col relative min-h-0 overflow-hidden">
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
           {!viewingGroupLanding ? (
-            <>
+            <div className="relative flex min-h-0 flex-1 flex-col">
               <div
                 ref={scrollViewportRef}
                 onScroll={updateScrollState}
                 onWheel={markUserScrollIntent}
                 onTouchStart={markUserScrollIntent}
-                className={`chat-scroll-area no-scrollbar flex-1 overflow-y-auto ${
-                  !viewingGroupLanding
-                    ? [
-                        showWelcomeHero ? "flex min-h-0 flex-col" : "",
-                      ].join(" ")
-                    : ""
+                className={`chat-scroll-area no-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden ${
+                  showWelcomeHero ? "flex flex-col" : ""
                 }`}
                 style={{ overflowAnchor: "none" }}
               >
@@ -1006,7 +1002,7 @@ export function HomePageClient() {
                     messagesEndRef={messagesEndRef}
                   />
                 ) : null}
-                </div>
+              </div>
 
               {mainScrollbar.thumbHeight > 0 ? (
                 <span
@@ -1022,25 +1018,25 @@ export function HomePageClient() {
               ) : null}
 
               <AnimatePresence>
-                {showScrollToBottom && hasStarted && !viewingGroupLanding && (
-              <motion.button
-                type="button"
-                initial={{ opacity: 0, y: 10, scale: 0.92 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 10, scale: 0.92 }}
-                transition={{ duration: 0.18, ease: "easeOut" }}
-                onClick={() => {
-                  autoFollowMainRef.current = true;
-                  scrollToBottom(true);
-                }}
-                className="absolute bottom-[calc(10rem+env(safe-area-inset-bottom,0px))] left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-[#e5e5e5] bg-white/92 px-3.5 py-2.5 text-sm text-gray-700 shadow-[0_8px_24px_rgba(0,0,0,0.08)] backdrop-blur md:bottom-44 hover:bg-gray-50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
-              >
-                <ArrowDown className="h-4 w-4" />
-                <span>回到底部</span>
-              </motion.button>
-            )}
-          </AnimatePresence>
-            </>
+                {showScrollToBottom && hasStarted && (
+                  <motion.button
+                    type="button"
+                    initial={{ opacity: 0, y: 10, scale: 0.92 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.92 }}
+                    transition={{ duration: 0.18, ease: "easeOut" }}
+                    onClick={() => {
+                      autoFollowMainRef.current = true;
+                      scrollToBottom(true);
+                    }}
+                    className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-[#e5e5e5] bg-white/92 px-3.5 py-2.5 text-sm text-gray-700 shadow-[0_8px_24px_rgba(0,0,0,0.08)] backdrop-blur hover:bg-gray-50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
+                  >
+                    <ArrowDown className="h-4 w-4" />
+                    <span>回到底部</span>
+                  </motion.button>
+                )}
+              </AnimatePresence>
+            </div>
           ) : (
             <GroupWorkspace
               groupName={selectedGroupFolderName}
@@ -1049,94 +1045,103 @@ export function HomePageClient() {
             />
           )}
 
-          {/* 未回答的 widget 作为底部覆盖层，盖住 ChatInputBar */}
-          <AnimatePresence>
-            {activeWidget && (
-              <motion.div
-                key={activeWidget.id}
-                initial={{ opacity: 0, y: 28 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 20, transition: { duration: 0.15 } }}
-                transition={{ duration: 0.22, ease: "easeOut" }}
-                className="absolute bottom-0 left-0 right-0 z-20 flex flex-col items-center bg-gradient-to-t from-[#fdfdfc] from-50% via-[#fdfdfc]/90 to-transparent px-4 pb-5 pt-10 md:px-8"
-              >
-                <div className="w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl max-h-[min(75vh,36rem)] overflow-y-auto">
-                  {activeWidget.widgetType === "form" ? (
-                    <FormWidgetCard
-                      question={activeWidget.question}
-                      fields={activeWidget.fields}
-                      submitted={activeWidget.submitted}
-                      disabled={genState !== "idle"}
-                      onSubmit={(values) =>
-                        handleWidgetFormSubmit(activeWidget.id, values)
-                      }
-                    />
-                  ) : (
-                    <WidgetCard
-                      question={activeWidget.question}
-                      choices={activeWidget.choices}
-                      allowFreeText={activeWidget.allowFreeText}
-                      answer={activeWidget.answer}
-                      dismissed={activeWidget.dismissed}
-                      disabled={genState !== "idle"}
-                      onAnswer={(ans) => handleWidgetAnswer(activeWidget.id, ans)}
-                    />
-                  )}
-                </div>
-                {activeWidget.widgetType === "choice" ? (
-                  <p className="mt-2 text-center text-[11px] text-gray-400 select-none">
-                    ↑↓ 导航&nbsp;&nbsp;·&nbsp;&nbsp;Enter 选择&nbsp;&nbsp;·&nbsp;&nbsp;Esc 跳过
-                  </p>
-                ) : null}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <ChatInputBar
-            input={input}
-            hasStarted={hasStarted || viewingGroupLanding}
-            genState={genState}
-            deepThinkEnabled={deepThinkEnabled}
-            webSearchEnabled={webSearchEnabled}
-            webSearchMode={webSearchMode}
-            inputRef={inputRef}
-            onInputChange={setInput}
-            onKeyDown={handleKeyDown}
-            onSend={() => void handleSend()}
-            onStop={handleStop}
-            onToggleDeepThink={() => setDeepThinkEnabled((v) => !v)}
-            onToggleWebSearch={() => setWebSearchEnabled((v) => !v)}
-            onSetWebSearchMode={(mode) => {
-              setWebSearchEnabled(true);
-              setWebSearchMode(mode);
-            }}
-            modelCatalog={chatModelCatalog}
-            selectedProviderId={selectedProviderId}
-            selectedModelId={selectedChatModelId}
-            onSelectModel={(providerId, modelId) => setModelPick(providerId, modelId)}
-            attachmentDisabled={inputBarModelCaps.attachmentDisabled}
-            attachmentDisabledReason={attachmentDisabledReason}
-            deepThinkDisabledByModel={inputBarModelCaps.deepThinkDisabledByModel}
-            webSearchDisabledByModel={inputBarModelCaps.webSearchDisabledByModel}
-            pendingImageUrls={pendingImageUrls}
-            onRemovePendingImage={removePendingImageUrlAt}
-            onImageFilesSelected={(files) => void pushImageAttachments(files)}
-            attachmentUploadBusy={attachmentUploadBusy}
-            attachmentUploadSkeletonCount={attachmentUploadSkeletonCount}
-            attachmentUploadSlotProgress={attachmentUploadSlotProgress}
-            onSendWithImagePrompt={handleSendImageQuickPrompt}
-            fetchAiImageQuickPrompts={fetchAiImageQuickPrompts}
-            placeholder={
-              viewingGroupLanding ? "在这里提问，新建对话" : undefined
-            }
-            usageHint={inputBarUsageHint}
-            chatSurfacePhase={chatSurfacePhase}
-            showAgentPicker={Boolean(token) && !authLoading}
-            agents={agentPickerList}
-            selectedAgentId={chatAgentId}
-            onSelectAgent={setChatAgentId}
-            agentsLoading={agentsLoading}
-          />
+          {/* 底部 dock：输入栏 / widget（与消息列表同级，不随滚动） */}
+          <div className="relative z-10 shrink-0">
+            <AnimatePresence mode="wait">
+              {activeWidget ? (
+                <motion.div
+                  key={`widget-${activeWidget.id}`}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8, transition: { duration: 0.15 } }}
+                  transition={{ duration: 0.22, ease: "easeOut" }}
+                  className="border-t border-[#eeece6]/80 bg-[#fdfdfc] px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-4 md:px-8"
+                >
+                  <div className="mx-auto w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl max-h-[min(75vh,36rem)] overflow-y-auto">
+                    {activeWidget.widgetType === "form" ? (
+                      <FormWidgetCard
+                        question={activeWidget.question}
+                        fields={activeWidget.fields}
+                        submitted={activeWidget.submitted}
+                        disabled={genState !== "idle"}
+                        onSubmit={(values) =>
+                          handleWidgetFormSubmit(activeWidget.id, values)
+                        }
+                      />
+                    ) : (
+                      <WidgetCard
+                        question={activeWidget.question}
+                        choices={activeWidget.choices}
+                        allowFreeText={activeWidget.allowFreeText}
+                        answer={activeWidget.answer}
+                        dismissed={activeWidget.dismissed}
+                        disabled={genState !== "idle"}
+                        onAnswer={(ans) => handleWidgetAnswer(activeWidget.id, ans)}
+                      />
+                    )}
+                  </div>
+                  {activeWidget.widgetType === "choice" ? (
+                    <p className="mx-auto mt-2 max-w-3xl text-center text-[11px] text-gray-400 select-none lg:max-w-4xl xl:max-w-5xl">
+                      ↑↓ 导航&nbsp;&nbsp;·&nbsp;&nbsp;Enter 选择&nbsp;&nbsp;·&nbsp;&nbsp;Esc 跳过
+                    </p>
+                  ) : null}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="composer"
+                  initial={false}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 6, transition: { duration: 0.12 } }}
+                >
+                  <ChatInputBar
+                    input={input}
+                    hasStarted={hasStarted || viewingGroupLanding}
+                    genState={genState}
+                    deepThinkEnabled={deepThinkEnabled}
+                    webSearchEnabled={webSearchEnabled}
+                    webSearchMode={webSearchMode}
+                    inputRef={inputRef}
+                    onInputChange={setInput}
+                    onKeyDown={handleKeyDown}
+                    onSend={() => void handleSend()}
+                    onStop={handleStop}
+                    onToggleDeepThink={() => setDeepThinkEnabled((v) => !v)}
+                    onToggleWebSearch={() => setWebSearchEnabled((v) => !v)}
+                    onSetWebSearchMode={(mode) => {
+                      setWebSearchEnabled(true);
+                      setWebSearchMode(mode);
+                    }}
+                    modelCatalog={chatModelCatalog}
+                    selectedProviderId={selectedProviderId}
+                    selectedModelId={selectedChatModelId}
+                    onSelectModel={(providerId, modelId) => setModelPick(providerId, modelId)}
+                    attachmentDisabled={inputBarModelCaps.attachmentDisabled}
+                    attachmentDisabledReason={attachmentDisabledReason}
+                    deepThinkDisabledByModel={inputBarModelCaps.deepThinkDisabledByModel}
+                    webSearchDisabledByModel={inputBarModelCaps.webSearchDisabledByModel}
+                    pendingImageUrls={pendingImageUrls}
+                    onRemovePendingImage={removePendingImageUrlAt}
+                    onImageFilesSelected={(files) => void pushImageAttachments(files)}
+                    attachmentUploadBusy={attachmentUploadBusy}
+                    attachmentUploadSkeletonCount={attachmentUploadSkeletonCount}
+                    attachmentUploadSlotProgress={attachmentUploadSlotProgress}
+                    onSendWithImagePrompt={handleSendImageQuickPrompt}
+                    fetchAiImageQuickPrompts={fetchAiImageQuickPrompts}
+                    placeholder={
+                      viewingGroupLanding ? "在这里提问，新建对话" : undefined
+                    }
+                    usageHint={inputBarUsageHint}
+                    chatSurfacePhase={chatSurfacePhase}
+                    showAgentPicker={Boolean(token) && !authLoading}
+                    agents={agentPickerList}
+                    selectedAgentId={chatAgentId}
+                    onSelectAgent={setChatAgentId}
+                    agentsLoading={agentsLoading}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </main>
     </div>

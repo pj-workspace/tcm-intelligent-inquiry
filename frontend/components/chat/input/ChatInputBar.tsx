@@ -418,19 +418,19 @@ export function ChatInputBar({
   return (
     <motion.div
       transition={springTransition}
-      className="absolute bottom-0 left-0 right-0 z-10 flex flex-col items-center bg-gradient-to-t from-[#fdfdfc] from-45% via-[#fdfdfc]/96 to-transparent px-4 pb-5 pt-6 md:px-8"
+      className="w-full shrink-0 border-t border-[#eeece6]/80 bg-[#fdfdfc] px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-3 md:px-8"
     >
-      <div className="relative w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl">
-        {/* 首屏五大快捷卡片：仅在输入区「无图且无字」且无上传中时展示 */}
+      <div className="relative mx-auto w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl">
+        {/* 快捷话题：紧凑 chips，贴输入框上方 */}
         <AnimatePresence mode="popLayout">
           {showLandingQuickPromptCards && (
             <motion.div
               layout
-              initial={{ opacity: 0, y: 8 }}
+              initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 6 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              className="no-scrollbar mb-3 flex flex-wrap gap-2 sm:flex-nowrap sm:snap-x sm:snap-mandatory sm:overflow-x-auto pb-0.5"
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="no-scrollbar mb-2.5 flex gap-2 overflow-x-auto pb-0.5"
             >
               {quickPromptChoices.map((item) => {
                 const { Icon } = item;
@@ -438,25 +438,16 @@ export function ChatInputBar({
                   <motion.button
                     key={item.prompt}
                     type="button"
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => onInputChange(item.prompt)}
-                    className="w-max max-w-[min(20rem,calc(100vw-5rem))] shrink-0 snap-start rounded-xl border border-[#e5e5e5] bg-white/95 px-3 py-2 text-left shadow-sm transition-colors hover:border-gray-300 hover:bg-white sm:max-w-[min(21rem,calc((100vw-7rem)/2))] md:py-2.5"
+                    title={item.subtitle}
+                    className="inline-flex max-w-[14rem] shrink-0 items-center gap-1.5 rounded-full border border-[#e5e5e5] bg-white px-3 py-1.5 text-left text-xs font-medium text-gray-700 shadow-sm transition-colors hover:border-gray-300 hover:bg-gray-50"
                   >
-                    <div className="flex min-w-0 gap-2">
-                      <Icon
-                        className={`mt-0.5 h-4 w-4 shrink-0 ${item.iconClassName}`}
-                        aria-hidden
-                      />
-                      <div className="min-w-[6.5rem] max-w-[16rem] sm:max-w-[18rem]">
-                        <div className="whitespace-normal text-sm font-semibold leading-snug text-gray-900">
-                          {item.title}
-                        </div>
-                        <p className="mt-1 whitespace-normal text-[11px] leading-snug text-gray-500">
-                          {item.subtitle}
-                        </p>
-                      </div>
-                    </div>
+                    <Icon
+                      className={`h-3.5 w-3.5 shrink-0 ${item.iconClassName}`}
+                      aria-hidden
+                    />
+                    <span className="truncate">{item.title}</span>
                   </motion.button>
                 );
               })}
@@ -785,7 +776,7 @@ export function ChatInputBar({
             }
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="text-center mt-3 text-xs text-gray-400 font-medium px-2"
+            className="mt-2 text-center text-[11px] font-medium text-gray-400 px-2"
           >
             AI 可能会产生误导性信息，请结合实际情况判断。
           </motion.div>

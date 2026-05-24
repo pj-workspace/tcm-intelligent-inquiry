@@ -330,7 +330,7 @@ export function ChatMessageList({
 
       <div
         ref={messagesEndRef}
-        className="min-h-[clamp(10.5rem,22vh,14rem)] shrink-0 md:min-h-[clamp(11.5rem,22vh,15rem)]"
+        className="h-6 shrink-0"
         aria-hidden
       />
     </div>

@@ -24,7 +24,7 @@ export function GroupWorkspace({
 
   return (
     <div className="flex flex-1 flex-col min-h-0 overflow-y-auto no-scrollbar px-4 md:px-8">
-      <div className="mx-auto w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl pb-44 pt-6 md:pt-10">
+      <div className="mx-auto w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl pb-8 pt-6 md:pt-10">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-5">
           <div className="flex h-[3.5rem] w-[3.5rem] shrink-0 items-center justify-center rounded-2xl border border-[#e5e5e5] bg-white shadow-sm">
             <Folder className="h-8 w-8 text-amber-800/85" strokeWidth={1.35} aria-hidden />
