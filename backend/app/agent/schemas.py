@@ -88,3 +88,24 @@ class ToolInvokeResponse(BaseModel):
 
     result: str
     elapsed_ms: int
+
+
+class GenerateSystemPromptRequest(BaseModel):
+    """AI 生成 Agent system prompt 的请求体。"""
+
+    name: str = Field(..., min_length=1, max_length=255, description="Agent 名称")
+    description: str = Field(default="", max_length=2000, description="Agent 用途说明")
+    default_kb_id: str | None = Field(default=None, description="默认知识库 ID（可选）")
+    user_requirements: str | None = Field(
+        default=None,
+        max_length=2000,
+        description="用户补充需求（语气、场景等）",
+    )
+
+
+class GenerateSystemPromptResponse(BaseModel):
+    """AI 生成结果：XML system prompt + 推荐工具。"""
+
+    system_prompt: str
+    suggested_tool_names: list[str]
+    reasoning: str | None = None

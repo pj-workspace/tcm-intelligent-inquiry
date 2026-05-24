@@ -3,7 +3,7 @@
  */
 "use client";
 
-import { Bot, RotateCcw, Save, Wrench, X } from "lucide-react";
+import { Bot, RotateCcw, Save, Sparkles, Wrench, X } from "lucide-react";
 import { Select } from "@/components/ui/Select";
 import { DEFAULT_SYSTEM_PROMPT } from "@/hooks/useAgents";
 import { AgentToolPicker } from "@/components/settings/agents/AgentToolPicker";
@@ -18,6 +18,8 @@ interface AgentFormProps {
   toolInfos: BuiltinToolInfo[];
   knowledgeBases: KnowledgeBaseLite[];
   isSubmitting: boolean;
+  isGeneratingPrompt?: boolean;
+  onGenerateSystemPrompt?: () => void;
   onSubmit: (e: React.FormEvent) => void;
   onCancel: () => void;
   toggleTool: (toolName: string) => void;
@@ -32,6 +34,8 @@ export function AgentForm({
   toolInfos,
   knowledgeBases,
   isSubmitting,
+  isGeneratingPrompt = false,
+  onGenerateSystemPrompt,
   onSubmit,
   onCancel,
   toggleTool,
@@ -105,6 +109,24 @@ export function AgentForm({
             </div>
           </div>
 
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-gray-700">
+              AI 生成补充需求（可选）
+            </label>
+            <input
+              type="text"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+              placeholder="例如：偏临床教学、语气通俗易懂、优先用经方…"
+              value={formData.user_requirements}
+              onChange={(e) =>
+                setFormData({ ...formData, user_requirements: e.target.value })
+              }
+            />
+            <p className="text-[11px] text-gray-400">
+              点击「AI 生成」时会一并参考；名称与说明为主要依据。
+            </p>
+          </div>
+
           {/* 系统提示词 */}
           <div className="space-y-1">
             <div className="flex items-center justify-between">
@@ -113,6 +135,30 @@ export function AgentForm({
               </label>
               <div className="flex items-center gap-3 text-[11px] text-gray-400">
                 <span>{formData.system_prompt.length} 字符</span>
+                {onGenerateSystemPrompt && (
+                  <button
+                    type="button"
+                    onClick={onGenerateSystemPrompt}
+                    disabled={
+                      isSubmitting ||
+                      isGeneratingPrompt ||
+                      !formData.name.trim()
+                    }
+                    title={
+                      formData.name.trim()
+                        ? "根据名称、说明与可用工具生成 XML 提示词并推荐工具"
+                        : "请先填写 Agent 名称"
+                    }
+                    className="flex items-center gap-1 text-violet-600 hover:text-violet-700 disabled:opacity-40"
+                  >
+                    {isGeneratingPrompt ? (
+                      <div className="h-3 w-3 animate-spin rounded-full border-2 border-violet-200 border-t-violet-600" />
+                    ) : (
+                      <Sparkles className="h-3 w-3" />
+                    )}
+                    AI 生成
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() =>
@@ -143,8 +189,7 @@ export function AgentForm({
               }
             />
             <p className="mt-1 text-[11px] text-gray-400">
-              模板里 <code className="rounded bg-gray-100 px-1 font-mono text-gray-500">&lt;待填：…&gt;</code>{" "}
-              处需替换为你的实际场景描述。
+              使用「AI 生成」可自动产出 XML 结构提示词并推荐工具；也可手动编辑。
             </p>
           </div>
 

@@ -22,4 +22,12 @@ export type AgentFormData = {
   system_prompt: string;
   tool_names: string[];
   default_kb_id: string;
+  user_requirements: string;
+};
+
+/** POST /api/agents/generate-system-prompt 响应。 */
+export type GenerateSystemPromptResult = {
+  system_prompt: string;
+  suggested_tool_names: string[];
+  reasoning?: string | null;
 };

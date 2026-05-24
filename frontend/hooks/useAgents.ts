@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import { API_BASE, apiHeaders, apiJsonHeaders, parseApiError } from "@/lib/api";
 import { toast } from "sonner";
 import { notifyChatAgentsCatalogChanged } from "@/hooks/useChatAgentsCatalog";
-import type { Agent, AgentFormData, KnowledgeBaseLite } from "@/types/agent";
+import type { Agent, AgentFormData, GenerateSystemPromptResult, KnowledgeBaseLite } from "@/types/agent";
 import type { BuiltinToolInfo } from "@/types/tool";
 
 /**
@@ -36,6 +36,7 @@ const INITIAL_FORM: AgentFormData = {
   system_prompt: DEFAULT_SYSTEM_PROMPT,
   tool_names: [],
   default_kb_id: "",
+  user_requirements: "",
 };
 
 /** 加载并管理用户 Agent 列表、编辑表单与删除确认。 */
@@ -51,6 +52,7 @@ export function useAgents(token: string | null) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
   const [formData, setFormData] = useState<AgentFormData>(INITIAL_FORM);
 
   const fetchData = useCallback(async () => {
@@ -116,6 +118,7 @@ export function useAgents(token: string | null) {
       system_prompt: agent.system_prompt,
       tool_names: agent.tool_names,
       default_kb_id: agent.default_kb_id?.trim() || "",
+      user_requirements: "",
     });
   };
 
@@ -127,6 +130,7 @@ export function useAgents(token: string | null) {
       system_prompt: agent.system_prompt,
       tool_names: [...agent.tool_names],
       default_kb_id: agent.default_kb_id?.trim() || "",
+      user_requirements: "",
     });
   };
 
@@ -139,6 +143,44 @@ export function useAgents(token: string | null) {
         ? prev.tool_names.filter((t) => t !== toolName)
         : [...prev.tool_names, toolName],
     }));
+  };
+
+  const handleGenerateSystemPrompt = async () => {
+    if (!token || !formData.name.trim()) {
+      toast.error("请先填写 Agent 名称");
+      return;
+    }
+    setIsGeneratingPrompt(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/agents/generate-system-prompt`, {
+        method: "POST",
+        headers: apiJsonHeaders(token),
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          description: formData.description.trim(),
+          default_kb_id: formData.default_kb_id.trim() || null,
+          user_requirements: formData.user_requirements.trim() || null,
+        }),
+      });
+      if (!res.ok) throw new Error(await parseApiError(res));
+      const data = (await res.json()) as GenerateSystemPromptResult;
+      const suggested = data.suggested_tool_names ?? [];
+      setFormData((prev) => ({
+        ...prev,
+        system_prompt: data.system_prompt ?? prev.system_prompt,
+        tool_names: suggested.length > 0 ? suggested : prev.tool_names,
+      }));
+      const hint = data.reasoning?.trim();
+      toast.success(
+        hint
+          ? `已生成提示词并推荐 ${suggested.length} 个工具：${hint}`
+          : `已生成提示词并推荐 ${suggested.length} 个工具`,
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "生成失败");
+    } finally {
+      setIsGeneratingPrompt(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -208,6 +250,7 @@ export function useAgents(token: string | null) {
     isDeleting,
     editingId,
     isSubmitting,
+    isGeneratingPrompt,
     formData,
     setFormData,
     handleSetDefault,
@@ -217,6 +260,7 @@ export function useAgents(token: string | null) {
     handleCancelEdit,
     toggleTool,
     handleSubmit,
+    handleGenerateSystemPrompt,
     confirmDelete,
   };
 }

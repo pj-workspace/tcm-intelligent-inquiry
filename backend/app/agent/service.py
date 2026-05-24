@@ -18,6 +18,8 @@ from app.agent.schemas import (
     AgentResponse,
     AgentUpdateRequest,
     BuiltinToolInfo,
+    GenerateSystemPromptRequest,
+    GenerateSystemPromptResponse,
     ToolArgInfo,
     ToolInvokeResponse,
     ToolListResponse,
@@ -267,4 +269,35 @@ class AgentService:
         return ToolInvokeResponse(
             result=str(result),
             elapsed_ms=int((time.monotonic() - start) * 1000),
+        )
+
+    async def generate_system_prompt(
+        self,
+        req: GenerateSystemPromptRequest,
+        user_id: str,
+    ) -> GenerateSystemPromptResponse:
+        """根据名称/说明与工具目录，AI 生成 XML system prompt 并推荐工具。"""
+        from app.agent.prompt_generator import generate_agent_system_prompt
+
+        tools_resp = await self.list_available_tools()
+        default_kb_name: str | None = None
+        if req.default_kb_id and str(req.default_kb_id).strip():
+            kid = str(req.default_kb_id).strip()
+            await _ensure_kb_owned_by_user(self._session, kid, user_id)
+            row = await self._session.get(KnowledgeBaseRecord, kid)
+            if row is not None:
+                default_kb_name = row.name
+
+        system_prompt, suggested, reasoning = await generate_agent_system_prompt(
+            name=req.name,
+            description=req.description,
+            tools=tools_resp.tools,
+            default_kb_name=default_kb_name,
+            user_requirements=req.user_requirements,
+            available_tool_names=set(tool_registry.names()),
+        )
+        return GenerateSystemPromptResponse(
+            system_prompt=system_prompt,
+            suggested_tool_names=suggested,
+            reasoning=reasoning,
         )

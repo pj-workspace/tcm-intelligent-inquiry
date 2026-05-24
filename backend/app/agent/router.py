@@ -13,6 +13,8 @@ from app.agent.schemas import (
     AgentListResponse,
     AgentResponse,
     AgentUpdateRequest,
+    GenerateSystemPromptRequest,
+    GenerateSystemPromptResponse,
     ToolInvokeRequest,
     ToolInvokeResponse,
     ToolListResponse,
@@ -71,6 +73,20 @@ async def invoke_tool(
 ):
     """POST /api/agents/tools/{tool_name}/invoke — 在线试用工具。"""
     return await svc.invoke_tool(tool_name, req.args, user.id)
+
+
+@router.post(
+    "/generate-system-prompt",
+    response_model=GenerateSystemPromptResponse,
+    summary="AI 生成 Agent 系统提示词并推荐工具",
+)
+async def generate_system_prompt(
+    req: GenerateSystemPromptRequest,
+    user: Annotated[UserRecord, Depends(require_api_user)],
+    svc: AgentService = Depends(_svc),
+):
+    """POST /api/agents/generate-system-prompt — 根据名称/说明生成 XML prompt。"""
+    return await svc.generate_system_prompt(req, user.id)
 
 
 @router.get("/{agent_id}", response_model=AgentResponse, summary="获取 Agent 详情")

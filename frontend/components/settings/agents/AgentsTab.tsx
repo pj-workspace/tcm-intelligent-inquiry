@@ -26,6 +26,7 @@ export function AgentsTab() {
     isDeleting,
     editingId,
     isSubmitting,
+    isGeneratingPrompt,
     formData,
     setFormData,
     handleSetDefault,
@@ -35,6 +36,7 @@ export function AgentsTab() {
     handleCancelEdit,
     toggleTool,
     handleSubmit,
+    handleGenerateSystemPrompt,
     confirmDelete,
   } = useAgents(token);
 
@@ -122,6 +124,8 @@ export function AgentsTab() {
           toolInfos={toolInfos}
           knowledgeBases={knowledgeBases}
           isSubmitting={isSubmitting}
+          isGeneratingPrompt={isGeneratingPrompt}
+          onGenerateSystemPrompt={handleGenerateSystemPrompt}
           onSubmit={handleSubmit}
           onCancel={handleCancelEdit}
           toggleTool={toggleTool}

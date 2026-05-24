@@ -14,6 +14,18 @@ def _disable_mcp_background_probe(monkeypatch):
     monkeypatch.setenv("MCP_PROBE_INTERVAL_SECONDS", "0")
 
 
+def pytest_collection_modifyitems(config, items):
+    """未设置 LIVE_LLM=1 时跳过 live_llm 标记的测试。"""
+    import os
+
+    if os.environ.get("LIVE_LLM") == "1":
+        return
+    skip = pytest.mark.skip(reason="需要 LIVE_LLM=1 与有效 API Key")
+    for item in items:
+        if "live_llm" in item.keywords:
+            item.add_marker(skip)
+
+
 @pytest.fixture(scope="session")
 def client():
     """整个测试会话共用一个 TestClient，避免多次 lifespan / 异步引擎绑定到不同事件循环。"""
