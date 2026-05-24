@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends, Header, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.api.deps import get_current_user, get_current_user_optional
@@ -11,7 +11,7 @@ from app.chat.schemas import (
     ConversationGroupAssign,
     ConversationItem,
     ConversationTitleUpdate,
-    MessageItem,
+    MessageListResponse,
 )
 from app.chat.services.groups import update_conversation_group
 from app.chat.services.history import (
@@ -51,18 +51,37 @@ async def conversations(
 
 @router.get(
     "/conversations/{conversation_id}/messages",
-    response_model=list[MessageItem],
-    summary="某会话下的消息列表",
+    response_model=MessageListResponse,
+    summary="某会话下的消息列表（支持向上分页）",
 )
 async def conversation_messages(
     conversation_id: str,
     session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[UserRecord | None, Depends(get_current_user_optional)],
     x_anon_session: Annotated[str | None, Header(alias="X-Anonymous-Session")] = None,
+    limit: Annotated[
+        int | None,
+        Query(ge=1, le=200, description="每页条数；不传且 load_all=false 时默认 16"),
+    ] = None,
+    before: Annotated[
+        str | None,
+        Query(description="向上翻页：取该 message id 之前（更早）的消息"),
+    ] = None,
+    load_all: Annotated[
+        bool,
+        Query(description="为 true 时忽略 limit/before，返回全部消息"),
+    ] = False,
 ):
     """Conversation messages。"""
+    page_limit = limit if limit is not None else (None if load_all else 16)
     return await list_messages_for_conversation(
-        session, conversation_id, user, x_anon_session
+        session,
+        conversation_id,
+        user,
+        x_anon_session,
+        limit=page_limit,
+        before=before,
+        load_all=load_all,
     )
 
 

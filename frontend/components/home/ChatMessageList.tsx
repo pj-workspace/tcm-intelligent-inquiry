@@ -35,6 +35,8 @@ export type ChatMessageListProps = {
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   skipHistoryEnter: boolean;
   showMessagesRefreshingOverlay: boolean;
+  hasMoreOlderMessages?: boolean;
+  loadingOlderMessages?: boolean;
   genState: GenerationState;
   lastAssistantMessageId: string | null;
   followUpSuggestions: { messageId: string; items: string[] } | null;
@@ -84,6 +86,8 @@ export function ChatMessageList({
   setMessages,
   skipHistoryEnter,
   showMessagesRefreshingOverlay,
+  hasMoreOlderMessages = false,
+  loadingOlderMessages = false,
   genState,
   lastAssistantMessageId,
   followUpSuggestions,
@@ -116,6 +120,19 @@ export function ChatMessageList({
           aria-busy
           aria-label="正在加载对话"
         />
+      ) : null}
+      {loadingOlderMessages ? (
+        <div
+          className="mb-2 flex justify-center py-1 text-xs text-gray-400"
+          aria-busy
+          aria-live="polite"
+        >
+          正在加载更早的消息…
+        </div>
+      ) : hasMoreOlderMessages ? (
+        <div className="mb-2 flex justify-center py-1 text-[11px] text-gray-400">
+          向上滚动加载更早消息
+        </div>
       ) : null}
       {messages.map((msg, idx) => {
   const prevMsg = messages[idx - 1];

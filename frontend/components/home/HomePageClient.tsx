@@ -119,6 +119,7 @@ export function HomePageClient() {
     chatPathname: pathname,
     onNavigateToNewChatSurface,
     onUserMessageAppended: handleUserMessageAppended,
+    getScrollViewport: () => scrollViewportRef.current,
   });
 
   const {
@@ -129,6 +130,9 @@ export function HomePageClient() {
     urlConversationId,
     conversationRouteSynced,
     messagesLoading,
+    loadingOlderMessages,
+    hasMoreOlderMessages,
+    loadOlderMessages,
     listLoading,
     genState,
     conversationId,
@@ -265,6 +269,20 @@ export function HomePageClient() {
       }`,
     [followUpSuggestions?.messageId, followUpSuggestions?.items?.length],
   );
+
+  const handleScrollViewport = useCallback(() => {
+    updateScrollState();
+    const el = scrollViewportRef.current;
+    if (!el || !hasMoreOlderMessages || loadingOlderMessages || messagesLoading) return;
+    if (el.scrollTop <= 120) void loadOlderMessages();
+  }, [
+    updateScrollState,
+    scrollViewportRef,
+    hasMoreOlderMessages,
+    loadingOlderMessages,
+    messagesLoading,
+    loadOlderMessages,
+  ]);
 
   const inputBarModelCaps = useMemo(() => {
     const noListOrUnknownModel = {
@@ -968,7 +986,7 @@ export function HomePageClient() {
             <div className="relative flex min-h-0 flex-1 flex-col">
               <div
                 ref={scrollViewportRef}
-                onScroll={updateScrollState}
+                onScroll={handleScrollViewport}
                 onWheel={markUserScrollIntent}
                 onTouchStart={markUserScrollIntent}
                 className={`chat-scroll-area no-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden ${
@@ -984,6 +1002,8 @@ export function HomePageClient() {
                     setMessages={setMessages}
                     skipHistoryEnter={skipHistoryEnter}
                     showMessagesRefreshingOverlay={showMessagesRefreshingOverlay}
+                    hasMoreOlderMessages={hasMoreOlderMessages}
+                    loadingOlderMessages={loadingOlderMessages}
                     genState={genState}
                     lastAssistantMessageId={lastAssistantMessageId}
                     followUpSuggestions={followUpSuggestions}

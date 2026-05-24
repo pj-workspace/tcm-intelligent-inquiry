@@ -181,6 +181,16 @@ class MessageItem(BaseModel):
     )
 
 
+class MessageListResponse(BaseModel):
+    """会话消息分页响应（默认按 created_at 升序）。"""
+
+    messages: list[MessageItem]
+    has_more: bool = Field(
+        default=False,
+        description="为 True 时表示还有更早的消息，可用 before 继续向上翻页",
+    )
+
+
 class FollowUpSuggestionsRequest(BaseModel):
     """根据助手正文生成追问建议（独立于主 SSE）。"""
 

@@ -192,10 +192,7 @@ function ModelMenuRow({
           </DropdownMenu.SubTrigger>
           <DropdownMenu.Portal>
             <DropdownMenu.SubContent
-              side="left"
-              align="start"
               sideOffset={8}
-              collisionPadding={16}
               className={clsx(
                 menuPanelCls,
                 "z-[120] w-max min-w-[10rem] max-w-[calc(100vw-0.5rem)]",

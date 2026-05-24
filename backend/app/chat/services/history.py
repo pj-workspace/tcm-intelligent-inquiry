@@ -7,7 +7,7 @@ from app.agent.models import AgentRecord
 from app.auth.models import UserRecord
 from app.chat.models import ConversationRecord, MessageRecord
 from app.chat.policy.access import assert_can_use_conversation
-from app.chat.schemas import ConversationItem, MessageItem
+from app.chat.schemas import ConversationItem, MessageItem, MessageListResponse
 
 
 def _normalized_follow_up_suggestions(v: object | None) -> list[str] | None:
@@ -78,35 +78,74 @@ async def list_my_conversations(
     return out
 
 
+def _row_to_message_item(m: MessageRecord) -> MessageItem:
+    return MessageItem(
+        id=m.id,
+        role=m.role,
+        content=m.content,
+        created_at=m.created_at,
+        duration_sec=m.duration_sec,
+        model_name=m.model_name,
+        citations=_normalized_citations(m.citations),
+        follow_up_suggestions=_normalized_follow_up_suggestions(m.follow_up_suggestions),
+    )
+
+
 async def list_messages_for_conversation(
     session: AsyncSession,
     conversation_id: str,
     user: UserRecord | None,
     anon_session_secret: str | None = None,
-) -> list[MessageItem]:
-    """List messages for conversation。"""
+    *,
+    limit: int | None = None,
+    before: str | None = None,
+    load_all: bool = False,
+) -> MessageListResponse:
+    """List messages for conversation（支持向上分页）。"""
     await assert_can_use_conversation(
         session, conversation_id, user, anon_session_secret
     )
-    r = await session.execute(
-        select(MessageRecord)
-        .where(MessageRecord.conversation_id == conversation_id)
-        .order_by(MessageRecord.created_at)
-    )
-    rows = r.scalars().all()
-    return [
-        MessageItem(
-            id=m.id,
-            role=m.role,
-            content=m.content,
-            created_at=m.created_at,
-            duration_sec=m.duration_sec,
-            model_name=m.model_name,
-            citations=_normalized_citations(m.citations),
-            follow_up_suggestions=_normalized_follow_up_suggestions(m.follow_up_suggestions),
+
+    if load_all or limit is None:
+        r = await session.execute(
+            select(MessageRecord)
+            .where(MessageRecord.conversation_id == conversation_id)
+            .order_by(MessageRecord.created_at)
         )
-        for m in rows
-    ]
+        rows = r.scalars().all()
+        return MessageListResponse(
+            messages=[_row_to_message_item(m) for m in rows],
+            has_more=False,
+        )
+
+    before_id = (before or "").strip()
+    before_created_at = None
+    if before_id:
+        r_before = await session.execute(
+            select(MessageRecord).where(
+                MessageRecord.id == before_id,
+                MessageRecord.conversation_id == conversation_id,
+            )
+        )
+        before_row = r_before.scalar_one_or_none()
+        if before_row is not None:
+            before_created_at = before_row.created_at
+
+    q = select(MessageRecord).where(MessageRecord.conversation_id == conversation_id)
+    if before_created_at is not None:
+        q = q.where(MessageRecord.created_at < before_created_at)
+
+    r = await session.execute(
+        q.order_by(MessageRecord.created_at.desc()).limit(max(1, limit) + 1)
+    )
+    rows = list(r.scalars().all())
+    has_more = len(rows) > limit
+    page = rows[:limit]
+    page.reverse()
+    return MessageListResponse(
+        messages=[_row_to_message_item(m) for m in page],
+        has_more=has_more,
+    )
 
 
 async def delete_conversation(

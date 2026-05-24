@@ -45,4 +45,4 @@ def test_anon_conversation_messages_require_secret(client):
         headers={"X-Anonymous-Session": secret},
     )
     assert r3.status_code == 200
-    assert r3.json() == []
+    assert r3.json() == {"messages": [], "has_more": False}

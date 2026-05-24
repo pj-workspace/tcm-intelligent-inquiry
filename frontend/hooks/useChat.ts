@@ -25,6 +25,7 @@ import {
   sumThinkingDurations,
   lastAssistantFollowUpFromMessages,
 } from "@/lib/chatUtils";
+import { fetchConversationMessages } from "@/lib/fetchConversationMessages";
 import { toast } from "sonner";
 import { uploadOssChatImageWithProgress } from "@/lib/ossUpload";
 import { CHAT_PENDING_ATTACHMENT_MAX, CHAT_IMAGE_MIN_EDGE_PX } from "@/lib/chatAttachmentConstants";
@@ -78,6 +79,8 @@ export function useChat(opts: {
   /** 用户消息追加到 messages 后回调（带 userMsgId）：上层据此开启 auto-follow，
    *  让用户气泡自然落到输入栏正上方。 */
   onUserMessageAppended?: (userMsgId: string) => void;
+  /** 向上翻页后保持滚动位置 */
+  getScrollViewport?: () => HTMLElement | null;
 }) {
   const {
     autoFollowMainRef,
@@ -86,6 +89,7 @@ export function useChat(opts: {
     chatPathname = "",
     onNavigateToNewChatSurface,
     onUserMessageAppended,
+    getScrollViewport,
   } = opts;
   const router = useRouter();
   const { token, loading: authLoading } = useAuth();
@@ -103,6 +107,8 @@ export function useChat(opts: {
   const [messages, setMessages] = useState<Message[]>([]);
   const [hasStarted, setHasStarted] = useState(false);
   const [messagesLoading, setMessagesLoading] = useState(false);
+  const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
+  const [hasMoreOlderMessages, setHasMoreOlderMessages] = useState(false);
   const [listLoading, setListLoading] = useState(false);
   const [sessionRestorePending, setSessionRestorePending] = useState(false);
   const [genState, setGenState] = useState<GenerationState>("idle");
@@ -111,7 +117,13 @@ export function useChat(opts: {
   const loadMessagesGenRef = useRef(0);
   const initialListLoadedRef = useRef(false);
   /** 已加载过的会话消息，切换时先展示缓存避免清空闪屏 */
-  const messagesCacheRef = useRef<Map<string, Message[]>>(new Map());
+  type MessagesCacheEntry = {
+    messages: Message[];
+    hasMoreOlder: boolean;
+    oldestRawMessageId: string | null;
+  };
+  const messagesCacheRef = useRef<Map<string, MessagesCacheEntry>>(new Map());
+  const oldestRawMessageIdRef = useRef<string | null>(null);
   /** 刚删除的会话 id，避免 URL 尚未切走时 pathname effect 再次拉取消息 */
   const recentlyDeletedConversationIdsRef = useRef(new Set<string>());
 
@@ -491,31 +503,111 @@ export function useChat(opts: {
     }
   }, [token]);
 
-  const loadMessagesWithToken = useCallback(
-    async (convId: string, accessToken: string, signal?: AbortSignal) => {
-      const res = await fetch(`${API_BASE}/api/chat/conversations/${convId}/messages`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        signal,
-      });
-      if (res.status === 404) return;
-      if (!res.ok) throw new Error("Failed to fetch messages");
-      const data = (await res.json()) as ApiMessageRow[];
-      if (signal?.aborted) return;
-      if (!Array.isArray(data)) return;
-      const grouped = groupMessagesIntoTraces(data.map(mapApiRowToMessage));
-      messagesCacheRef.current.set(convId, grouped);
+  const applyMessagesPage = useCallback(
+    (
+      convId: string,
+      rows: ApiMessageRow[],
+      hasMore: boolean,
+      mode: "replace" | "prepend",
+    ) => {
+      const grouped = groupMessagesIntoTraces(rows.map(mapApiRowToMessage));
+      const oldestRaw = rows.length > 0 ? rows[0]!.id : oldestRawMessageIdRef.current;
+
+      if (mode === "prepend") {
+        setMessages((prev) => {
+          const next = [...grouped, ...prev];
+          if (oldestRaw) oldestRawMessageIdRef.current = oldestRaw;
+          setHasMoreOlderMessages(hasMore);
+          messagesCacheRef.current.set(convId, {
+            messages: next,
+            hasMoreOlder: hasMore,
+            oldestRawMessageId: oldestRawMessageIdRef.current,
+          });
+          return next;
+        });
+        return;
+      }
+
+      if (oldestRaw) oldestRawMessageIdRef.current = oldestRaw;
+      setHasMoreOlderMessages(hasMore);
       setMessages(grouped);
+      messagesCacheRef.current.set(convId, {
+        messages: grouped,
+        hasMoreOlder: hasMore,
+        oldestRawMessageId: oldestRawMessageIdRef.current,
+      });
       const fu = lastAssistantFollowUpFromMessages(grouped);
       setFollowUpSuggestions(fu ? { messageId: fu.messageId, items: fu.items } : null);
     },
-    []
+    [],
   );
+
+  const loadMessagesWithToken = useCallback(
+    async (convId: string, accessToken: string, signal?: AbortSignal) => {
+      const page = await fetchConversationMessages({
+        token: accessToken,
+        conversationId: convId,
+        signal,
+      });
+      if (signal?.aborted) return;
+      oldestRawMessageIdRef.current =
+        page.messages.length > 0 ? page.messages[0]!.id : null;
+      applyMessagesPage(convId, page.messages, page.has_more, "replace");
+    },
+    [applyMessagesPage],
+  );
+
+  const loadOlderMessages = useCallback(async () => {
+    if (!token || !conversationId?.trim()) return;
+    if (!hasMoreOlderMessages || loadingOlderMessages || messagesLoading) return;
+    const before = oldestRawMessageIdRef.current;
+    if (!before) return;
+
+    const scrollEl = getScrollViewport?.() ?? null;
+    const prevScrollHeight = scrollEl?.scrollHeight ?? 0;
+
+    setLoadingOlderMessages(true);
+    try {
+      const page = await fetchConversationMessages({
+        token,
+        conversationId: conversationId.trim(),
+        before,
+      });
+      if (!page.messages.length) {
+        setHasMoreOlderMessages(false);
+        return;
+      }
+      applyMessagesPage(conversationId.trim(), page.messages, page.has_more, "prepend");
+      if (scrollEl) {
+        requestAnimationFrame(() => {
+          scrollEl.scrollTop += scrollEl.scrollHeight - prevScrollHeight;
+        });
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("加载更早消息失败");
+    } finally {
+      setLoadingOlderMessages(false);
+    }
+  }, [
+    token,
+    conversationId,
+    hasMoreOlderMessages,
+    loadingOlderMessages,
+    messagesLoading,
+    getScrollViewport,
+    applyMessagesPage,
+  ]);
 
   useEffect(() => {
     const id = conversationId?.trim();
     if (!id || messages.length === 0) return;
-    messagesCacheRef.current.set(id, messages);
-  }, [conversationId, messages]);
+    messagesCacheRef.current.set(id, {
+      messages,
+      hasMoreOlder: hasMoreOlderMessages,
+      oldestRawMessageId: oldestRawMessageIdRef.current,
+    });
+  }, [conversationId, messages, hasMoreOlderMessages]);
 
   const refreshServerConversationsTracked = useCallback(async (): Promise<
     ServerConversation[] | null
@@ -600,9 +692,16 @@ export function useChat(opts: {
       if (!token) return;
       const id = convId.trim();
       if (!id) return;
-      await loadMessagesWithToken(id, token);
+      const page = await fetchConversationMessages({
+        token,
+        conversationId: id,
+        loadAll: true,
+      });
+      oldestRawMessageIdRef.current =
+        page.messages.length > 0 ? page.messages[0]!.id : null;
+      applyMessagesPage(id, page.messages, false, "replace");
     },
-    [token, loadMessagesWithToken]
+    [token, applyMessagesPage],
   );
 
   const { runChatStream } = useChatStream({
@@ -967,6 +1066,8 @@ export function useChat(opts: {
       localStorage.removeItem("tcm_anon_secret");
       setConversationId(null);
       setMessages([]);
+      setHasMoreOlderMessages(false);
+      oldestRawMessageIdRef.current = null;
       onNewChatScrollReset();
       thinkingStepStartedAt.current = {};
       traceStartedAt.current = {};
@@ -1019,13 +1120,17 @@ export function useChat(opts: {
       setHasStarted(true);
 
       const cached = messagesCacheRef.current.get(idTrim);
-      if (cached?.length) {
-        setMessages(cached);
-        const fu = lastAssistantFollowUpFromMessages(cached);
+      if (cached?.messages.length) {
+        setMessages(cached.messages);
+        setHasMoreOlderMessages(cached.hasMoreOlder);
+        oldestRawMessageIdRef.current = cached.oldestRawMessageId;
+        const fu = lastAssistantFollowUpFromMessages(cached.messages);
         setFollowUpSuggestions(fu ? { messageId: fu.messageId, items: fu.items } : null);
       } else if (idTrim !== conversationId) {
         setMessages([]);
         setFollowUpSuggestions(null);
+        setHasMoreOlderMessages(false);
+        oldestRawMessageIdRef.current = null;
       }
 
       setMessagesLoading(true);
@@ -1382,6 +1487,9 @@ export function useChat(opts: {
     urlConversationId,
     conversationRouteSynced,
     messagesLoading,
+    loadingOlderMessages,
+    hasMoreOlderMessages,
+    loadOlderMessages,
     listLoading,
     sessionRestorePending,
     genState,
