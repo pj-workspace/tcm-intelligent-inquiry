@@ -13,9 +13,12 @@ export type RoundTokensUsage = {
 export function RoundTokensHint({
   usage,
   variant = "round",
+  inline = false,
 }: {
   usage: RoundTokensUsage | null;
   variant?: "round" | "conversation";
+  /** 嵌入输入框右上角时使用 */
+  inline?: boolean;
 }) {
   const show = usage != null && usage.total > 0;
   const title =
@@ -26,7 +29,7 @@ export function RoundTokensHint({
 
   return (
     <div
-      className="flex min-h-[22px] shrink-0 items-center px-4 pt-2"
+      className={inline ? "flex shrink-0 items-center" : "flex min-h-[22px] shrink-0 items-center px-4 pt-2"}
       aria-live="polite"
       aria-label={show ? `${prefix}累计约 ${usage!.total} tokens` : undefined}
     >

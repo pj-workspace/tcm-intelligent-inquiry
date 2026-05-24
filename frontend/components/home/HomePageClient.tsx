@@ -759,16 +759,16 @@ export function HomePageClient() {
     setIsEditingTitle(false);
   };
 
-  /** 侧栏在 md 以下隐藏，移动端用顶栏骨架表示「会话标题加载中」 */
+  /** 侧栏在 md 以下隐藏：仅会话/消息首载时显示标题骨架，已有消息时不闪 */
   const showMobileTitleSkeleton =
     Boolean(token) &&
     !authLoading &&
     !viewingGroupLanding &&
-    (chatSurfacePhase === "hydrating" ||
-      (hasStarted &&
-        genState !== "idle" &&
-        (!conversationId ||
-          !(serverConversations.find((c) => c.id === conversationId)?.title ?? "").trim())));
+    hasStarted &&
+    Boolean(conversationId) &&
+    !conversationGroupTrail &&
+    chatSurfacePhase === "hydrating" &&
+    !(messages.length > 0 && conversationRouteSynced);
 
   return (
     <div className="flex h-dvh max-h-dvh w-full max-w-[100vw] overflow-hidden bg-[#fdfdfc]">
@@ -961,7 +961,6 @@ export function HomePageClient() {
           }}
           onLogout={logout}
           onOpenMobileSidebar={() => setMobileSidebarOpen(true)}
-          onOpenSearch={() => setSearchOpen(true)}
         />
 
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">

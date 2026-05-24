@@ -9,7 +9,7 @@
 import { useCallback } from "react";
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { API_BASE } from "@/lib/api";
-import { chatPathConversation } from "@/lib/chatRoutes";
+import { chatPathConversation, parseChatPathname } from "@/lib/chatRoutes";
 import { parseSseDataLine } from "@/lib/chat/sseParser";
 import {
   clearPreparingUserInputSteps,
@@ -47,6 +47,7 @@ export type UseChatStreamDeps = {
   webSearchMode: "force" | "auto";
   effectiveLlmPick: { llm_provider: string; chat_model: string } | null;
   chatAgentId: string | null;
+  chatPathname: string;
   router: AppRouterInstance;
   autoFollowMainRef: React.MutableRefObject<boolean>;
   getPreferredGroupForNewConversation?: () => string | null;
@@ -90,6 +91,7 @@ export function useChatStream(deps: UseChatStreamDeps) {
     webSearchMode,
     effectiveLlmPick,
     chatAgentId,
+    chatPathname,
     router,
     autoFollowMainRef,
     getPreferredGroupForNewConversation,
@@ -540,8 +542,6 @@ export function useChatStream(deps: UseChatStreamDeps) {
                     ? data.conversationId
                     : "";
                 if (convId) {
-                  setSseRouteAssignPending(true);
-                  router.replace(chatPathConversation(convId));
                   setConversationId(convId);
                   localStorage.setItem("tcm_conversation_id", convId);
                   setServerConversations((prev) => {
@@ -556,6 +556,14 @@ export function useChatStream(deps: UseChatStreamDeps) {
                       ...prev,
                     ];
                   });
+                  const parsedPath = parseChatPathname(chatPathname);
+                  const urlAlreadyOnConversation =
+                    parsedPath.kind === "conversation" &&
+                    parsedPath.conversationId === convId;
+                  if (!urlAlreadyOnConversation) {
+                    setSseRouteAssignPending(true);
+                    router.replace(chatPathConversation(convId));
+                  }
                 }
                 if (typeof data.chatModel === "string" && data.chatModel.trim() !== "") {
                   pendingChatModelRef.current = data.chatModel.trim();
@@ -1211,6 +1219,11 @@ export function useChatStream(deps: UseChatStreamDeps) {
       onUserMessageAppended,
       router,
       chatAgentId,
+      chatPathname,
+      setSseRouteAssignPending,
+      setConversationId,
+      setServerConversations,
+      pendingNewConversationGroupRef,
     ]
   );
 

@@ -3,19 +3,15 @@
  */
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import clsx from "clsx";
 import { motion, AnimatePresence } from "framer-motion";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
   Plus,
-  ChevronDown,
   PenLine,
   BookOpen,
   Leaf,
-  Brain,
-  Globe,
-  Check,
   Stethoscope,
   HeartPulse,
   Apple,
@@ -39,7 +35,8 @@ import type { RoundTokensUsage } from "@/components/chat/input/RoundTokensHint";
 import { RoundTokensHint } from "@/components/chat/input/RoundTokensHint";
 import { ChatSendControls } from "@/components/chat/input/ChatSendControls";
 import { ChatAttachmentPanel } from "@/components/chat/input/ChatAttachmentPanel";
-import { ModelAgentPicker } from "@/components/chat/input/ModelAgentPicker";
+import { ComposerAgentPicker } from "@/components/chat/input/ComposerAgentPicker";
+import { ComposerModelMenu } from "@/components/chat/input/ComposerModelMenu";
 
 export type ChatInputBarUsageHint = {
   usage: RoundTokensUsage;
@@ -189,6 +186,9 @@ function initialQuickPromptsForHydration(): QuickPromptItem[] {
   return QUICK_PROMPT_POOL.slice(0, QUICK_PROMPT_SHOW_COUNT);
 }
 
+const TEXTAREA_MIN_PX = 44;
+const TEXTAREA_MAX_PX = 200;
+
 type ChatInputBarProps = {
   input: string;
   hasStarted: boolean;
@@ -275,7 +275,7 @@ export function ChatInputBar({
   attachmentUploadSlotProgress,
   onSendWithImagePrompt,
   fetchAiImageQuickPrompts,
-  placeholder = "有问题，尽管问，Shift+Enter 换行",
+  placeholder = "有问题，尽管问，shift+enter 换行",
   usageHint = null,
   chatSurfacePhase = "ready",
   showAgentPicker = false,
@@ -291,10 +291,19 @@ export function ChatInputBar({
   /** 当前输入区还有待发图期间只拉一次建议；清空附图后复位，再次上传可走首轮逻辑 */
   const attachmentSuggestFetchedForStackRef = useRef(false);
   const hasSendableContent = input.trim().length > 0 || pendingImageUrls.length > 0;
-  const sendBlocked =
-    genState !== "idle" || attachmentUploadBusy || !hasSendableContent;
   const attachmentAtCap = pendingImageUrls.length >= CHAT_PENDING_ATTACHMENT_MAX;
 
+  const syncTextareaHeight = useCallback(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const next = Math.min(Math.max(el.scrollHeight, TEXTAREA_MIN_PX), TEXTAREA_MAX_PX);
+    el.style.height = `${next}px`;
+  }, [inputRef]);
+
+  useLayoutEffect(() => {
+    syncTextareaHeight();
+  }, [input, syncTextareaHeight]);
 
   /** 粘贴剪贴板图片：与点击添加共用上传逻辑（非图片或未拦截时仍可正常粘贴文字） */
   const handleComposerPaste = useCallback(
@@ -418,7 +427,7 @@ export function ChatInputBar({
   return (
     <motion.div
       transition={springTransition}
-      className="w-full shrink-0 border-t border-[#eeece6]/80 bg-[#fdfdfc] px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-3 md:px-8"
+      className="w-full shrink-0 border-t border-transparent bg-[#fdfdfc] px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-0 md:px-8"
     >
       <div className="relative mx-auto w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl">
         {/* 快捷话题：紧凑 chips，贴输入框上方 */}
@@ -468,7 +477,7 @@ export function ChatInputBar({
                 duration: followUpEnterSecs(0.7),
                 ease: followUpSoftEase,
               }}
-              className="relative z-20 mt-2 mb-4 flex w-full flex-col items-start gap-2 md:max-w-[68ch]"
+              className="relative z-20 mb-2.5 flex w-full flex-col items-start gap-2 md:max-w-[68ch]"
             >
               {imgQuickChoices.map((item) => (
                 <button
@@ -500,7 +509,7 @@ export function ChatInputBar({
 
         <motion.div
           transition={springTransition}
-          className="relative flex w-full flex-col overflow-hidden rounded-3xl border border-[#e5e5e5] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-shadow focus-within:border-gray-300 focus-within:shadow-[0_4px_20px_rgba(0,0,0,0.05)]"
+          className="relative flex w-full flex-col overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-shadow focus-within:border-gray-300 focus-within:shadow-[0_4px_20px_rgba(0,0,0,0.05)] sm:rounded-[1.35rem]"
         >
           <ChatAttachmentPanel
             pendingImageUrls={pendingImageUrls}
@@ -514,24 +523,26 @@ export function ChatInputBar({
             onRemovePendingImage={onRemovePendingImage}
             onAddImageClick={() => imageFileInputRef.current?.click()}
           />
-          {hasStarted ? (
-            <RoundTokensHint usage={usageHint?.usage ?? null} variant={usageHint?.variant} />
-          ) : null}
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={(e) => onInputChange(e.target.value)}
-            onKeyDown={onKeyDown}
-            onPaste={handleComposerPaste}
-            placeholder={placeholder}
-            title={
-              attachmentDisabled
-                ? undefined
-                : "提示：可在输入框内直接粘贴截图或图片（与「添加图片」相同）"
-            }
-            className="no-scrollbar w-full max-h-[200px] min-h-[60px] overflow-y-auto py-4 px-4 bg-transparent resize-none outline-none text-[16px] text-gray-800 placeholder:text-gray-400"
-            rows={1}
-          />
+
+          <div className="px-3 pt-2.5 sm:px-4 sm:pt-3">
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={(e) => onInputChange(e.target.value)}
+              onKeyDown={onKeyDown}
+              onPaste={handleComposerPaste}
+              placeholder={placeholder}
+              rows={1}
+              title={
+                attachmentDisabled
+                  ? undefined
+                  : "提示：可在输入框内直接粘贴截图或图片（与「添加图片」相同）"
+              }
+              className="no-scrollbar block w-full resize-none overflow-y-auto bg-transparent text-[15px] leading-relaxed text-gray-800 outline-none placeholder:text-gray-400 sm:text-base"
+              style={{ minHeight: TEXTAREA_MIN_PX, maxHeight: TEXTAREA_MAX_PX }}
+            />
+          </div>
+
           <input
             ref={imageFileInputRef}
             type="file"
@@ -546,131 +557,48 @@ export function ChatInputBar({
             }}
           />
 
-          <div className="flex flex-wrap items-center justify-between gap-2 px-3 pb-3 pt-1">
-            <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1">
-              {/* 深度思考按钮 */}
-              <button
-                type="button"
-                onClick={onToggleDeepThink}
-                disabled={genState !== "idle" || deepThinkDisabledByModel}
-                title={
-                  deepThinkDisabledByModel
-                    ? "当前模型不支持深度思考"
-                    : "开启后系统提示将要求模型逐步推理；若接口支持，思考过程将流式展示"
-                }
-                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all duration-150 disabled:opacity-50 ${
-                  deepThinkEnabled
-                    ? "border-emerald-400 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                    : "border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100"
-                }`}
-              >
-                <Brain className="h-3.5 w-3.5 shrink-0" />
-                深度思考
-              </button>
-
-              {/* 联网搜索按钮组 */}
-              <div
-                className={`inline-flex items-center rounded-full border transition-all duration-150 ${
-                  genState !== "idle" || webSearchDisabledByModel
-                    ? "pointer-events-none opacity-50"
-                    : ""
-                } ${
-                  webSearchEnabled
-                    ? "border-emerald-400 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                    : "border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100"
-                }`}
-              >
-                <button
-                  type="button"
-                  disabled={genState !== "idle" || webSearchDisabledByModel}
-                  onClick={onToggleWebSearch}
-                  title={
-                    webSearchDisabledByModel
-                      ? "当前模型不支持工具调用（含联网检索）"
-                      : webSearchEnabled
-                        ? "关闭联网搜索"
-                        : "开启联网搜索"
-                  }
-                  className="flex items-center gap-1.5 rounded-l-full py-1.5 pl-3 pr-1 text-xs font-medium transition-colors hover:bg-black/[0.06]"
-                >
-                  <Globe className="h-3.5 w-3.5 shrink-0" />
-                  联网搜索
-                </button>
-                <DropdownMenu.Root modal={false}>
-                  <DropdownMenu.Trigger asChild>
-                    <button
-                      type="button"
-                      disabled={genState !== "idle" || webSearchDisabledByModel}
-                      aria-label="选择联网搜索模式"
-                      title={
-                        webSearchDisabledByModel ? "当前模型不支持联网检索" : "选择联网搜索模式"
-                      }
-                      className="group flex cursor-pointer items-center rounded-r-full py-1.5 pl-0.5 pr-2 hover:bg-black/5 disabled:cursor-not-allowed"
-                    >
-                      <span
-                        className={`flex items-center justify-center transition-transform duration-150 group-hover:scale-110 group-data-[state=open]:scale-110 ${
-                          webSearchEnabled
-                            ? "group-hover:text-emerald-800 group-data-[state=open]:text-emerald-800"
-                            : "group-hover:text-gray-800 group-data-[state=open]:text-gray-800"
-                        }`}
-                        aria-hidden
-                      >
-                        <ChevronDown
-                          className="h-3.5 w-3.5 shrink-0 transition-transform duration-200 ease-out group-data-[state=open]:rotate-180"
-                          strokeWidth={2.25}
-                        />
-                      </span>
-                    </button>
-                  </DropdownMenu.Trigger>
-                  <DropdownMenu.Portal>
-                    <DropdownMenu.Content
-                      side="top"
-                      align="end"
-                      sideOffset={6}
-                      className="ui-radix-floating z-[100] w-fit min-w-[10.5rem] rounded-lg border border-gray-200 bg-white py-1 shadow-md outline-none"
-                    >
-                      <DropdownMenu.Label className="px-3 pb-0.5 pt-1.5 text-[11px] font-medium text-gray-400">
-                        联网搜索模式
-                      </DropdownMenu.Label>
-                      <DropdownMenu.Item
-                        className="mx-1 grid cursor-pointer grid-cols-[auto_1rem] items-center gap-2 rounded-md px-2 py-1.5 text-left outline-none transition-colors data-[highlighted]:bg-gray-50"
-                        onSelect={() => onSetWebSearchMode("auto")}
-                      >
-                        <div className="min-w-0">
-                          <div className="text-sm font-medium text-gray-900">自动</div>
-                          <div className="text-[11px] leading-tight text-gray-400">
-                            自动判断是否联网
-                          </div>
-                        </div>
-                        {webSearchEnabled && webSearchMode === "auto" ? (
-                          <Check className="h-3.5 w-3.5 shrink-0 text-gray-700" strokeWidth={2.5} />
-                        ) : (
-                          <span className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                        )}
-                      </DropdownMenu.Item>
-                      <DropdownMenu.Item
-                        className="mx-1 grid cursor-pointer grid-cols-[auto_1rem] items-center gap-2 rounded-md px-2 py-1.5 text-left outline-none transition-colors data-[highlighted]:bg-gray-50"
-                        onSelect={() => onSetWebSearchMode("force")}
-                      >
-                        <div className="min-w-0">
-                          <div className="text-sm font-medium text-gray-900">手动</div>
-                          <div className="text-[11px] leading-tight text-gray-400">
-                            手动控制联网状态
-                          </div>
-                        </div>
-                        {webSearchEnabled && webSearchMode === "force" ? (
-                          <Check className="h-3.5 w-3.5 shrink-0 text-gray-700" strokeWidth={2.5} />
-                        ) : (
-                          <span className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                        )}
-                      </DropdownMenu.Item>
-                    </DropdownMenu.Content>
-                  </DropdownMenu.Portal>
-                </DropdownMenu.Root>
-              </div>
+          {/* 底栏：左 Agent + 模型，右操作（右侧固定不遮挡） */}
+          <div className="flex items-center gap-2 border-t border-transparent px-2 py-2 sm:px-3 sm:py-2.5">
+            <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto no-scrollbar sm:gap-2">
+              {showAgentPicker && onSelectAgent ? (
+                <ComposerAgentPicker
+                  genState={genState}
+                  agents={agents}
+                  selectedAgentId={selectedAgentId}
+                  onSelectAgent={onSelectAgent}
+                  agentsLoading={agentsLoading}
+                />
+              ) : null}
+              <ComposerModelMenu
+                genState={genState}
+                modelCatalog={modelCatalog}
+                selectedProviderId={selectedProviderId}
+                selectedModelId={selectedModelId}
+                onSelectModel={onSelectModel}
+                deepThinkEnabled={deepThinkEnabled}
+                onToggleDeepThink={onToggleDeepThink}
+                deepThinkDisabledByModel={deepThinkDisabledByModel}
+                webSearchEnabled={webSearchEnabled}
+                webSearchMode={webSearchMode}
+                onToggleWebSearch={onToggleWebSearch}
+                onSetWebSearchMode={onSetWebSearchMode}
+                webSearchDisabledByModel={webSearchDisabledByModel}
+              />
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex shrink-0 items-center gap-1 border-l border-transparent pl-1 sm:gap-1.5 sm:pl-2">
+              {hasStarted && usageHint?.usage != null && usageHint.usage.total > 0 ? (
+                <div
+                  className="hidden max-w-[7.5rem] truncate md:block lg:max-w-[10rem]"
+                  title={`Prompt ${usageHint.usage.prompt.toLocaleString("zh-CN")} + Completion ${usageHint.usage.completion.toLocaleString("zh-CN")}`}
+                >
+                  <RoundTokensHint
+                    usage={usageHint.usage}
+                    variant={usageHint.variant}
+                    inline
+                  />
+                </div>
+              ) : null}
               <DropdownMenu.Root modal={false}>
                 <DropdownMenu.Trigger asChild>
                   <button
@@ -687,7 +615,7 @@ export function ChatInputBar({
                       attachmentUploadBusy ||
                       attachmentAtCap
                     }
-                    className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="flex h-9 w-9 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
                     title={
                       attachmentDisabled
                         ? attachmentDisabledReason ?? "当前模型不支持接收图片输入"
@@ -704,7 +632,7 @@ export function ChatInputBar({
                 <DropdownMenu.Portal>
                   <DropdownMenu.Content
                     side="top"
-                    align="start"
+                    align="end"
                     sideOffset={8}
                     className="ui-radix-floating z-[100] min-w-[11rem] rounded-lg border border-gray-200 bg-white py-0.5 shadow-lg outline-none"
                   >
@@ -741,20 +669,8 @@ export function ChatInputBar({
                 </DropdownMenu.Portal>
               </DropdownMenu.Root>
 
-              <ModelAgentPicker
-                genState={genState}
-                modelCatalog={modelCatalog}
-                selectedProviderId={selectedProviderId}
-                selectedModelId={selectedModelId}
-                onSelectModel={onSelectModel}
-                showAgentPicker={showAgentPicker}
-                agents={agents}
-                selectedAgentId={selectedAgentId}
-                onSelectAgent={onSelectAgent}
-                agentsLoading={agentsLoading}
-              />
-
               <ChatSendControls
+                variant="circle"
                 genState={genState}
                 hasSendableContent={hasSendableContent}
                 attachmentUploadBusy={attachmentUploadBusy}

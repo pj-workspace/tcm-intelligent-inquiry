@@ -613,6 +613,7 @@ export function useChat(opts: {
     webSearchMode,
     effectiveLlmPick,
     chatAgentId,
+    chatPathname,
     router,
     autoFollowMainRef,
     getPreferredGroupForNewConversation,

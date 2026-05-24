@@ -5,7 +5,6 @@
 
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { AppLogo } from "@/components/brand/AppLogo";
 import {
   Plus,
   Edit2,
@@ -16,7 +15,6 @@ import {
   PanelLeftOpen,
   FolderOpen,
   ArrowLeft,
-  Search,
 } from "lucide-react";
 import type { ServerConversation } from "@/types/chat";
 import type { ChatSurfacePhase } from "@/types/chat-ui";
@@ -50,8 +48,6 @@ type ChatHeaderProps = {
   onLogout: () => void;
   /** 移动端打开侧栏抽屉 */
   onOpenMobileSidebar?: () => void;
-  /** 移动端打开会话搜索 */
-  onOpenSearch?: () => void;
   /** 当前会话属于选中侧栏分组时显示，返回分组管理工作台（有分组面包屑时不再显示） */
   showBackToGroupWorkspace?: boolean;
   onBackToGroupWorkspace?: () => void;
@@ -89,7 +85,6 @@ export function ChatHeader({
   onEditTitleKeyDown,
   onLogout,
   onOpenMobileSidebar,
-  onOpenSearch,
   showBackToGroupWorkspace,
   onBackToGroupWorkspace,
   conversationGroupTrail,
@@ -101,7 +96,7 @@ export function ChatHeader({
   );
 
   return (
-    <header className="z-10 flex h-14 flex-shrink-0 items-center justify-between bg-white/80 px-3 backdrop-blur-sm sm:px-4 md:px-6">
+    <header className="z-10 flex h-14 flex-shrink-0 items-center justify-between border-b border-[#e5e5e5] bg-white/80 px-3 backdrop-blur-sm sm:px-4 md:px-6">
       <div className="flex items-center gap-1 min-w-0 flex-1 md:flex-initial">
         {onOpenMobileSidebar && (
           <button
@@ -114,70 +109,95 @@ export function ChatHeader({
             <PanelLeftOpen className="h-[1.05rem] w-[1.05rem]" />
           </button>
         )}
-        {/* 移动端：分组内会话显示「分组/标题」面包屑 */}
-        <div className="flex min-w-0 flex-1 items-center gap-1.5 shrink-0 md:hidden">
-          {showConvBreadcrumb && conversationGroupTrail ? (
-            <nav
-              className="flex min-w-0 flex-1 items-center gap-1 text-xs font-medium leading-snug text-gray-800"
-              aria-label="会话位置"
-            >
-              <FolderOpen className="h-3.5 w-3.5 shrink-0 text-amber-800/85" aria-hidden />
+        {/* 移动端：分组内会话面包屑；或分组工作台返回 */}
+        {(showConvBreadcrumb && conversationGroupTrail) ||
+        (showBackToGroupWorkspace && onBackToGroupWorkspace) ? (
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 shrink-0 md:hidden">
+            {showConvBreadcrumb && conversationGroupTrail ? (
+              <nav
+                className="flex min-w-0 flex-1 items-center gap-1 text-xs font-medium leading-snug text-gray-800"
+                aria-label="会话位置"
+              >
+                <FolderOpen className="h-3.5 w-3.5 shrink-0 text-amber-800/85" aria-hidden />
+                <button
+                  type="button"
+                  title="回到分组管理"
+                  onClick={conversationGroupTrail.onGroupClick}
+                  className="max-w-[38%] min-w-0 shrink truncate text-left text-gray-900 hover:text-gray-950 hover:underline"
+                >
+                  {conversationGroupTrail.groupName}
+                </button>
+                <span className="shrink-0 text-gray-300" aria-hidden>
+                  /
+                </span>
+                {isEditingTitle ? (
+                  <input
+                    autoFocus
+                    className="h-7 min-w-0 flex-1 rounded border border-gray-300 px-2 text-xs font-medium outline-none focus:border-orange-400"
+                    value={editTitleValue}
+                    onChange={(e) => onEditTitleChange(e.target.value)}
+                    onBlur={onEditTitleBlur}
+                    onKeyDown={onEditTitleKeyDown}
+                  />
+                ) : isGeneratingTitle ? (
+                  <span className="min-w-0 flex-1">
+                    <span className="skeleton-text-shimmer inline-block h-3.5 w-24 rounded" aria-hidden />
+                  </span>
+                ) : (
+                  <span className="min-w-0 flex-1 truncate">{currentTitle || "会话记录"}</span>
+                )}
+              </nav>
+            ) : (
               <button
                 type="button"
-                title="回到分组管理"
-                onClick={conversationGroupTrail.onGroupClick}
-                className="max-w-[38%] min-w-0 shrink truncate text-left text-gray-900 hover:text-gray-950 hover:underline"
+                title="返回分组管理"
+                aria-label="返回分组管理"
+                onClick={onBackToGroupWorkspace}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors"
               >
-                {conversationGroupTrail.groupName}
+                <ArrowLeft className="h-[1.05rem] w-[1.05rem]" strokeWidth={2.25} />
               </button>
-              <span className="shrink-0 text-gray-300" aria-hidden>
-                /
-              </span>
+            )}
+          </div>
+        ) : null}
+
+        {!showGroupBanner && showMobileTitleSkeleton && !showConvBreadcrumb && (
+          <div
+            className="md:hidden flex min-w-0 flex-1 items-center pl-0.5"
+            aria-busy
+            aria-label="正在加载会话标题"
+          >
+            <div className="skeleton-text-shimmer h-4 w-32 max-w-full rounded-md" />
+          </div>
+        )}
+
+        {!showGroupBanner &&
+          !showConvBreadcrumb &&
+          hasStarted &&
+          conversationId &&
+          !showMobileTitleSkeleton && (
+            <div className="md:hidden flex min-w-0 flex-1 items-center pl-0.5">
               {isEditingTitle ? (
                 <input
                   autoFocus
-                  className="h-7 min-w-0 flex-1 rounded border border-gray-300 px-2 text-xs font-medium outline-none focus:border-orange-400"
+                  className="h-7 w-full min-w-0 rounded border border-gray-300 px-2 text-xs font-medium outline-none focus:border-orange-400"
                   value={editTitleValue}
                   onChange={(e) => onEditTitleChange(e.target.value)}
                   onBlur={onEditTitleBlur}
                   onKeyDown={onEditTitleKeyDown}
                 />
               ) : isGeneratingTitle ? (
-                <span className="min-w-0 flex-1">
-                  <span className="skeleton-text-shimmer inline-block h-3.5 w-24 rounded" aria-hidden />
-                </span>
+                <span className="skeleton-text-shimmer inline-block h-3.5 w-24 rounded" aria-hidden />
               ) : (
-                <span className="min-w-0 flex-1 truncate">{currentTitle || "会话记录"}</span>
-              )}
-            </nav>
-          ) : (
-            <>
-              <AppLogo size={28} className="shrink-0 rounded-md ring-1 ring-black/[0.06]" />
-              <span className="shrink-0 font-semibold text-sm">中医智询</span>
-              {showBackToGroupWorkspace && onBackToGroupWorkspace && (
-                <button
-                  type="button"
-                  title="返回分组管理"
-                  aria-label="返回分组管理"
-                  onClick={onBackToGroupWorkspace}
-                  className="shrink-0 flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 -ml-0.5 transition-colors"
+                <span
+                  key={currentTitle || "会话记录"}
+                  className="sidebar-conv-title-sweep truncate text-sm font-medium text-gray-800"
                 >
-                  <ArrowLeft className="h-[1.05rem] w-[1.05rem]" strokeWidth={2.25} />
-                </button>
+                  {currentTitle || "会话记录"}
+                </span>
               )}
-            </>
+            </div>
           )}
-        </div>
-
-        {!showGroupBanner && showMobileTitleSkeleton && !showConvBreadcrumb && (
-          <div
-            className="md:hidden flex-1 min-w-0 max-w-[15rem] flex items-center"
-            aria-busy
-            aria-label="正在加载会话标题"
-          >
-            <div className="skeleton-text-shimmer h-4 w-32 rounded-md" />
-          </div>
-        )}
 
         {/* 分组工作台标题：移动端始终在品牌行后；桌面端侧栏展开时单独占左区 */}
         {showGroupBanner && (
@@ -409,18 +429,6 @@ export function ChatHeader({
         >
           <Plus className="w-5 h-5" />
         </button>
-
-        {onOpenSearch && (
-          <button
-            type="button"
-            onClick={onOpenSearch}
-            title="搜索对话"
-            aria-label="搜索对话"
-            className="flex h-10 w-10 items-center justify-center rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-800 active:scale-95 md:hidden"
-          >
-            <Search className="w-5 h-5" />
-          </button>
-        )}
 
         {/* 用户菜单 */}
         {authLoading ? (

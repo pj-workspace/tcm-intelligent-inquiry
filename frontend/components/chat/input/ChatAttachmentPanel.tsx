@@ -43,7 +43,7 @@ export function ChatAttachmentPanel({
   }
 
   return (
-    <div className="space-y-2 border-b border-gray-100 px-4 py-2.5">
+    <div className="space-y-2 border-b border-gray-100 px-3 py-2 sm:px-4 sm:py-2.5">
       {(pendingImageUrls.length > 0 ||
         (attachmentUploadBusy && attachmentUploadSkeletonCount > 0)) && (
         <div className="flex flex-wrap gap-2">

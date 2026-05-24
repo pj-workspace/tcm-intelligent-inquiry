@@ -28,6 +28,8 @@ type ModelAgentPickerProps = {
   selectedAgentId?: string | null;
   onSelectAgent?: (agentId: string | null) => void;
   agentsLoading?: boolean;
+  /** compact：底栏 pill 风格，适配窄屏 */
+  layout?: "inline" | "compact";
 };
 
 /** 输入栏左侧模型与可选 Agent 选择器。 */
@@ -42,6 +44,7 @@ export function ModelAgentPicker({
   selectedAgentId = null,
   onSelectAgent,
   agentsLoading = false,
+  layout = "inline",
 }: ModelAgentPickerProps) {
   const selectedProv = modelCatalog?.providers.find(
     (p) => p.id === selectedProviderId.trim(),
@@ -74,10 +77,24 @@ export function ModelAgentPicker({
     return SYSTEM_AGENT_SELECT_VALUE;
   }, [selectedAgentId, agents]);
 
+  const compact = layout === "compact";
+  const agentTriggerCls = clsx(
+    "flex shrink-0 items-center gap-1 outline-none transition-colors disabled:opacity-45",
+    compact
+      ? "max-w-[min(9rem,34vw)] rounded-full border border-gray-200 bg-gray-50 px-2 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100 sm:max-w-[11rem] sm:px-2.5"
+      : "w-full max-w-[min(20rem,46vw)] rounded-lg border border-transparent px-2 py-1.5 text-sm font-medium text-gray-800 hover:bg-gray-100 focus-visible:border-gray-300",
+  );
+  const modelTriggerCls = clsx(
+    "flex shrink-0 items-center gap-1 outline-none transition-colors disabled:opacity-45",
+    compact
+      ? "max-w-[min(10rem,38vw)] rounded-full border border-gray-200 bg-gray-50 px-2 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100 sm:max-w-[12rem] sm:px-2.5"
+      : "w-full max-w-[min(20rem,46vw)] rounded-lg border border-transparent px-2 py-1.5 text-sm font-medium text-gray-800 hover:bg-gray-100 focus-visible:border-gray-300",
+  );
+
   return (
     <>
                     {showAgentPicker && onSelectAgent && (
-                      <div className="max-w-[min(20rem,46vw)] shrink-0">
+                      <div className={compact ? "shrink-0" : "max-w-[min(20rem,46vw)] shrink-0"}>
                         <Select.Root
                           disabled={genState !== "idle" || agentsLoading}
                           value={agentSelectValue}
@@ -86,7 +103,7 @@ export function ModelAgentPicker({
                             else onSelectAgent(v);
                           }}
                         >
-                          <Select.Trigger className="flex w-full max-w-[min(20rem,46vw)] items-center gap-1 rounded-lg border border-transparent px-2 py-1.5 text-sm font-medium text-gray-800 outline-none transition-colors hover:bg-gray-100 focus-visible:border-gray-300 disabled:opacity-45">
+                          <Select.Trigger className={agentTriggerCls}>
                             <Bot className="h-3.5 w-3.5 shrink-0 opacity-55" aria-hidden />
                             <span className="min-w-0 flex-1 truncate text-left">
                               <Select.Value placeholder={SYSTEM_AGENT_LABEL} />
@@ -133,13 +150,18 @@ export function ModelAgentPicker({
 
                     {!modelCatalog?.providers?.length ? (
                       <span
-                        className="truncate rounded-lg px-2 py-1.5 text-xs font-medium text-gray-500 opacity-75"
+                        className={clsx(
+                          "truncate font-medium text-gray-500 opacity-75",
+                          compact
+                            ? "inline-flex shrink-0 rounded-full border border-gray-200 bg-gray-50 px-2 py-1.5 text-[11px] sm:text-xs"
+                            : "rounded-lg px-2 py-1.5 text-xs",
+                        )}
                         title="使用服务端配置的默认对话模型（未获取到模型目录）"
                       >
                         默认模型
                       </span>
                     ) : (
-                      <div className="max-w-[min(20rem,46vw)] shrink-0">
+                      <div className={compact ? "shrink-0" : "max-w-[min(20rem,46vw)] shrink-0"}>
                         <Select.Root
                           disabled={genState !== "idle"}
                           value={selectCompositeValue || undefined}
@@ -149,7 +171,7 @@ export function ModelAgentPicker({
                             onSelectModel(v.slice(0, i), v.slice(i + MODEL_PICK_SEP.length));
                           }}
                         >
-                          <Select.Trigger className="flex w-full max-w-[min(20rem,46vw)] items-center gap-1 rounded-lg border border-transparent px-2 py-1.5 text-sm font-medium text-gray-800 outline-none transition-colors hover:bg-gray-100 focus-visible:border-gray-300 disabled:opacity-45">
+                          <Select.Trigger className={modelTriggerCls}>
                             <span
                               className="min-w-0 flex-1 truncate text-left"
                               title={
