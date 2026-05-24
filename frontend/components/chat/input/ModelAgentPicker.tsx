@@ -67,17 +67,20 @@ export function ModelAgentPicker({
 
   const selectCompositeValue = pickValue || fallbackPickValue;
 
+  const agentSelectValue = useMemo(() => {
+    const id = selectedAgentId?.trim();
+    if (!id) return SYSTEM_AGENT_SELECT_VALUE;
+    if (agents.some((a) => a.id === id)) return id;
+    return SYSTEM_AGENT_SELECT_VALUE;
+  }, [selectedAgentId, agents]);
+
   return (
     <>
                     {showAgentPicker && onSelectAgent && (
                       <div className="max-w-[min(20rem,46vw)] shrink-0">
                         <Select.Root
                           disabled={genState !== "idle" || agentsLoading}
-                          value={
-                            selectedAgentId?.trim()
-                              ? selectedAgentId.trim()
-                              : SYSTEM_AGENT_SELECT_VALUE
-                          }
+                          value={agentSelectValue}
                           onValueChange={(v) => {
                             if (v === SYSTEM_AGENT_SELECT_VALUE) onSelectAgent(null);
                             else onSelectAgent(v);

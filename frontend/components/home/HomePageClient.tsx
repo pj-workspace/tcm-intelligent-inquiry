@@ -25,7 +25,7 @@ import { conversationToMarkdown, sanitizeDownloadBasename } from "@/lib/chatUtil
 import { useScrollBehavior } from "@/hooks/useScrollBehavior";
 import { PENDING_CHAT_DRAFT_KEY } from "@/hooks/chat/chatHelpers";
 import { useChat } from "@/hooks/useChat";
-import { useChatAgentsCatalog } from "@/hooks/useChatAgentsCatalog";
+import { useChatAgentsCatalog, CHAT_AGENTS_CATALOG_CHANGED_EVENT } from "@/hooks/useChatAgentsCatalog";
 import type { Message, ServerConversation, WidgetMessage } from "@/types/chat";
 import { ConversationSkeleton } from "@/components/chat/ConversationSkeleton";
 import { WelcomeHero } from "./WelcomeHero";
@@ -185,6 +185,22 @@ export function HomePageClient() {
     () => agentCatalog.map((a) => ({ id: a.id, name: a.name })),
     [agentCatalog],
   );
+
+  useEffect(() => {
+    const refreshAfterAgentCatalogChange = () => {
+      void refreshServerConversations();
+    };
+    window.addEventListener(
+      CHAT_AGENTS_CATALOG_CHANGED_EVENT,
+      refreshAfterAgentCatalogChange,
+    );
+    return () => {
+      window.removeEventListener(
+        CHAT_AGENTS_CATALOG_CHANGED_EVENT,
+        refreshAfterAgentCatalogChange,
+      );
+    };
+  }, [refreshServerConversations]);
 
   useEffect(() => {
     hasStartedRef.current = hasStarted;
@@ -430,9 +446,11 @@ export function HomePageClient() {
     else setSidebarFilter("__ungrouped__");
     if (conv) {
       const aid = conv.agent_id?.trim();
-      setChatAgentId(aid || null);
+      const hasName = Boolean(conv.agent_name?.trim());
+      const inCatalog = aid ? agentCatalog.some((a) => a.id === aid) : false;
+      setChatAgentId(aid && hasName && inCatalog ? aid : null);
     }
-  }, [pathname, authLoading, token, conversationId, serverConversations, setChatAgentId]);
+  }, [pathname, authLoading, token, conversationId, serverConversations, setChatAgentId, agentCatalog]);
 
   /** 侧栏 hover 预取会话页，减轻切换延迟。 */
   const prefetchConversationRoute = useCallback(

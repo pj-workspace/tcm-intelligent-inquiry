@@ -11,7 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.exceptions import NotFoundError, ValidationError
 from app.core.logging import get_logger
-from app.mcp.bridge.tool_bridge import register_mcp_tools_for_server, unregister_mcp_tools_for_server
+from app.mcp.agent_tool_sync import prune_removed_tools_from_agents
+from app.mcp.bridge.tool_bridge import (
+    collect_mcp_lc_names_for_server,
+    register_mcp_tools_for_server,
+    unregister_mcp_tools_for_server,
+)
 from app.mcp.client.http import discover_tools as discover_tools_http
 from app.mcp.client.stdio import discover_tools_stdio
 from app.mcp.client.stdio_pool import stdio_pool
@@ -136,8 +141,9 @@ async def _discover_for_row(row: McpServerRecord) -> tuple[list[McpToolDef], str
     return tool_defs, probe_error
 
 
-def _register_langchain(row: McpServerRecord, tool_defs: list[McpToolDef]) -> None:
-    """Internal helper: register langchain."""
+def _register_langchain(row: McpServerRecord, tool_defs: list[McpToolDef]) -> set[str]:
+    """Internal helper: register langchain. 返回本次卸载的 LangChain 工具名。"""
+    old_lc = collect_mcp_lc_names_for_server(row.id)
     transport = (row.transport or "http").strip() or "http"
     tool_names = [d.name for d in tool_defs]
     if not row.enabled or not tool_names:
@@ -150,17 +156,29 @@ def _register_langchain(row: McpServerRecord, tool_defs: list[McpToolDef]) -> No
             headers=_row_headers(row) or None,
             stdio_config=_row_stdio(row),
         )
-        return
-    register_mcp_tools_for_server(
-        row.id,
-        row.name,
-        transport,
-        (row.url or "").rstrip("/") if transport == "http" else None,
-        tool_names,
-        headers=_row_headers(row) or None,
-        stdio_config=_row_stdio(row),
-        remote_tool_defs=tool_defs,
-    )
+    else:
+        register_mcp_tools_for_server(
+            row.id,
+            row.name,
+            transport,
+            (row.url or "").rstrip("/") if transport == "http" else None,
+            tool_names,
+            headers=_row_headers(row) or None,
+            stdio_config=_row_stdio(row),
+            remote_tool_defs=tool_defs,
+        )
+    new_lc = collect_mcp_lc_names_for_server(row.id)
+    return old_lc - new_lc
+
+
+async def _register_langchain_and_sync_agents(
+    session: AsyncSession,
+    row: McpServerRecord,
+    tool_defs: list[McpToolDef],
+) -> None:
+    """挂载 LangChain 工具，并从 Agent 配置中 prune 已消失的 MCP 工具名。"""
+    removed = _register_langchain(row, tool_defs)
+    await prune_removed_tools_from_agents(session, removed)
 
 
 class McpService:
@@ -217,7 +235,7 @@ class McpService:
         row.last_probe_error = probe_error
 
         if req.enabled and tool_defs:
-            _register_langchain(row, tool_defs)
+            await _register_langchain_and_sync_agents(self._session, row, tool_defs)
 
         logger.info(
             "注册 MCP 服务 id=%s name=%s transport=%s tools=%s",
@@ -253,7 +271,9 @@ class McpService:
         row = await self._session.get(McpServerRecord, server_id)
         if row is None:
             raise NotFoundError(f"MCP 服务 '{server_id}' 不存在")
+        removed = collect_mcp_lc_names_for_server(server_id)
         unregister_mcp_tools_for_server(server_id)
+        await prune_removed_tools_from_agents(self._session, removed)
         await stdio_pool.close_server(server_id)
         await self._session.delete(row)
         logger.info("删除 MCP 服务 id=%s", server_id)
@@ -268,7 +288,11 @@ class McpService:
         row.last_probe_at = datetime.now(timezone.utc)
         row.last_probe_error = probe_error
         await self._session.flush()
-        _register_langchain(row, tool_defs if row.enabled else [])
+        await _register_langchain_and_sync_agents(
+            self._session,
+            row,
+            tool_defs if row.enabled else [],
+        )
         logger.info("刷新 MCP 工具 id=%s tools=%s", server_id, row.tool_names)
         return _to_response(row)
 
@@ -291,7 +315,7 @@ async def probe_enabled_mcp_servers(session: AsyncSession) -> None:
                 row.tool_names = [d.name for d in tool_defs]
                 row.last_probe_at = now
                 row.last_probe_error = probe_error
-                _register_langchain(row, tool_defs)
+                await _register_langchain_and_sync_agents(session, row, tool_defs)
                 logger.info("MCP 周期探测 id=%s tools=%s", row.id, row.tool_names)
             except Exception as exc:
                 row.last_probe_at = now
@@ -313,7 +337,7 @@ async def restore_mcp_tool_registrations(session: AsyncSession) -> None:
         if not tool_defs:
             logger.warning("启动时未能为 MCP id=%s 发现工具，跳过挂载", row.id)
             continue
-        _register_langchain(row, tool_defs)
+        await _register_langchain_and_sync_agents(session, row, tool_defs)
         logger.info(
             "启动恢复 MCP 工具 id=%s name=%s transport=%s tools=%s",
             row.id,

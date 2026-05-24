@@ -214,3 +214,14 @@ def unregister_mcp_tools_for_server(server_id: str) -> None:
 def get_registered_lc_names(server_id: str) -> list[str]:
     """Get registered lc names (``server_id``)."""
     return list(_mcp_registered_lc_names.get(server_id, []))
+
+
+def collect_mcp_lc_names_for_server(server_id: str) -> set[str]:
+    """收集某 MCP 服务对应的 LangChain 工具名（内存映射 + 注册表前缀兜底）。"""
+    from app.agent.tools.registry import tool_registry
+
+    names = set(_mcp_registered_lc_names.get(server_id, []))
+    sid = server_id.replace("-", "")[:8]
+    prefix = f"mcp_{sid}_"
+    names.update(n for n in tool_registry.names() if n.startswith(prefix))
+    return names

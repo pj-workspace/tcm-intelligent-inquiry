@@ -9,6 +9,7 @@ from langchain_core.tools import BaseTool
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agent.agent_conversation_sync import reset_conversations_agent_to_default
 from app.agent.models import AgentRecord
 from app.knowledge.models import KnowledgeBaseRecord
 from app.agent.schemas import (
@@ -193,10 +194,11 @@ class AgentService:
         return _to_response(row)
 
     async def delete_agent(self, agent_id: str) -> None:
-        """删除 Agent 并清除其编译图缓存。"""
+        """删除 Agent，并将引用它的会话回落到系统默认。"""
         row = await self._session.get(AgentRecord, agent_id)
         if row is None:
             raise NotFoundError(f"Agent '{agent_id}' 不存在")
+        await reset_conversations_agent_to_default(self._session, agent_id)
         await self._session.delete(row)
         invalidate_agent_graph_cache(agent_id)
         logger.info("删除 Agent id=%s", agent_id)

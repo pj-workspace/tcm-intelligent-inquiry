@@ -61,6 +61,8 @@ async def list_my_conversations(
     out: list[ConversationItem] = []
     for conv, agent_name, last_model_name in rows:
         an = (agent_name or "").strip() or None
+        if conv.agent_id and not an:
+            conv.agent_id = None
         lmn = (last_model_name or "").strip() or None
         out.append(
             ConversationItem(
