@@ -29,7 +29,6 @@ import { PENDING_CHAT_DRAFT_KEY } from "@/hooks/chat/chatHelpers";
 import { useChat } from "@/hooks/useChat";
 import { useChatAgentsCatalog, CHAT_AGENTS_CATALOG_CHANGED_EVENT } from "@/hooks/useChatAgentsCatalog";
 import type { Message, ServerConversation, WidgetMessage } from "@/types/chat";
-import { ConversationSkeleton } from "@/components/chat/ConversationSkeleton";
 import { WelcomeHero } from "./WelcomeHero";
 import {
   chatPathConversation,
@@ -127,7 +126,6 @@ export function HomePageClient() {
     setMessages,
     hasStarted,
     chatSurfacePhase,
-    urlConversationId,
     conversationRouteSynced,
     messagesLoading,
     loadingOlderMessages,
@@ -387,13 +385,6 @@ export function HomePageClient() {
   }, [token, sidebarFilter, conversationId, serverConversations]);
 
   const showWelcomeHero = chatSurfacePhase === "newChat" && !viewingGroupLanding;
-  /** 仅无缓存的首载/刷新用骨架；切换已有缓存会话时不顶替消息区 */
-  const showConversationSkeleton =
-    !viewingGroupLanding &&
-    Boolean(urlConversationId) &&
-    conversationRouteSynced &&
-    messages.length === 0 &&
-    (chatSurfacePhase === "authPending" || chatSurfacePhase === "hydrating");
   const showMessageList =
     hasStarted &&
     conversationRouteSynced &&
@@ -995,7 +986,6 @@ export function HomePageClient() {
                 style={{ overflowAnchor: "none" }}
               >
                 {showWelcomeHero && <WelcomeHero />}
-                {showConversationSkeleton && <ConversationSkeleton />}
                 {showMessageList ? (
                   <ChatMessageList
                     messages={messages}
