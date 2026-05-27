@@ -18,6 +18,13 @@ import {
 } from "./settingsTabs";
 import { SettingsTabSkeleton } from "./SettingsTabSkeleton";
 
+const AppearanceTab = dynamic(
+  () =>
+    import("@/components/settings/appearance/AppearanceTab").then((m) => ({
+      default: m.AppearanceTab,
+    })),
+  { loading: () => <SettingsTabSkeleton /> },
+);
 const BuiltinToolsTab = dynamic(
   () =>
     import("@/components/settings/builtin/BuiltinToolsTab").then((m) => ({
@@ -62,6 +69,7 @@ const AccountTab = dynamic(
 );
 
 const TAB_PANELS: Record<SettingsTabId, ComponentType> = {
+  appearance: AppearanceTab,
   builtin: BuiltinToolsTab,
   mcp: McpTab,
   knowledge: KnowledgeTab,

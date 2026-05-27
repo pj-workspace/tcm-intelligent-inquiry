@@ -7,11 +7,13 @@ import {
   Bot,
   Database,
   PieChart,
+  Palette,
   User,
   type LucideIcon,
 } from "lucide-react";
 
 export type SettingsTabId =
+  | "appearance"
   | "builtin"
   | "mcp"
   | "knowledge"
@@ -20,6 +22,7 @@ export type SettingsTabId =
   | "account";
 
 export const SETTINGS_TAB_IDS: SettingsTabId[] = [
+  "appearance",
   "builtin",
   "mcp",
   "knowledge",
@@ -36,6 +39,7 @@ export type SettingsTabConfig = {
 };
 
 export const SETTINGS_TABS: SettingsTabConfig[] = [
+  { id: "appearance", label: "界面与偏好", shortLabel: "界面", Icon: Palette },
   { id: "builtin", label: "内置工具", shortLabel: "内置", Icon: Box },
   { id: "mcp", label: "MCP 服务", shortLabel: "MCP", Icon: Plug },
   { id: "knowledge", label: "知识库", shortLabel: "知识库", Icon: Database },
