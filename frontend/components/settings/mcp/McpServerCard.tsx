@@ -37,8 +37,8 @@ export function McpServerCard({
   const isStdio = server.transport === "stdio";
 
   return (
-    <div className="overflow-hidden rounded-xl border border-[#e5e5e5] bg-white shadow-sm transition-shadow hover:shadow-md">
-      <div className="flex flex-col gap-3 border-b border-gray-50 p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5">
+    <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-sm transition-shadow hover:shadow-md">
+      <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5">
         <div className="flex min-w-0 items-start gap-3">
           <div
             className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
@@ -53,7 +53,7 @@ export function McpServerCard({
           </div>
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-semibold text-gray-900">{server.name}</h3>
+              <h3 className="font-semibold text-foreground">{server.name}</h3>
               <span
                 className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
                   isStdio
@@ -68,16 +68,16 @@ export function McpServerCard({
                   启用
                 </span>
               ) : (
-                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
+                <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                   禁用
                 </span>
               )}
             </div>
-            <p className="mt-1 break-all font-mono text-xs text-gray-500">
+            <p className="mt-1 break-all font-mono text-xs text-muted-foreground">
               {endpointLabel(server)}
             </p>
             {server.description && (
-              <p className="mt-1.5 text-sm text-gray-600">{server.description}</p>
+              <p className="mt-1.5 text-sm text-muted-foreground">{server.description}</p>
             )}
 
             <div className="mt-3 flex items-center gap-2 text-xs">
@@ -90,12 +90,12 @@ export function McpServerCard({
                   探测失败：{server.last_probe_error}
                 </div>
               ) : server.last_probe_at ? (
-                <span className="text-gray-400">
+                <span className="text-muted-foreground">
                   上次成功探测:{" "}
                   {new Date(server.last_probe_at).toLocaleString()}
                 </span>
               ) : (
-                <span className="text-gray-400">从未探测</span>
+                <span className="text-muted-foreground">从未探测</span>
               )}
             </div>
           </div>
@@ -106,7 +106,7 @@ export function McpServerCard({
             onClick={() => onRefresh(server.id)}
             disabled={isRefreshing}
             title="刷新工具"
-            className="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
           >
             <RefreshCw
               className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
@@ -115,21 +115,21 @@ export function McpServerCard({
           <button
             onClick={() => onDelete(server.id)}
             title="删除"
-            className="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 hover:bg-red-50 hover:text-red-600"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-red-50 hover:text-red-600"
           >
             <Trash2 className="h-4 w-4" />
           </button>
         </div>
       </div>
 
-      <div className="bg-[#fafaf8] px-5 py-3">
+      <div className="bg-muted px-5 py-3">
         <button
           onClick={() => onToggleTools(server.id)}
-          className="flex w-full items-center justify-between rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+          className="flex w-full items-center justify-between rounded-md text-sm font-medium text-foreground hover:bg-muted hover:text-foreground"
         >
           <span>已发现 {server.tool_names.length} 个工具</span>
           <ChevronDown
-            className={`h-4 w-4 text-gray-400 transition-transform ${
+            className={`h-4 w-4 text-muted-foreground transition-transform ${
               isExpanded ? "rotate-180" : ""
             }`}
           />
@@ -140,7 +140,7 @@ export function McpServerCard({
             {server.tool_names.map((t) => (
               <span
                 key={t}
-                className="rounded border border-[#e5e5e5] bg-white px-2 py-1 font-mono text-[11px] text-gray-600 shadow-sm"
+                className="rounded border border-border bg-surface px-2 py-1 font-mono text-[11px] text-muted-foreground shadow-sm"
               >
                 {t}
               </span>
@@ -148,7 +148,7 @@ export function McpServerCard({
           </div>
         )}
         {isExpanded && server.tool_names.length === 0 && (
-          <div className="mt-3 pb-1 text-xs text-gray-400">
+          <div className="mt-3 pb-1 text-xs text-muted-foreground">
             未能从该 MCP 服务发现可用工具。
           </div>
         )}

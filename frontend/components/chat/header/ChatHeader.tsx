@@ -96,7 +96,7 @@ export function ChatHeader({
   );
 
   return (
-    <header className="z-10 flex h-14 flex-shrink-0 items-center justify-between border-b border-[#e5e5e5] bg-white/80 px-3 backdrop-blur-sm sm:px-4 md:px-6">
+    <header className="z-10 flex h-14 flex-shrink-0 items-center justify-between border-b border-border bg-elevated/80 px-3 backdrop-blur-sm sm:px-4 md:px-6">
       <div className="flex items-center gap-1 min-w-0 flex-1 md:flex-initial">
         {onOpenMobileSidebar && (
           <button
@@ -104,7 +104,7 @@ export function ChatHeader({
             onClick={onOpenMobileSidebar}
             title="打开会话列表"
             aria-label="打开会话列表"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 active:scale-95 transition-colors md:hidden"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground active:scale-95 transition-colors md:hidden"
           >
             <PanelLeftOpen className="h-[1.05rem] w-[1.05rem]" />
           </button>
@@ -115,7 +115,7 @@ export function ChatHeader({
           <div className="flex min-w-0 flex-1 items-center gap-1.5 shrink-0 md:hidden">
             {showConvBreadcrumb && conversationGroupTrail ? (
               <nav
-                className="flex min-w-0 flex-1 items-center gap-1 text-xs font-medium leading-snug text-gray-800"
+                className="flex min-w-0 flex-1 items-center gap-1 text-xs font-medium leading-snug text-foreground"
                 aria-label="会话位置"
               >
                 <FolderOpen className="h-3.5 w-3.5 shrink-0 text-amber-800/85" aria-hidden />
@@ -123,17 +123,17 @@ export function ChatHeader({
                   type="button"
                   title="回到分组管理"
                   onClick={conversationGroupTrail.onGroupClick}
-                  className="max-w-[38%] min-w-0 shrink truncate text-left text-gray-900 hover:text-gray-950 hover:underline"
+                  className="max-w-[38%] min-w-0 shrink truncate text-left text-foreground hover:text-gray-950 hover:underline"
                 >
                   {conversationGroupTrail.groupName}
                 </button>
-                <span className="shrink-0 text-gray-300" aria-hidden>
+                <span className="shrink-0 text-muted-foreground/40" aria-hidden>
                   /
                 </span>
                 {isEditingTitle ? (
                   <input
                     autoFocus
-                    className="h-7 min-w-0 flex-1 rounded border border-gray-300 px-2 text-xs font-medium outline-none focus:border-orange-400"
+                    className="h-7 min-w-0 flex-1 rounded border border-border px-2 text-xs font-medium outline-none focus:border-orange-400"
                     value={editTitleValue}
                     onChange={(e) => onEditTitleChange(e.target.value)}
                     onBlur={onEditTitleBlur}
@@ -153,7 +153,7 @@ export function ChatHeader({
                 title="返回分组管理"
                 aria-label="返回分组管理"
                 onClick={onBackToGroupWorkspace}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
               >
                 <ArrowLeft className="h-[1.05rem] w-[1.05rem]" strokeWidth={2.25} />
               </button>
@@ -180,7 +180,7 @@ export function ChatHeader({
               {isEditingTitle ? (
                 <input
                   autoFocus
-                  className="h-7 w-full min-w-0 rounded border border-gray-300 px-2 text-xs font-medium outline-none focus:border-orange-400"
+                  className="h-7 w-full min-w-0 rounded border border-border px-2 text-xs font-medium outline-none focus:border-orange-400"
                   value={editTitleValue}
                   onChange={(e) => onEditTitleChange(e.target.value)}
                   onBlur={onEditTitleBlur}
@@ -191,7 +191,7 @@ export function ChatHeader({
               ) : (
                 <span
                   key={currentTitle || "会话记录"}
-                  className="sidebar-conv-title-sweep truncate text-sm font-medium text-gray-800"
+                  className="sidebar-conv-title-sweep truncate text-sm font-medium text-foreground"
                 >
                   {currentTitle || "会话记录"}
                 </span>
@@ -203,13 +203,13 @@ export function ChatHeader({
         {showGroupBanner && (
           <div className="md:hidden flex min-w-0 flex-1 items-center gap-1.5 pr-2">
             <FolderOpen className="h-[1.125rem] w-[1.125rem] shrink-0 text-amber-800/85" aria-hidden />
-            <span className="truncate text-sm font-medium text-gray-800">{groupWorkspaceTitle}</span>
+            <span className="truncate text-sm font-medium text-foreground">{groupWorkspaceTitle}</span>
           </div>
         )}
         {showGroupBanner && !sidebarCollapsed && (
           <div className="hidden md:flex items-center gap-2 min-w-0 max-w-[28rem]">
             <FolderOpen className="h-4 w-4 shrink-0 text-amber-800/80" aria-hidden />
-            <span className="truncate text-sm font-medium text-gray-800">{groupWorkspaceTitle}</span>
+            <span className="truncate text-sm font-medium text-foreground">{groupWorkspaceTitle}</span>
           </div>
         )}
 
@@ -220,7 +220,7 @@ export function ChatHeader({
               type="button"
               onClick={onToggleSidebar}
               title="展开侧栏"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
             >
               <PanelLeftOpen className="w-[1.05rem] h-[1.05rem]" />
             </button>
@@ -228,15 +228,15 @@ export function ChatHeader({
               type="button"
               onClick={onNewChat}
               title="新建会话"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
             >
               <Plus className="w-[1.05rem] h-[1.05rem]" />
             </button>
-            <div className="mx-1 h-4 w-px shrink-0 bg-gray-200" aria-hidden />
+            <div className="mx-1 h-4 w-px shrink-0 bg-muted" aria-hidden />
             {showGroupBanner && (
               <div className="flex max-w-[28rem] min-w-0 flex-1 items-center gap-2 pl-0.5">
                 <FolderOpen className="h-4 w-4 shrink-0 text-amber-800/80" aria-hidden />
-                <span className="truncate text-sm font-medium text-gray-800">{groupWorkspaceTitle}</span>
+                <span className="truncate text-sm font-medium text-foreground">{groupWorkspaceTitle}</span>
               </div>
             )}
             {/* 分组会话：面包屑跟在竖线后与主标题区对齐 */}
@@ -251,18 +251,18 @@ export function ChatHeader({
                     type="button"
                     title="回到分组管理"
                     onClick={conversationGroupTrail.onGroupClick}
-                    className="max-w-[10rem] shrink-0 truncate text-left text-sm font-medium text-gray-800 hover:text-gray-900 hover:underline"
+                    className="max-w-[10rem] shrink-0 truncate text-left text-sm font-medium text-foreground hover:text-foreground hover:underline"
                   >
                     {conversationGroupTrail.groupName}
                   </button>
-                  <span className="shrink-0 text-gray-300" aria-hidden>
+                  <span className="shrink-0 text-muted-foreground/40" aria-hidden>
                     /
                   </span>
-                  <div className="flex min-h-8 min-w-0 flex-1 items-center text-sm font-medium text-gray-800">
+                  <div className="flex min-h-8 min-w-0 flex-1 items-center text-sm font-medium text-foreground">
                     {isEditingTitle ? (
                       <input
                         autoFocus
-                        className="h-8 w-full box-border rounded border border-gray-300 px-2 text-sm font-medium outline-none focus:border-orange-400"
+                        className="h-8 w-full box-border rounded border border-border px-2 text-sm font-medium outline-none focus:border-orange-400"
                         value={editTitleValue}
                         onChange={(e) => onEditTitleChange(e.target.value)}
                         onBlur={onEditTitleBlur}
@@ -302,18 +302,18 @@ export function ChatHeader({
                   type="button"
                   title="回到分组管理"
                   onClick={conversationGroupTrail.onGroupClick}
-                  className="max-w-[11rem] shrink-0 truncate text-left text-sm font-medium text-gray-800 hover:text-gray-900 hover:underline"
+                  className="max-w-[11rem] shrink-0 truncate text-left text-sm font-medium text-foreground hover:text-foreground hover:underline"
                 >
                   {conversationGroupTrail.groupName}
                 </button>
-                <span className="shrink-0 text-gray-300 select-none" aria-hidden>
+                <span className="shrink-0 text-muted-foreground/40 select-none" aria-hidden>
                   /
                 </span>
-                <div className="flex min-h-8 min-w-0 flex-1 items-center text-sm font-medium text-gray-800">
+                <div className="flex min-h-8 min-w-0 flex-1 items-center text-sm font-medium text-foreground">
                   {isEditingTitle ? (
                     <input
                       autoFocus
-                      className="h-8 w-full box-border rounded border border-gray-300 px-2 text-sm font-medium outline-none focus:border-orange-400"
+                      className="h-8 w-full box-border rounded border border-border px-2 text-sm font-medium outline-none focus:border-orange-400"
                       value={editTitleValue}
                       onChange={(e) => onEditTitleChange(e.target.value)}
                       onBlur={onEditTitleBlur}
@@ -343,16 +343,16 @@ export function ChatHeader({
                     onClick={() => {
                       onBackToGroupWorkspace();
                     }}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                   >
                     <ArrowLeft className="h-[1.1rem] w-[1.1rem]" strokeWidth={2.25} />
                   </button>
                 )}
-                <div className="flex min-h-8 min-w-0 flex-1 items-center text-sm font-medium text-gray-800">
+                <div className="flex min-h-8 min-w-0 flex-1 items-center text-sm font-medium text-foreground">
                   {isEditingTitle ? (
                     <input
                       autoFocus
-                      className="h-8 w-full box-border rounded border border-gray-300 px-2 text-sm font-medium outline-none focus:border-orange-400"
+                      className="h-8 w-full box-border rounded border border-border px-2 text-sm font-medium outline-none focus:border-orange-400"
                       value={editTitleValue}
                       onChange={(e) => onEditTitleChange(e.target.value)}
                       onBlur={onEditTitleBlur}
@@ -382,7 +382,7 @@ export function ChatHeader({
           <div className="relative" ref={headerMenuRef}>
             <button
               onClick={() => onSetHeaderMenuOpen(!headerMenuOpen)}
-              className="p-1.5 rounded-md hover:bg-gray-100 hover:text-gray-900 text-gray-600 active:scale-95 transition-colors"
+              className="p-1.5 rounded-md hover:bg-muted hover:text-foreground text-muted-foreground active:scale-95 transition-colors"
             >
               <MoreVertical className="w-5 h-5" />
             </button>
@@ -391,22 +391,22 @@ export function ChatHeader({
                 <motion.div
                   key="chat-header-conv-menu"
                   style={{ transformOrigin: "top right" }}
-                  className="absolute right-0 top-full mt-1 w-36 rounded-lg border border-[#e5e5e5] bg-white py-1 shadow-lg z-50"
+                  className="absolute right-0 top-full mt-1 w-36 rounded-lg border border-border bg-surface py-1 shadow-lg z-50"
                   {...uiDropdownBelow}
                 >
                   <button
                     onClick={onEditTitle}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100/80"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted active:bg-muted/80"
                   >
                     <Edit2 className="w-4 h-4" /> 编辑标题
                   </button>
                   <button
                     onClick={onExportHistory}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100/80"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted active:bg-muted/80"
                   >
                     <Download className="w-4 h-4" /> 导出会话
                   </button>
-                  <div className="my-1 border-t border-gray-100" />
+                  <div className="my-1 border-t border-border" />
                   <button
                     onClick={onDeleteConversation}
                     className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 active:bg-red-100/60"
@@ -425,19 +425,19 @@ export function ChatHeader({
           onClick={onNewChat}
           title="新建会话"
           aria-label="新建会话"
-          className="flex h-10 w-10 items-center justify-center rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-800 active:scale-95 md:hidden"
+          className="flex h-10 w-10 items-center justify-center rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95 md:hidden"
         >
           <Plus className="w-5 h-5" />
         </button>
 
         {/* 用户菜单 */}
         {authLoading ? (
-          <div className="h-8 w-8 md:h-9 md:w-9 rounded-full bg-gray-200/70 animate-pulse" aria-hidden />
+          <div className="h-8 w-8 md:h-9 md:w-9 rounded-full bg-muted/70 animate-pulse" aria-hidden />
         ) : token ? (
           <div className="relative group">
             <button
               type="button"
-              className="flex items-center justify-center w-8 h-8 md:w-9 md:h-9 rounded-full bg-white border border-[#e5e5e5] shadow-sm hover:bg-gray-50 hover:border-gray-300 active:scale-95 transition-colors"
+              className="flex items-center justify-center w-8 h-8 md:w-9 md:h-9 rounded-full bg-surface border border-border shadow-sm hover:bg-muted hover:border-border active:scale-95 transition-colors"
               aria-label="账户"
             >
               <span className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-xs font-bold">
@@ -446,7 +446,7 @@ export function ChatHeader({
             </button>
             {/* pt-2 为头像到面板的 hover 桥；外层默认 pointer-events-none，避免透明区域挡住左侧会话菜单 */}
             <div className="absolute right-0 top-full z-50 flex justify-end pt-2 pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto">
-              <div className="w-32 origin-top-right rounded-lg border border-[#e5e5e5] bg-white py-1 shadow-lg opacity-0 scale-[0.98] translate-y-[-6px] pointer-events-none invisible transition-[opacity,transform,visibility] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0 group-hover:visible group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:scale-100 group-focus-within:translate-y-0 group-focus-within:visible group-focus-within:pointer-events-auto">
+              <div className="w-32 origin-top-right rounded-lg border border-border bg-surface py-1 shadow-lg opacity-0 scale-[0.98] translate-y-[-6px] pointer-events-none invisible transition-[opacity,transform,visibility] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0 group-hover:visible group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:scale-100 group-focus-within:translate-y-0 group-focus-within:visible group-focus-within:pointer-events-auto">
                 <button
                   type="button"
                   onClick={onLogout}
@@ -462,13 +462,13 @@ export function ChatHeader({
           <div className="flex items-center gap-1 sm:gap-2">
             <Link
               href="/login"
-              className="text-sm text-gray-600 px-2 py-1 md:px-3 md:py-1.5 rounded-md hover:bg-gray-100"
+              className="text-sm text-muted-foreground px-2 py-1 md:px-3 md:py-1.5 rounded-md hover:bg-muted"
             >
               登录
             </Link>
             <Link
               href="/register"
-              className="text-sm text-gray-500 px-2 py-1 md:px-3 md:py-1.5 rounded-md hover:bg-gray-100"
+              className="text-sm text-muted-foreground px-2 py-1 md:px-3 md:py-1.5 rounded-md hover:bg-muted"
             >
               注册
             </Link>

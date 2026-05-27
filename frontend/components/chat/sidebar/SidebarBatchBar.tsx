@@ -52,7 +52,7 @@ export function SidebarBatchBar({
             <button
               type="button"
               onClick={onSelectAll}
-              className="rounded-lg border border-orange-300/70 bg-white/80 px-2.5 py-1 text-[11px] font-medium text-orange-950 shadow-sm hover:bg-white"
+              className="rounded-lg border border-orange-300/70 bg-elevated/80 px-2.5 py-1 text-[11px] font-medium text-orange-950 shadow-sm hover:bg-surface"
             >
               全选
             </button>
@@ -61,7 +61,7 @@ export function SidebarBatchBar({
             <button
               type="button"
               onClick={onClearSelection}
-              className="rounded-lg border border-gray-200/90 bg-white/70 px-2.5 py-1 text-[11px] font-medium text-gray-700 hover:bg-gray-50"
+              className="rounded-lg border border-border/90 bg-surface/70 px-2.5 py-1 text-[11px] font-medium text-foreground hover:bg-muted"
             >
               取消所选
             </button>
@@ -101,7 +101,7 @@ export function SidebarBatchRowCheck({ selected }: { selected: boolean }) {
         "mr-2 flex h-[1.125rem] w-[1.125rem] shrink-0 self-center items-center justify-center rounded border-2 transition-colors",
         selected
           ? "border-orange-600 bg-orange-600 text-white"
-          : "border-gray-300 bg-white"
+          : "border-border bg-surface"
       )}
       aria-hidden
     >

@@ -67,11 +67,11 @@ export function Select({
       <Trigger
         id={id}
         className={clsx(
-          "group flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-left text-sm text-gray-900 outline-none transition",
-          "hover:border-gray-400 hover:bg-gray-50/90",
+          "group flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-md border border-border bg-surface px-3 py-2 text-left text-sm text-foreground outline-none transition",
+          "hover:border-border hover:bg-muted/90",
           "focus:border-orange-400 focus:ring-1 focus:ring-orange-400",
           "data-[state=open]:border-orange-400 data-[state=open]:ring-1 data-[state=open]:ring-orange-400",
-          "disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500",
+          "disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground",
           className
         )}
         aria-label={placeholder}
@@ -79,7 +79,7 @@ export function Select({
         <Value placeholder={placeholder} className="truncate" />
         <Icon>
           <ChevronDown
-            className="h-4 w-4 shrink-0 text-gray-400 transition-transform duration-200 group-data-[state=open]:rotate-180"
+            className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180"
             strokeWidth={2.25}
             aria-hidden
           />
@@ -90,7 +90,7 @@ export function Select({
         <Content
           position="popper"
           sideOffset={4}
-          className="ui-radix-floating z-[100] max-h-60 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-md border border-gray-200 bg-white py-1 shadow-md"
+          className="ui-radix-floating z-[100] max-h-60 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-md border border-border bg-surface py-1 shadow-md"
         >
           <Viewport className="max-h-52 overflow-y-auto p-0.5">
             {options.map((opt) => {
@@ -100,9 +100,9 @@ export function Select({
                   key={itemValue}
                   value={itemValue}
                   className={clsx(
-                    "relative flex cursor-pointer select-none items-center rounded-sm py-2 pl-8 pr-3 text-sm text-gray-900 outline-none transition-colors",
+                    "relative flex cursor-pointer select-none items-center rounded-sm py-2 pl-8 pr-3 text-sm text-foreground outline-none transition-colors",
                     "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-                    "data-[highlighted]:bg-orange-50 data-[highlighted]:text-gray-900"
+                    "data-[highlighted]:bg-orange-50 data-[highlighted]:text-foreground dark:data-[highlighted]:bg-orange-950/40"
                   )}
                 >
                   <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">

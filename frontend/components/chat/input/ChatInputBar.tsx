@@ -427,7 +427,7 @@ export function ChatInputBar({
   return (
     <motion.div
       transition={springTransition}
-      className="w-full shrink-0 border-t border-transparent bg-[#fdfdfc] px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-0 md:px-8"
+      className="w-full shrink-0 border-t border-transparent bg-background px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-0 md:px-8"
     >
       <div className="relative mx-auto w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl">
         {/* 快捷话题：紧凑 chips，贴输入框上方 */}
@@ -450,7 +450,7 @@ export function ChatInputBar({
                     whileTap={{ scale: 0.98 }}
                     onClick={() => onInputChange(item.prompt)}
                     title={item.subtitle}
-                    className="inline-flex max-w-[14rem] shrink-0 items-center gap-1.5 rounded-full border border-[#e5e5e5] bg-white px-3 py-1.5 text-left text-xs font-medium text-gray-700 shadow-sm transition-colors hover:border-gray-300 hover:bg-gray-50"
+                    className="inline-flex max-w-[14rem] shrink-0 items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1.5 text-left text-xs font-medium text-foreground shadow-sm transition-colors hover:border-border hover:bg-muted"
                   >
                     <Icon
                       className={`h-3.5 w-3.5 shrink-0 ${item.iconClassName}`}
@@ -487,16 +487,16 @@ export function ChatInputBar({
                   title={item.prompt}
                   onClick={() => onSendWithImagePrompt(item.prompt)}
                   className={clsx(
-                    "inline-flex max-w-[min(100%,26rem)] w-fit shrink-0 items-start gap-2 rounded-2xl border border-[#e2ddd3] bg-white px-3 py-2.5",
-                    "text-left text-[13px] leading-snug text-[#3d3d3d]",
-                    "shadow-[0_1px_2px_rgba(0,0,0,0.05)]",
-                    "hover:border-[#cfc5b8] hover:bg-[#fcfbf9] hover:shadow-sm",
+                    "inline-flex max-w-[min(100%,26rem)] w-fit shrink-0 items-start gap-2 rounded-2xl border border-border bg-surface px-3 py-2.5",
+                    "text-left text-[13px] leading-snug text-foreground",
+                    "shadow-[0_1px_2px_rgba(0,0,0,0.05)] dark:shadow-none",
+                    "hover:border-orange-300/40 hover:bg-muted hover:shadow-sm",
                     "active:scale-[0.995] transition-[transform,background-color,border-color,box-shadow] duration-150",
-                    "disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-[#e2ddd3] disabled:hover:bg-white",
+                    "disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-border disabled:hover:bg-surface",
                   )}
                 >
                   <ArrowUpRight
-                    className="mt-px h-[15px] w-[15px] shrink-0 text-neutral-400"
+                    className="mt-px h-[15px] w-[15px] shrink-0 text-muted-foreground"
                     strokeWidth={1.75}
                     aria-hidden
                   />
@@ -509,7 +509,7 @@ export function ChatInputBar({
 
         <motion.div
           transition={springTransition}
-          className="relative flex w-full flex-col overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-shadow focus-within:border-gray-300 focus-within:shadow-[0_4px_20px_rgba(0,0,0,0.05)] sm:rounded-[1.35rem]"
+          className="relative flex w-full flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-shadow focus-within:border-border focus-within:shadow-[0_4px_20px_rgba(0,0,0,0.05)] sm:rounded-[1.35rem]"
         >
           <ChatAttachmentPanel
             pendingImageUrls={pendingImageUrls}
@@ -538,7 +538,7 @@ export function ChatInputBar({
                   ? undefined
                   : "提示：可在输入框内直接粘贴截图或图片（与「添加图片」相同）"
               }
-              className="no-scrollbar block w-full resize-none overflow-y-auto bg-transparent text-[15px] leading-relaxed text-gray-800 outline-none placeholder:text-gray-400 sm:text-base"
+              className="no-scrollbar block w-full resize-none overflow-y-auto bg-transparent text-[15px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground sm:text-base"
               style={{ minHeight: TEXTAREA_MIN_PX, maxHeight: TEXTAREA_MAX_PX }}
             />
           </div>
@@ -615,7 +615,7 @@ export function ChatInputBar({
                       attachmentUploadBusy ||
                       attachmentAtCap
                     }
-                    className="flex h-9 w-9 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                     title={
                       attachmentDisabled
                         ? attachmentDisabledReason ?? "当前模型不支持接收图片输入"
@@ -634,13 +634,13 @@ export function ChatInputBar({
                     side="top"
                     align="end"
                     sideOffset={8}
-                    className="ui-radix-floating z-[100] min-w-[11rem] rounded-lg border border-gray-200 bg-white py-0.5 shadow-lg outline-none"
+                    className="ui-radix-floating z-[100] min-w-[11rem] rounded-lg border border-border bg-surface py-0.5 shadow-lg outline-none"
                   >
-                    <DropdownMenu.Label className="px-2 pb-0 pt-1 text-[11px] font-medium text-gray-400">
+                    <DropdownMenu.Label className="px-2 pb-0 pt-1 text-[11px] font-medium text-muted-foreground">
                       插入内容
                     </DropdownMenu.Label>
                     <DropdownMenu.Item
-                      className="mx-0.5 flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-900 outline-none data-[highlighted]:bg-gray-50 data-[disabled]:pointer-events-none data-[disabled]:opacity-45"
+                      className="mx-0.5 flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm text-foreground outline-none data-[highlighted]:bg-muted data-[disabled]:pointer-events-none data-[disabled]:opacity-45"
                       disabled={
                         attachmentDisabled ||
                         genState !== "idle" ||
@@ -652,16 +652,16 @@ export function ChatInputBar({
                         queueMicrotask(() => imageFileInputRef.current?.click());
                       }}
                     >
-                      <ImageIcon className="h-4 w-4 shrink-0 text-gray-600" />
+                      <ImageIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
                       图片
                     </DropdownMenu.Item>
                     <DropdownMenu.Item
                       disabled
-                      className="mx-0.5 flex cursor-not-allowed items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-400 outline-none data-[highlighted]:bg-transparent data-[disabled]:opacity-50"
+                      className="mx-0.5 flex cursor-not-allowed items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground outline-none data-[highlighted]:bg-transparent data-[disabled]:opacity-50"
                     >
                       <FileText className="h-4 w-4 shrink-0" />
                       <span className="min-w-0 flex-1 truncate">本地文件</span>
-                      <span className="shrink-0 text-[10px] font-medium text-gray-300">
+                      <span className="shrink-0 text-[10px] font-medium text-muted-foreground/40">
                         敬请期待
                       </span>
                     </DropdownMenu.Item>
@@ -692,7 +692,7 @@ export function ChatInputBar({
             }
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="mt-2 text-center text-[11px] font-medium text-gray-400 px-2"
+            className="mt-2 text-center text-[11px] font-medium text-muted-foreground/90 px-2"
           >
             AI 可能会产生误导性信息，请结合实际情况判断。
           </motion.div>

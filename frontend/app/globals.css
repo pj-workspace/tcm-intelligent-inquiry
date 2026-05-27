@@ -1,14 +1,30 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-serif: var(--font-noto-serif-sc), ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  
+
   --color-background: var(--bg);
   --color-foreground: var(--fg);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-fg);
   --color-border: var(--border-color);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-sidebar: var(--sidebar);
+  --color-elevated: var(--elevated);
+  --color-card: var(--card);
+  --color-card-border: var(--card-border);
+  --color-card-header-border: var(--card-header-border);
+  --color-popover: var(--popover);
+  --color-accent-muted: var(--accent-muted);
+  --color-destructive-muted: var(--destructive-muted);
+  --color-input: var(--input);
+  --color-user-bubble: var(--user-bubble);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-fg);
 }
 
 @import "./styles/base.css";

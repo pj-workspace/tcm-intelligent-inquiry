@@ -59,11 +59,11 @@ export function ChatSendControls({
         baseCls,
         canSend
           ? isCircle
-            ? "bg-gray-900 text-white hover:bg-gray-800 active:scale-95"
-            : "scale-105 bg-black text-white hover:bg-gray-800"
+            ? "bg-primary text-primary-foreground hover:opacity-90 active:scale-95"
+            : "scale-105 bg-primary text-primary-foreground hover:opacity-90"
           : isCircle
-            ? "bg-gray-100 text-gray-400"
-            : "bg-transparent text-gray-400 opacity-65 hover:bg-gray-100 hover:text-gray-600",
+            ? "bg-muted text-muted-foreground"
+            : "bg-transparent text-muted-foreground opacity-65 hover:bg-muted hover:text-muted-foreground",
       )}
       title={
         attachmentUploadBusy

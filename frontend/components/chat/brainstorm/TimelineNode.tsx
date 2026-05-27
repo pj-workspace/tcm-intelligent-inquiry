@@ -44,15 +44,15 @@ export function TimelineNode({ kind }: TimelineNodeProps) {
 
   const iconClass = clsx(
     "h-3 w-3 shrink-0",
-    kind === "thinking_active" && "animate-pulse text-gray-500",
-    kind === "thinking" && "text-gray-400",
+    kind === "thinking_active" && "animate-pulse text-muted-foreground",
+    kind === "thinking" && "text-muted-foreground",
     kind === "tool" && "text-[#5b78ad]",
     kind === "tool_running" && "animate-spin text-[#5b78ad]/70",
     kind === "tool_error" && "text-red-400",
     kind === "user_input" && "text-amber-500",
     kind === "user_input_done" && "text-emerald-500",
     kind === "trace_done" && "text-emerald-500",
-    kind === "trace_aborted" && "text-gray-400",
+    kind === "trace_aborted" && "text-muted-foreground",
   );
 
   return (
@@ -61,7 +61,7 @@ export function TimelineNode({ kind }: TimelineNodeProps) {
       className={clsx(
         // 1.1rem 高图标 + top-[0.15rem] → 视觉中心位于 0.7rem (11.2px)
         // 与所有 step 内容统一的 leading-[1.4rem] 单行中心一致
-        "absolute left-0 top-[0.15rem] flex h-[1.1rem] w-[1.1rem] items-center justify-center rounded-full bg-[#fdfdfc] ring-1",
+        "absolute left-0 top-[0.15rem] flex h-[1.1rem] w-[1.1rem] items-center justify-center rounded-full bg-background ring-1",
         kind === "tool_error" || kind === "trace_aborted"
           ? "ring-red-200"
           : kind === "trace_done" || kind === "user_input_done"

@@ -172,7 +172,7 @@ export function AssistantBubble({
       <div className="flex min-w-0 w-full max-w-full flex-col items-start gap-1.5">
         <div
           className={clsx(
-            "text-[15px] leading-relaxed bg-transparent text-[#1a1a1a] ai-content w-full min-w-0 md:max-w-[68ch] lg:max-w-[80ch] xl:max-w-[96ch]",
+            "text-[15px] leading-relaxed bg-transparent text-foreground ai-content w-full min-w-0 md:max-w-[68ch] lg:max-w-[80ch] xl:max-w-[96ch]",
           )}
         >
           <ReactMarkdown
@@ -199,7 +199,7 @@ export function AssistantBubble({
               type="button"
               disabled={!onAssistantRegenerate}
               onClick={onAssistantRegenerate}
-              className="p-1.5 rounded-lg text-gray-500 hover:text-gray-800 hover:bg-black/5 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 disabled:opacity-40 disabled:pointer-events-none transition-colors"
               title="重新生成"
               aria-label="重新生成"
             >
@@ -208,7 +208,7 @@ export function AssistantBubble({
             <button
               type="button"
               onClick={onCopy}
-              className="p-1.5 rounded-lg text-gray-500 hover:text-gray-800 hover:bg-black/5 transition-colors"
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
               title={copied ? "已复制" : "复制"}
               aria-label={copied ? "已复制" : "复制"}
             >
@@ -225,7 +225,7 @@ export function AssistantBubble({
                 "p-1.5 rounded-lg transition-colors",
                 ttsPlaying
                   ? "text-orange-600 bg-orange-50 hover:bg-orange-100"
-                  : "text-gray-500 hover:text-gray-800 hover:bg-black/5"
+                  : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
               )}
               title={ttsPlaying ? "停止朗读" : "朗读"}
               aria-label={ttsPlaying ? "停止朗读" : "朗读"}
@@ -242,7 +242,7 @@ export function AssistantBubble({
               <button
                 type="button"
                 onClick={onMenuToggle}
-                className="p-1.5 rounded-lg text-gray-500 hover:text-gray-800 hover:bg-black/5 transition-colors"
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
                 title="更多"
                 aria-expanded={menuOpen}
                 aria-label="更多选项"
@@ -251,13 +251,13 @@ export function AssistantBubble({
               </button>
               {menuOpen && (
                 <div
-                  className="absolute left-0 bottom-full mb-1 z-50 min-w-[220px] rounded-xl border border-[#e8e8e8] bg-white py-1 shadow-lg text-sm"
+                  className="absolute left-0 bottom-full mb-1 z-50 min-w-[220px] rounded-xl border border-border bg-surface py-1 shadow-lg text-sm"
                   role="menu"
                 >
                   <button
                     type="button"
                     role="menuitem"
-                    className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-gray-700 transition-colors hover:bg-gray-50 active:bg-gray-100/80"
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-foreground transition-colors hover:bg-muted active:bg-muted/80"
                     onClick={() => {
                       onMenuToggle();
                       exportAssistantAsPdf("TCM AI 回复", content);
@@ -266,15 +266,15 @@ export function AssistantBubble({
                     <FileDown className="w-4 h-4 shrink-0 opacity-70" />
                     导出为 PDF
                   </button>
-                  <div className="my-1 h-px bg-[#eee]" />
-                  <div className="flex items-start gap-2 px-3 py-2.5 text-gray-500">
+                  <div className="my-1 h-px bg-border" />
+                  <div className="flex items-start gap-2 px-3 py-2.5 text-muted-foreground">
                     <Sparkles className="w-4 h-4 shrink-0 mt-0.5 opacity-70" />
                     <div>
-                      <div className="text-xs text-gray-400 mb-0.5">本回复所用模型</div>
-                      <div className="text-[13px] text-gray-800 font-medium leading-snug break-all">
+                      <div className="text-xs text-muted-foreground mb-0.5">本回复所用模型</div>
+                      <div className="text-[13px] text-foreground font-medium leading-snug break-all">
                         {modelName?.trim() || "—"}
                       </div>
-                      <div className="mt-1 text-[11px] leading-snug text-gray-400">
+                      <div className="mt-1 text-[11px] leading-snug text-muted-foreground">
                         切换模型请在输入栏左侧选择
                       </div>
                     </div>
@@ -314,14 +314,14 @@ export function AssistantBubble({
                       type="button"
                       onClick={() => onFollowUpClick?.(text)}
                       className={clsx(
-                        "inline-flex max-w-[min(100%,26rem)] w-fit shrink-0 items-start gap-2 rounded-2xl border border-[#e2ddd3] bg-white px-3 py-2.5",
-                        "text-left text-[13px] leading-snug text-[#3d3d3d]",
-                        "shadow-[0_1px_2px_rgba(0,0,0,0.05)]",
-                        "hover:border-[#cfc5b8] hover:bg-[#fcfbf9] hover:shadow-sm",
+                        "inline-flex max-w-[min(100%,26rem)] w-fit shrink-0 items-start gap-2 rounded-2xl border border-border bg-surface px-3 py-2.5",
+                        "text-left text-[13px] leading-snug text-foreground",
+                        "shadow-[0_1px_2px_rgba(0,0,0,0.05)] dark:shadow-none",
+                        "hover:border-orange-300/40 hover:bg-muted hover:shadow-sm",
                         "active:scale-[0.995] transition-[transform,background-color,border-color,box-shadow] duration-150",
                       )}
                     >
-                      <FollowUpEnterIcon className="mt-[3px] h-4 w-4 shrink-0 text-neutral-400" />
+                      <FollowUpEnterIcon className="mt-[3px] h-4 w-4 shrink-0 text-muted-foreground" />
                       <span className="min-w-0 flex-1 break-words">{text}</span>
                     </button>
                   ))}

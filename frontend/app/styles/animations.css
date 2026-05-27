@@ -107,11 +107,11 @@
   line-height: 1.35;
   background: linear-gradient(
     120deg,
-    #111827 0%,
-    #111827 40%,
+    var(--fg) 0%,
+    var(--fg) 40%,
     #fbbf24 50%,
-    #111827 60%,
-    #111827 100%
+    var(--fg) 60%,
+    var(--fg) 100%
   );
   background-size: 250% 100%;
   -webkit-background-clip: text;

@@ -116,21 +116,21 @@ export function ChatMessageList({
     <div className="relative pt-8">
       {showMessagesRefreshingOverlay ? (
         <div
-          className="pointer-events-none absolute inset-0 z-10 bg-[#fdfdfc]/50"
+          className="pointer-events-none absolute inset-0 z-10 bg-background/50"
           aria-busy
           aria-label="正在加载对话"
         />
       ) : null}
       {loadingOlderMessages ? (
         <div
-          className="mb-2 flex justify-center py-1 text-xs text-gray-400"
+          className="mb-2 flex justify-center py-1 text-xs text-muted-foreground"
           aria-busy
           aria-live="polite"
         >
           正在加载更早的消息…
         </div>
       ) : hasMoreOlderMessages ? (
-        <div className="mb-2 flex justify-center py-1 text-[11px] text-gray-400">
+        <div className="mb-2 flex justify-center py-1 text-[11px] text-muted-foreground">
           向上滚动加载更早消息
         </div>
       ) : null}
@@ -334,7 +334,7 @@ export function ChatMessageList({
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -4 }}
                     transition={{ duration: 0.22, ease: "easeOut" }}
-                    className="text-xs tabular-nums text-gray-400"
+                    className="text-xs tabular-nums text-muted-foreground"
                   >
                     {waitingElapsedSec}s
                   </motion.span>

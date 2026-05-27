@@ -47,7 +47,7 @@ export function ConfirmDialog({
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4"
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-foreground/40 p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="confirm-dialog-title"
@@ -55,31 +55,31 @@ export function ConfirmDialog({
           {...uiModalBackdrop}
         >
           <motion.div
-            className="relative w-full max-w-sm rounded-2xl border border-[#e5e5e5] bg-white p-6 shadow-[0_8px_40px_rgba(0,0,0,0.12)]"
+            className="relative w-full max-w-sm rounded-2xl border border-border bg-surface p-6 shadow-[0_8px_40px_rgba(0,0,0,0.12)]"
             onClick={(e) => e.stopPropagation()}
             {...uiModalPanel}
           >
             <button
               type="button"
               onClick={pending ? undefined : onCancel}
-              className="absolute right-3 top-3 rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:pointer-events-none"
+              className="absolute right-3 top-3 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none"
               aria-label="关闭"
             >
               <X className="h-5 w-5" />
             </button>
             <h2
               id="confirm-dialog-title"
-              className="pr-10 text-lg font-semibold text-gray-900"
+              className="pr-10 text-lg font-semibold text-foreground"
             >
               {title}
             </h2>
-            <p className="mt-3 text-sm text-gray-500 leading-relaxed">{description}</p>
+            <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{description}</p>
             <div className="mt-6 flex justify-end gap-2">
               <button
                 type="button"
                 disabled={pending}
                 onClick={onCancel}
-                className="px-4 py-2 text-sm font-medium text-gray-700 rounded-xl border border-[#e5e5e5] bg-white hover:bg-gray-50 transition-colors disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium text-foreground rounded-xl border border-border bg-surface hover:bg-muted transition-colors disabled:opacity-50"
               >
                 {cancelLabel}
               </button>
@@ -87,10 +87,10 @@ export function ConfirmDialog({
                 type="button"
                 disabled={pending}
                 onClick={onConfirm}
-                className={`px-4 py-2 text-sm font-medium rounded-xl text-white transition-colors disabled:opacity-50 ${
+                className={`px-4 py-2 text-sm font-medium rounded-xl transition-colors disabled:opacity-50 ${
                   danger
-                    ? "bg-red-600 hover:bg-red-700"
-                    : "bg-[#1a1a1a] hover:bg-gray-800"
+                    ? "bg-red-600 text-white hover:bg-red-700"
+                    : "bg-primary text-primary-foreground hover:opacity-90"
                 }`}
               >
                 {pending ? "请稍候…" : confirmLabel}

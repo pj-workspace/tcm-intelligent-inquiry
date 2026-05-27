@@ -67,8 +67,8 @@ export function SidebarConversationRow({
       className={clsx(
         "group relative flex min-h-[2.65rem] w-full items-center rounded-xl px-2 py-2 text-sm transition-colors",
         isActive
-          ? "border border-[#e5e5e5] bg-white font-medium text-gray-900 shadow-sm"
-          : "border border-transparent text-gray-600 hover:bg-gray-100/85",
+          ? "border border-border bg-surface font-medium text-foreground shadow-sm"
+          : "border border-transparent text-muted-foreground hover:bg-muted/85",
         batchMode && selectedIds.has(c.id) && "bg-orange-50/50 ring-1 ring-orange-300",
       )}
       onMouseEnter={
@@ -129,7 +129,7 @@ export function SidebarConversationRow({
                   e.stopPropagation();
                 }}
                 className={clsx(
-                  "shrink-0 rounded-md p-1.5 text-gray-400 transition-opacity hover:bg-gray-200/60 hover:text-gray-700",
+                  "shrink-0 rounded-md p-1.5 text-muted-foreground transition-opacity hover:bg-muted/60 hover:text-foreground",
                   "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100",
                   isActive && "opacity-100",
                 )}
@@ -140,13 +140,13 @@ export function SidebarConversationRow({
             </DropdownMenu.Trigger>
             <DropdownMenu.Portal>
               <DropdownMenu.Content
-                className="ui-radix-floating z-[300] min-w-[13rem] rounded-lg border border-[#e5e5e5] bg-white py-1 text-sm shadow-lg"
+                className="ui-radix-floating z-[300] min-w-[13rem] rounded-lg border border-border bg-surface py-1 text-sm shadow-lg"
                 align="end"
                 sideOffset={4}
                 onCloseAutoFocus={(e) => e.preventDefault()}
               >
                 <DropdownMenu.Item
-                  className="flex cursor-pointer items-center gap-2 px-3 py-2 outline-none hover:bg-gray-50"
+                  className="flex cursor-pointer items-center gap-2 px-3 py-2 outline-none hover:bg-muted"
                   onSelect={(e) => {
                     e.preventDefault();
                     onToggleBatchMode();
@@ -155,19 +155,19 @@ export function SidebarConversationRow({
                   <CheckSquare className="h-3.5 w-3.5" /> 批量操作
                 </DropdownMenu.Item>
                 <DropdownMenu.Sub>
-                  <DropdownMenu.SubTrigger className="flex cursor-default select-none items-center justify-between gap-2 rounded-none px-3 py-2 outline-none hover:bg-gray-50 data-[state=open]:bg-gray-50">
+                  <DropdownMenu.SubTrigger className="flex cursor-default select-none items-center justify-between gap-2 rounded-none px-3 py-2 outline-none hover:bg-muted data-[state=open]:bg-muted">
                     <span className="flex items-center gap-2">
                       <Folder className="h-3.5 w-3.5" /> 移动到分组
                     </span>
-                    <span className="text-xs text-gray-400">›</span>
+                    <span className="text-xs text-muted-foreground">›</span>
                   </DropdownMenu.SubTrigger>
                   <DropdownMenu.Portal>
                     <DropdownMenu.SubContent
-                      className="ui-radix-floating z-[301] max-h-[min(60vh,16rem)] min-w-[10rem] overflow-y-auto rounded-lg border border-[#e5e5e5] bg-white py-1 text-sm shadow-lg"
+                      className="ui-radix-floating z-[301] max-h-[min(60vh,16rem)] min-w-[10rem] overflow-y-auto rounded-lg border border-border bg-surface py-1 text-sm shadow-lg"
                       sideOffset={4}
                     >
                       <DropdownMenu.Item
-                        className="cursor-pointer px-3 py-2 outline-none hover:bg-gray-50"
+                        className="cursor-pointer px-3 py-2 outline-none hover:bg-muted"
                         disabled={movePendingId === c.id}
                         onSelect={() => void onMoveToGroup(c.id, null)}
                       >
@@ -176,7 +176,7 @@ export function SidebarConversationRow({
                       {folders.map((gf) => (
                         <DropdownMenu.Item
                           key={gf.id}
-                          className="cursor-pointer px-3 py-2 outline-none hover:bg-gray-50"
+                          className="cursor-pointer px-3 py-2 outline-none hover:bg-muted"
                           disabled={movePendingId === c.id || c.group_id === gf.id}
                           onSelect={() => void onMoveToGroup(c.id, gf.id)}
                         >
@@ -187,7 +187,7 @@ export function SidebarConversationRow({
                   </DropdownMenu.Portal>
                 </DropdownMenu.Sub>
                 <DropdownMenu.Item
-                  className="flex cursor-pointer items-center gap-2 px-3 py-2 outline-none hover:bg-gray-50"
+                  className="flex cursor-pointer items-center gap-2 px-3 py-2 outline-none hover:bg-muted"
                   onSelect={() => onRenameRequest(c.id, c.title || "新会话")}
                 >
                   <Pencil className="h-3.5 w-3.5" /> 编辑名称
@@ -199,21 +199,21 @@ export function SidebarConversationRow({
                   <Share2 className="h-3.5 w-3.5" /> 分享
                 </DropdownMenu.Item>
                 <DropdownMenu.Item
-                  className="flex cursor-pointer items-center gap-2 px-3 py-2 outline-none hover:bg-gray-50"
+                  className="flex cursor-pointer items-center gap-2 px-3 py-2 outline-none hover:bg-muted"
                   onSelect={() => onTogglePin(c.id)}
                 >
                   <Pin className="h-3.5 w-3.5" />{" "}
                   {isPinned ? "取消置顶" : "置顶"}
                 </DropdownMenu.Item>
                 <DropdownMenu.Item
-                  className="flex cursor-pointer items-center gap-2 px-3 py-2 outline-none hover:bg-gray-50"
+                  className="flex cursor-pointer items-center gap-2 px-3 py-2 outline-none hover:bg-muted"
                   onSelect={() =>
                     void onExportConversation(c.id, c.title || "新会话")
                   }
                 >
                   <Download className="h-3.5 w-3.5" /> 导出会话
                 </DropdownMenu.Item>
-                <DropdownMenu.Separator className="my-1 h-px bg-gray-100" />
+                <DropdownMenu.Separator className="my-1 h-px bg-muted" />
                 <DropdownMenu.Item
                   className="flex cursor-pointer items-center gap-2 px-3 py-2 text-red-600 outline-none hover:bg-red-50"
                   onSelect={() => onDelete(c.id)}
@@ -221,7 +221,7 @@ export function SidebarConversationRow({
                   <Trash2 className="h-3.5 w-3.5" /> 删除会话
                 </DropdownMenu.Item>
                 {movePendingId === c.id && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-500">
+                  <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" /> 更新中…
                   </div>
                 )}

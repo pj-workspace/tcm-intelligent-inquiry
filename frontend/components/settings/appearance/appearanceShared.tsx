@@ -1,5 +1,5 @@
 /**
- * @fileoverview 界面与偏好 Tab 共享 UI（Mock 阶段：仅本地交互，无持久化）。
+ * @fileoverview 界面与偏好 Tab 共享 UI 组件。
  */
 "use client";
 
@@ -21,14 +21,14 @@ export function PreferenceRow({
   return (
     <div
       className={clsx(
-        "flex flex-col gap-3 border-b border-[#f2f0ec] py-4 last:border-b-0 last:pb-0 first:pt-0 sm:flex-row sm:items-center sm:justify-between",
+        "flex flex-col gap-3 border-b border-card-header-border py-4 last:border-b-0 last:pb-0 first:pt-0 sm:flex-row sm:items-center sm:justify-between",
         className,
       )}
     >
       <div className="min-w-0 sm:max-w-md">
-        <p className="text-sm font-medium text-[#1c1917]">{label}</p>
+        <p className="text-sm font-medium text-foreground">{label}</p>
         {description ? (
-          <p className="mt-0.5 text-[13px] leading-relaxed text-gray-600">{description}</p>
+          <p className="mt-0.5 text-[13px] leading-relaxed text-muted-foreground">{description}</p>
         ) : null}
       </div>
       <div className="shrink-0 sm:min-w-[12rem]">{children}</div>
@@ -43,8 +43,8 @@ export type SegmentedOption<T extends string> = {
   ariaLabel?: string;
 };
 
-/** 三段式分段选择器（Mock）。 */
-export function MockSegmentedControl<T extends string>({
+/** 三段式分段选择器。 */
+export function SegmentedControl<T extends string>({
   value,
   onChange,
   options,
@@ -59,7 +59,7 @@ export function MockSegmentedControl<T extends string>({
     <div
       role="radiogroup"
       className={clsx(
-        "inline-flex rounded-xl border border-[#e7e5e4] bg-[#f5f5f4] p-1",
+        "inline-flex rounded-xl border border-border bg-muted p-1",
         className,
       )}
     >
@@ -77,8 +77,8 @@ export function MockSegmentedControl<T extends string>({
             className={clsx(
               "flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all",
               active
-                ? "bg-white text-[#1c1917] shadow-sm ring-1 ring-[#e7e5e4]"
-                : "text-gray-600 hover:text-gray-900",
+                ? "bg-surface text-foreground shadow-sm ring-1 ring-border"
+                : "text-muted-foreground hover:text-foreground",
             )}
           >
             {opt.icon}
@@ -90,7 +90,10 @@ export function MockSegmentedControl<T extends string>({
   );
 }
 
-/** 开关（Mock）。 */
+/** @deprecated 使用 SegmentedControl */
+export const MockSegmentedControl = SegmentedControl;
+
+/** 开关（Mock，语言/通知等功能接入前使用）。 */
 export function MockToggle({
   checked,
   onChange,
@@ -112,14 +115,14 @@ export function MockToggle({
       onClick={() => onChange(!checked)}
       className={clsx(
         "relative inline-flex h-7 w-12 shrink-0 rounded-full transition-colors",
-        checked ? "bg-orange-500" : "bg-gray-300",
+        checked ? "bg-orange-500" : "bg-gray-300 dark:bg-zinc-600",
         disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
       )}
     >
       <span
         aria-hidden
         className={clsx(
-          "absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow-sm transition-transform",
+          "absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-surface shadow-sm transition-transform",
           checked ? "translate-x-5" : "translate-x-0",
         )}
       />

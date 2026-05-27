@@ -12,7 +12,7 @@ export function AttachmentUploadSkeletonTile({ progress }: { progress: number })
 
   return (
     <div
-      className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-zinc-100"
+      className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-border bg-zinc-100"
       role="progressbar"
       aria-valuemin={0}
       aria-valuemax={100}
@@ -21,12 +21,12 @@ export function AttachmentUploadSkeletonTile({ progress }: { progress: number })
       style={{ contain: "layout style paint" }}
     >
       <div className="pointer-events-none absolute inset-0 opacity-[0.85] attachment-upload-skeleton-shimmer" />
-      <div className="absolute inset-0 flex items-center justify-center bg-white/[0.28]">
+      <div className="absolute inset-0 flex items-center justify-center bg-surface/[0.28]">
         <svg
           width="52"
           height="52"
           viewBox="0 0 36 36"
-          className="-rotate-90 shrink-0 text-gray-900 [transition:none]"
+          className="-rotate-90 shrink-0 text-foreground [transition:none]"
           aria-hidden
         >
           <circle cx="18" cy="18" r={r} fill="none" stroke="#e4e4e7" strokeWidth="3" />
@@ -42,7 +42,7 @@ export function AttachmentUploadSkeletonTile({ progress }: { progress: number })
             strokeDashoffset={dashOffset}
           />
         </svg>
-        <span className="pointer-events-none absolute tabular-nums text-[11px] font-semibold leading-none tracking-tight text-gray-800 drop-shadow-[0_0_1px_rgba(255,255,255,0.9)]">
+        <span className="pointer-events-none absolute tabular-nums text-[11px] font-semibold leading-none tracking-tight text-foreground drop-shadow-[0_0_1px_rgba(255,255,255,0.9)]">
           {pctLabel}%
         </span>
       </div>

@@ -24,6 +24,8 @@ export const metadata: Metadata = {
   description: "AI-powered Traditional Chinese Medicine Assistant",
 };
 
+const themeInitScript = `(function(){try{var k='tcm-theme',d=document.documentElement,c=d.classList;c.remove('light','dark');var t=localStorage.getItem(k);if(t==='system'||!t){var m=window.matchMedia('(prefers-color-scheme: dark)');if(m.matches){c.add('dark');d.style.colorScheme='dark'}else{d.style.colorScheme='light'}}else if(t==='dark'||t==='light'){c.add(t);d.style.colorScheme=t}}catch(e){}})();`;
+
 /** 根 HTML 壳：挂载字体 CSS 变量与全局 Auth/Toast Providers。 */
 export default function RootLayout({
   children,
@@ -33,9 +35,13 @@ export default function RootLayout({
   return (
     <html
       lang="zh-CN"
+      suppressHydrationWarning
       className={`${inter.variable} ${notoSerifSC.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#f9f9f8] text-[#1a1a1a] font-sans">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
+      <body className="flex min-h-full flex-col bg-background font-sans text-foreground">
         <Providers>{children}</Providers>
       </body>
     </html>

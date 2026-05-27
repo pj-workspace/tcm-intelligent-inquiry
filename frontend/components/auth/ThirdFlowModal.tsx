@@ -116,21 +116,21 @@ export const ThirdFlowModal = forwardRef<HTMLDivElement, ThirdFlowModalProps>(
     return (
       <motion.div
         ref={ref}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm"
         {...uiModalBackdrop}
       >
         <motion.div
-          className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-[#e5e5e5]"
+          className="w-full max-w-md rounded-2xl bg-surface p-6 shadow-xl border border-border"
           onClick={(e) => e.stopPropagation()}
           {...uiModalPanel}
         >
           <h2 className="text-lg font-semibold mb-1">绑定邮箱</h2>
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-sm text-muted-foreground mb-4">
             请在下方填写邮箱并完成验证，以继续使用 {provider} 登录。
           </p>
           <form onSubmit={submitComplete} className="space-y-3">
             <div>
-              <label className="text-xs text-gray-500">邮箱</label>
+              <label className="text-xs text-muted-foreground">邮箱</label>
               <input
                 type="email"
                 className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
@@ -156,7 +156,7 @@ export const ThirdFlowModal = forwardRef<HTMLDivElement, ThirdFlowModalProps>(
                 type="button"
                 disabled={sendCd.left > 0 || sendBusy}
                 onClick={() => void sendCode()}
-                className="shrink-0 rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3 py-2 text-sm whitespace-nowrap disabled:opacity-50"
+                className="shrink-0 rounded-xl border border-border bg-muted px-3 py-2 text-sm whitespace-nowrap disabled:opacity-50"
               >
                 {sendBusy
                   ? "发送中…"
@@ -168,7 +168,7 @@ export const ThirdFlowModal = forwardRef<HTMLDivElement, ThirdFlowModalProps>(
             {needPw && (
               <>
                 <div>
-                  <label className="text-xs text-gray-500">设置密码（至少 6 位）</label>
+                  <label className="text-xs text-muted-foreground">设置密码（至少 6 位）</label>
                   <input
                     type="password"
                     className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
@@ -179,7 +179,7 @@ export const ThirdFlowModal = forwardRef<HTMLDivElement, ThirdFlowModalProps>(
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500">昵称（可选）</label>
+                  <label className="text-xs text-muted-foreground">昵称（可选）</label>
                   <input
                     type="text"
                     className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
@@ -206,7 +206,7 @@ export const ThirdFlowModal = forwardRef<HTMLDivElement, ThirdFlowModalProps>(
               <button
                 type="submit"
                 disabled={pending}
-                className="flex-1 py-2 rounded-xl bg-[#1a1a1a] text-white text-sm disabled:opacity-50"
+                className="flex-1 py-2 rounded-xl bg-primary text-primary-foreground text-sm disabled:opacity-50"
               >
                 {pending ? "提交中…" : "完成绑定"}
               </button>

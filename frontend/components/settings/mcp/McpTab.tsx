@@ -86,15 +86,15 @@ export function McpTab() {
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h2 className="text-lg font-semibold text-gray-900">MCP 服务</h2>
-          <p className="mt-1 text-sm text-gray-500">
+          <h2 className="text-lg font-semibold text-foreground">MCP 服务</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             连接 MCP 服务器（HTTP 远端或 stdio 本地 command，与 Cursor mcp.json 格式兼容），动态扩展大模型能力。
           </p>
         </div>
         {!showAddForm && (
           <button
             onClick={() => setShowAddForm(true)}
-            className="flex w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-black px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-gray-800 sm:w-auto"
+            className="flex w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground shadow-sm transition-colors hover:opacity-90 sm:w-auto"
           >
             <Plus className="h-4 w-4" />
             添加服务
@@ -130,8 +130,8 @@ export function McpTab() {
 
       <div className="grid gap-4">
         {!showAddForm && servers.length === 0 && !error ? (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 py-12 text-center text-sm text-gray-500">
-            <Plug className="mb-3 h-8 w-8 text-gray-300" />
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
+            <Plug className="mb-3 h-8 w-8 text-muted-foreground/40" />
             <p>暂无 MCP 服务</p>
             <p className="mt-1 text-xs">点击右上角添加新服务并连接远端工具</p>
           </div>

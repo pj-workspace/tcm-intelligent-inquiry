@@ -323,7 +323,7 @@ export function AccountTab() {
   return (
     <div className="space-y-8 pb-12">
       <header className="space-y-1">
-        <h1 className="text-xl font-semibold tracking-tight text-[#1c1917]">账号与安全</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">账号与安全</h1>
       </header>
 
       {loadErr && (
@@ -333,18 +333,18 @@ export function AccountTab() {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-2xl border border-[#ebe8e3] bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+      <div className="overflow-hidden rounded-2xl border border-card-border bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
         <div className="flex flex-col gap-6 p-6 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex gap-4">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 text-lg font-semibold text-white shadow-md ring-2 ring-orange-100">
               {user?.username ? initials(user.username) : "—"}
             </div>
             <div className="min-w-0">
-              <p className="truncate text-[15px] font-semibold text-[#1c1917]">{user?.username ?? "—"}</p>
+              <p className="truncate text-[15px] font-semibold text-foreground">{user?.username ?? "—"}</p>
               {user?.email ? (
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <Mail className="h-4 w-4 shrink-0 text-gray-400" aria-hidden />
-                  <span className="truncate text-[13px] text-gray-800">{user.email}</span>
+                  <Mail className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                  <span className="truncate text-[13px] text-foreground">{user.email}</span>
                   {emailBadge}
                 </div>
               ) : (
@@ -379,12 +379,12 @@ export function AccountTab() {
           </div>
         ) : (
           <div className="max-w-xl space-y-4">
-            <p className="text-[13px] leading-relaxed text-gray-600">
+            <p className="text-[13px] leading-relaxed text-muted-foreground">
               先填写当前密码与新密码，验证通过后再收取邮箱验证码完成修改。
             </p>
             <button
               type="button"
-              className="inline-flex w-full items-center justify-center rounded-xl bg-[#1a1a1a] px-5 py-3 text-[14px] font-semibold text-white shadow-sm transition-colors hover:bg-neutral-900 sm:w-auto sm:min-w-[10rem]"
+              className="inline-flex w-full items-center justify-center rounded-xl bg-primary px-5 py-3 text-[14px] font-semibold text-primary-foreground shadow-sm transition-colors hover:opacity-90 sm:w-auto sm:min-w-[10rem]"
               onClick={() => openChangePwModal()}
             >
               修改密码
@@ -397,7 +397,7 @@ export function AccountTab() {
         {changePwModalOpen && user?.email ? (
           <motion.div
             key="account-change-pw"
-            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm"
             role="dialog"
             aria-modal="true"
             aria-labelledby="change-pw-modal-title"
@@ -409,32 +409,32 @@ export function AccountTab() {
             {...uiModalBackdrop}
           >
             <motion.div
-              className="relative w-full max-w-md overflow-hidden rounded-2xl border border-[#ebe8e3] bg-white shadow-[0_8px_40px_rgba(0,0,0,0.12)]"
+              className="relative w-full max-w-md overflow-hidden rounded-2xl border border-card-border bg-surface shadow-[0_8px_40px_rgba(0,0,0,0.12)]"
               onClick={(e) => e.stopPropagation()}
               {...uiModalPanel}
             >
             <button
               type="button"
-              className="absolute right-3 top-3 rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:pointer-events-none"
+              className="absolute right-3 top-3 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none"
               disabled={pwSubmitBusy || pwSendBusy || checkPwBusy}
               onClick={() => closeChangePwModal()}
               aria-label="关闭"
             >
               <X className="h-5 w-5" />
             </button>
-            <div className="border-b border-[#f2f0ec] bg-gradient-to-br from-orange-50/60 via-white to-transparent px-6 pb-5 pt-6">
-              <h2 id="change-pw-modal-title" className="pr-10 text-lg font-semibold text-[#1c1917]">
+            <div className="border-b border-card-header-border bg-gradient-to-br from-orange-50/60 via-surface to-transparent dark:from-orange-950/40 px-6 pb-5 pt-6">
+              <h2 id="change-pw-modal-title" className="pr-10 text-lg font-semibold text-foreground">
                 修改密码
               </h2>
-              <p className="mt-1 text-[13px] text-gray-600">
+              <p className="mt-1 text-[13px] text-muted-foreground">
                 {changePwPhase === "credentials" ? (
                   <>
-                    <span className="font-medium text-[#78716c]">步骤 1/2：</span>
+                    <span className="font-medium text-muted-foreground">步骤 1/2：</span>
                     验证当前密码并设置新密码。
                   </>
                 ) : (
                   <>
-                    <span className="font-medium text-[#78716c]">步骤 2/2：</span>
+                    <span className="font-medium text-muted-foreground">步骤 2/2：</span>
                     输入绑定邮箱收到的 6 位验证码以完成修改（可在此重发）。
                   </>
                 )}
@@ -452,7 +452,7 @@ export function AccountTab() {
                   <div>
                     <label
                       htmlFor="cp-old-modal"
-                      className="block text-[11px] font-medium uppercase tracking-wide text-gray-500"
+                      className="block text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
                     >
                       当前密码
                     </label>
@@ -460,21 +460,21 @@ export function AccountTab() {
                       id="cp-old-modal"
                       type="password"
                       autoComplete="current-password"
-                      className={`mt-1.5 w-full rounded-xl border bg-[#fdfdfc] px-3 py-2.5 text-[14px] shadow-inner outline-none focus:bg-white ${oldPw.length === 0 && newPw.length > 0 ? "border-amber-200" : "border-[#e7e5e4]"} focus:border-gray-400`}
+                      className={`mt-1.5 w-full rounded-xl border bg-background px-3 py-2.5 text-[14px] shadow-inner outline-none focus:bg-surface ${oldPw.length === 0 && newPw.length > 0 ? "border-amber-200" : "border-border"} focus:border-border`}
                       value={oldPw}
                       onChange={(e) => setOldPw(e.target.value)}
                       placeholder="当前登录密码"
                     />
                   </div>
                   <div>
-                    <label htmlFor="cp-new-modal" className="block text-[11px] font-medium uppercase tracking-wide text-gray-500">
+                    <label htmlFor="cp-new-modal" className="block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                       新密码
                     </label>
                     <input
                       id="cp-new-modal"
                       type="password"
                       autoComplete="new-password"
-                      className={`mt-1.5 w-full rounded-xl border bg-[#fdfdfc] px-3 py-2.5 text-[14px] shadow-inner outline-none focus:bg-white ${newPw.length > 0 && newPw.length < 6 ? "border-amber-300" : "border-[#e7e5e4]"} focus:border-gray-400`}
+                      className={`mt-1.5 w-full rounded-xl border bg-background px-3 py-2.5 text-[14px] shadow-inner outline-none focus:bg-surface ${newPw.length > 0 && newPw.length < 6 ? "border-amber-300" : "border-border"} focus:border-border`}
                       value={newPw}
                       minLength={6}
                       onChange={(e) => setNewPw(e.target.value)}
@@ -482,14 +482,14 @@ export function AccountTab() {
                     />
                   </div>
                   <div>
-                    <label htmlFor="cp-new2-modal" className="block text-[11px] font-medium uppercase tracking-wide text-gray-500">
+                    <label htmlFor="cp-new2-modal" className="block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                       确认新密码
                     </label>
                     <input
                       id="cp-new2-modal"
                       type="password"
                       autoComplete="new-password"
-                      className={`mt-1.5 w-full rounded-xl border bg-[#fdfdfc] px-3 py-2.5 text-[14px] shadow-inner outline-none focus:bg-white ${newPwConfirm.length > 0 && newPwConfirm !== newPw ? "border-amber-400" : "border-[#e7e5e4]"} focus:border-gray-400`}
+                      className={`mt-1.5 w-full rounded-xl border bg-background px-3 py-2.5 text-[14px] shadow-inner outline-none focus:bg-surface ${newPwConfirm.length > 0 && newPwConfirm !== newPw ? "border-amber-400" : "border-border"} focus:border-border`}
                       value={newPwConfirm}
                       minLength={6}
                       onChange={(e) => setNewPwConfirm(e.target.value)}
@@ -500,7 +500,7 @@ export function AccountTab() {
                 <button
                   type="submit"
                   disabled={checkPwBusy || pwSendBusy || pwSubmitBusy}
-                  className="w-full rounded-xl bg-[#1a1a1a] py-3 text-[14px] font-semibold text-white shadow-sm hover:bg-neutral-900 disabled:pointer-events-none disabled:opacity-60"
+                  className="w-full rounded-xl bg-primary py-3 text-[14px] font-semibold text-primary-foreground shadow-sm hover:opacity-90 disabled:pointer-events-none disabled:opacity-60"
                 >
                   {checkPwBusy ? "验证中…" : "下一步：发送邮箱验证码"}
                 </button>
@@ -529,21 +529,21 @@ export function AccountTab() {
                 <div>
                   <label
                     htmlFor="cp-code-modal"
-                    className="block text-[11px] font-medium uppercase tracking-wide text-gray-500"
+                    className="block text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
                   >
                     邮箱验证码
                   </label>
-                  <div className="mt-1.5 space-y-2 sm:relative sm:min-h-[44px] sm:overflow-hidden sm:rounded-xl sm:border sm:bg-[#fdfdfc] sm:pl-3 sm:transition focus-within:sm:border-gray-400 focus-within:sm:bg-white focus-within:sm:ring-2 focus-within:sm:ring-orange-500/15 sm:focus-within:ring-2 sm:focus-within:ring-orange-500/15">
+                  <div className="mt-1.5 space-y-2 sm:relative sm:min-h-[44px] sm:overflow-hidden sm:rounded-xl sm:border sm:bg-background sm:pl-3 sm:transition focus-within:sm:border-border focus-within:sm:bg-surface focus-within:sm:ring-2 focus-within:sm:ring-orange-500/15 sm:focus-within:ring-2 sm:focus-within:ring-orange-500/15">
                     <input
                       id="cp-code-modal"
                       type="text"
                       inputMode="numeric"
                       autoComplete="one-time-code"
                       aria-invalid={cpCode.length > 0 && cpCode.length !== 6}
-                      className={`h-[42px] w-full rounded-xl border bg-[#fdfdfc] px-3 py-2 text-[14px] outline-none placeholder:text-gray-400 sm:border-0 sm:bg-transparent sm:py-2 sm:pl-0 sm:pr-[8.75rem] ${
+                      className={`h-[42px] w-full rounded-xl border bg-background px-3 py-2 text-[14px] outline-none placeholder:text-muted-foreground sm:border-0 sm:bg-transparent sm:py-2 sm:pl-0 sm:pr-[8.75rem] ${
                         cpCode.length > 0 && cpCode.length < 6
                           ? "border-amber-300"
-                          : "border-[#e7e5e4]"
+                          : "border-border"
                       }`}
                       value={cpCode}
                       onChange={(e) => setCpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
@@ -568,7 +568,7 @@ export function AccountTab() {
                 <button
                   type="submit"
                   disabled={pwSubmitBusy || pwSendBusy || checkPwBusy}
-                  className="w-full rounded-xl bg-[#1a1a1a] py-3 text-[14px] font-semibold text-white shadow-sm hover:bg-neutral-900 disabled:pointer-events-none disabled:opacity-60"
+                  className="w-full rounded-xl bg-primary py-3 text-[14px] font-semibold text-primary-foreground shadow-sm hover:opacity-90 disabled:pointer-events-none disabled:opacity-60"
                 >
                   {pwSubmitBusy ? "提交中…" : "确认修改密码"}
                 </button>
@@ -588,7 +588,7 @@ export function AccountTab() {
         {unbindModalProvider ? (
           <motion.div
             key={`account-unbind-${unbindModalProvider}`}
-            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm"
             role="dialog"
             aria-modal="true"
             aria-labelledby="unbind-modal-title"
@@ -605,13 +605,13 @@ export function AccountTab() {
             {...uiModalBackdrop}
           >
             <motion.div
-              className="relative w-full max-w-md overflow-hidden rounded-2xl border border-[#ebe8e3] bg-white shadow-[0_8px_40px_rgba(0,0,0,0.12)]"
+              className="relative w-full max-w-md overflow-hidden rounded-2xl border border-card-border bg-surface shadow-[0_8px_40px_rgba(0,0,0,0.12)]"
               onClick={(e) => e.stopPropagation()}
               {...uiModalPanel}
             >
             <button
               type="button"
-              className="absolute right-3 top-3 z-10 rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:pointer-events-none"
+              className="absolute right-3 top-3 z-10 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none"
               disabled={
                 unbindVerifyingFor === unbindModalProvider || unbindSendingFor === unbindModalProvider
               }
@@ -620,26 +620,26 @@ export function AccountTab() {
             >
               <X className="h-5 w-5" />
             </button>
-            <div className="border-b border-[#f2f0ec] bg-gradient-to-br from-orange-50/60 via-white to-transparent px-6 pb-5 pt-6">
-              <h2 id="unbind-modal-title" className="pr-10 text-lg font-semibold text-[#1c1917]">
+            <div className="border-b border-card-header-border bg-gradient-to-br from-orange-50/60 via-surface to-transparent dark:from-orange-950/40 px-6 pb-5 pt-6">
+              <h2 id="unbind-modal-title" className="pr-10 text-lg font-semibold text-foreground">
                 解除「{providerDisplayName(unbindModalProvider)}」绑定
               </h2>
-              <p className="mt-2 text-[13px] leading-relaxed text-gray-600">
+              <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
                 将向「{user?.email ?? "—"}」发送验证码。解绑后仍可使用用户名/邮箱和密码登录。
               </p>
             </div>
             <div className="space-y-5 p-6">
-              <div className="space-y-2 sm:relative sm:min-h-[44px] sm:overflow-hidden sm:rounded-xl sm:border sm:bg-[#fdfdfc] sm:pl-3 sm:transition focus-within:sm:border-gray-400 focus-within:sm:bg-white focus-within:sm:ring-2 focus-within:sm:ring-orange-500/15">
+              <div className="space-y-2 sm:relative sm:min-h-[44px] sm:overflow-hidden sm:rounded-xl sm:border sm:bg-background sm:pl-3 sm:transition focus-within:sm:border-border focus-within:sm:bg-surface focus-within:sm:ring-2 focus-within:sm:ring-orange-500/15">
                 <input
                   type="text"
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   placeholder="请输入 6 位验证码"
-                  className={`h-[42px] w-full rounded-xl border bg-[#fdfdfc] px-3 py-2 text-[14px] tracking-wide outline-none placeholder:text-gray-400 sm:border-0 sm:bg-transparent sm:py-2 sm:pl-0 sm:pr-[10.5rem] ${
+                  className={`h-[42px] w-full rounded-xl border bg-background px-3 py-2 text-[14px] tracking-wide outline-none placeholder:text-muted-foreground sm:border-0 sm:bg-transparent sm:py-2 sm:pl-0 sm:pr-[10.5rem] ${
                     (unbindCode[unbindModalProvider]?.length ?? 0) > 0 &&
                     (unbindCode[unbindModalProvider]?.length ?? 0) < 6
                       ? "border-amber-300"
-                      : "border-[#e7e5e4]"
+                      : "border-border"
                   }`}
                   value={unbindCode[unbindModalProvider] ?? ""}
                   maxLength={8}
@@ -675,7 +675,7 @@ export function AccountTab() {
                     unbindVerifyingFor === unbindModalProvider ||
                     unbindSendingFor === unbindModalProvider
                   }
-                  className="rounded-xl border border-[#e7e5e4] px-4 py-2.5 text-[13px] font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  className="rounded-xl border border-border px-4 py-2.5 text-[13px] font-medium text-foreground hover:bg-muted disabled:opacity-50"
                   onClick={() => closeUnbindModal()}
                 >
                   取消
@@ -683,7 +683,7 @@ export function AccountTab() {
                 <button
                   type="button"
                   disabled={unbindVerifyingFor === unbindModalProvider || unbindSendingFor === unbindModalProvider}
-                  className="rounded-xl bg-[#1a1a1a] px-5 py-2.5 text-[13px] font-semibold text-white hover:bg-gray-900 disabled:pointer-events-none disabled:opacity-50"
+                  className="rounded-xl bg-primary px-5 py-2.5 text-[13px] font-semibold text-primary-foreground hover:opacity-90 disabled:pointer-events-none disabled:opacity-50"
                   onClick={() => void verifyUnbind(unbindModalProvider)}
                 >
                   {unbindVerifyingFor === unbindModalProvider ? "解绑中…" : "确认解绑"}

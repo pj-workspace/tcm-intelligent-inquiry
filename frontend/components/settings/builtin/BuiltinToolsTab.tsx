@@ -33,7 +33,7 @@ const CATEGORY_META: Record<
   knowledge: { label: "知识库", color: "text-orange-600", bg: "bg-orange-50", Icon: Database },
   formula:   { label: "方剂",   color: "text-emerald-600", bg: "bg-emerald-50", Icon: BookOpen },
   web:       { label: "联网",   color: "text-blue-600",    bg: "bg-blue-50",    Icon: Globe },
-  system:    { label: "系统",   color: "text-gray-500",    bg: "bg-gray-100",   Icon: Settings },
+  system:    { label: "系统",   color: "text-muted-foreground",    bg: "bg-muted",   Icon: Settings },
   mcp:       { label: "MCP",    color: "text-violet-600",  bg: "bg-violet-50",  Icon: Terminal },
 };
 
@@ -66,7 +66,7 @@ function ToolCard({
     <button
       type="button"
       onClick={onClick}
-      className="group w-full rounded-xl border border-[#e5e5e5] bg-white p-4 text-left shadow-sm transition-all hover:border-orange-200 hover:shadow-md sm:p-5"
+      className="group w-full rounded-xl border border-border bg-surface p-4 text-left shadow-sm transition-all hover:border-orange-200 hover:shadow-md sm:p-5"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
@@ -77,28 +77,28 @@ function ToolCard({
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-semibold text-gray-900">{tool.label}</h3>
+              <h3 className="font-semibold text-foreground">{tool.label}</h3>
               <span
                 className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${meta.bg} ${meta.color}`}
               >
                 {meta.label}
               </span>
             </div>
-            <p className="mt-0.5 font-mono text-xs text-gray-400">{tool.name}</p>
+            <p className="mt-0.5 font-mono text-xs text-muted-foreground">{tool.name}</p>
           </div>
         </div>
-        <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-orange-400" />
+        <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-orange-400" />
       </div>
 
-      <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-gray-600">{summary}</p>
+      <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground">{summary}</p>
 
-      <div className="mt-3 flex items-center justify-between text-xs text-gray-400">
+      <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
         <div className="flex items-center gap-1.5">
           <Users className="h-3.5 w-3.5" />
           {tool.used_by_agents > 0 ? (
             <span>
               被{" "}
-              <span className="font-medium text-gray-600">{tool.used_by_agents}</span> 个 Agent
+              <span className="font-medium text-muted-foreground">{tool.used_by_agents}</span> 个 Agent
               使用
             </span>
           ) : (
@@ -189,16 +189,16 @@ export function BuiltinToolsTab() {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h2 className="text-lg font-semibold text-gray-900">内置工具</h2>
-          <p className="mt-1 text-sm text-gray-500">
+          <h2 className="text-lg font-semibold text-foreground">内置工具</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             系统核心功能所依赖的工具集，点击卡片查看详情和在线试用。
           </p>
         </div>
         {tools.length > 0 && (
-          <div className="flex w-full shrink-0 items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1.5 text-xs text-gray-500 ring-1 ring-inset ring-gray-200 sm:w-auto">
-            共 <span className="font-semibold text-gray-700">{tools.length}</span> 个工具 ·
+          <div className="flex w-full shrink-0 items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs text-muted-foreground ring-1 ring-inset ring-gray-200 sm:w-auto">
+            共 <span className="font-semibold text-foreground">{tools.length}</span> 个工具 ·
             Agent 引用{" "}
-            <span className="font-semibold text-gray-700">{totalAgentRefs}</span> 次
+            <span className="font-semibold text-foreground">{totalAgentRefs}</span> 次
           </div>
         )}
       </div>
@@ -219,7 +219,7 @@ export function BuiltinToolsTab() {
                 "shrink-0 rounded-full px-3 py-1 text-xs font-medium transition",
                 categoryFilter === "all"
                   ? "bg-orange-100 text-orange-800 ring-1 ring-orange-200"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200",
+                  : "bg-muted text-muted-foreground hover:bg-muted",
               )}
             >
               全部
@@ -235,7 +235,7 @@ export function BuiltinToolsTab() {
                     "shrink-0 rounded-full px-3 py-1 text-xs font-medium transition",
                     categoryFilter === cat
                       ? "bg-orange-100 text-orange-800 ring-1 ring-orange-200"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200",
+                      : "bg-muted text-muted-foreground hover:bg-muted",
                   )}
                 >
                   {meta.label}
@@ -247,7 +247,7 @@ export function BuiltinToolsTab() {
       )}
 
       {tools.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-200 p-8 text-center text-sm text-gray-500">
+        <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
           暂无内置工具
         </div>
       ) : list.filteredCount === 0 ? (
@@ -266,8 +266,8 @@ export function BuiltinToolsTab() {
             <div key={cat}>
               <div className="mb-3 flex items-center gap-2">
                 <catMeta.Icon className={`h-4 w-4 ${catMeta.color}`} />
-                <span className="text-sm font-medium text-gray-700">{catMeta.label}</span>
-                <div className="h-px flex-1 bg-gray-100" />
+                <span className="text-sm font-medium text-foreground">{catMeta.label}</span>
+                <div className="h-px flex-1 bg-muted" />
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 {group.map((tool) => (

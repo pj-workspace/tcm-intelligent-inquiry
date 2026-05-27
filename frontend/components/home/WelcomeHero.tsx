@@ -228,12 +228,12 @@ export function WelcomeHero() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-4 pb-4 pt-6 text-center md:pt-8">
-      <div className="flex flex-wrap items-center justify-center gap-2.5 font-serif text-2xl text-[#1a1a1a] md:gap-3 md:text-3xl">
+      <div className="flex flex-wrap items-center justify-center gap-2.5 font-serif text-2xl text-foreground md:gap-3 md:text-3xl">
         <Sun className="h-7 w-7 shrink-0 text-orange-500 md:h-8 md:w-8" aria-hidden />
         <h1 className="text-balance">{title}</h1>
       </div>
       <p
-        className="mx-auto mt-4 flex min-h-[7rem] w-full max-w-lg flex-col items-center text-center text-pretty text-sm leading-relaxed text-gray-500 md:min-h-[7.25rem]"
+        className="mx-auto mt-4 flex min-h-[7rem] w-full max-w-lg flex-col items-center text-center text-pretty text-sm leading-relaxed text-muted-foreground md:min-h-[7.25rem]"
         aria-live="polite"
       >
         <span

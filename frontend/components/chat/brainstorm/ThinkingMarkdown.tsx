@@ -44,7 +44,7 @@ const thinkingComponents: Components = {
     }
     return (
       <code
-        className="rounded bg-gray-100 px-1 py-0.5 font-mono text-[12px] text-gray-700"
+        className="rounded bg-muted px-1 py-0.5 font-mono text-[12px] text-foreground"
         {...props}
       >
         {children}
@@ -53,14 +53,14 @@ const thinkingComponents: Components = {
   },
   pre: ({ node: _n, children, ...props }) => (
     <pre
-      className="my-1.5 max-w-full overflow-x-auto rounded-md bg-gray-50/80 p-2.5 font-mono text-[12px] leading-relaxed text-gray-700 first:mt-0 last:mb-0"
+      className="my-1.5 max-w-full overflow-x-auto rounded-md bg-muted/80 p-2.5 font-mono text-[12px] leading-relaxed text-foreground first:mt-0 last:mb-0"
       {...props}
     >
       {children}
     </pre>
   ),
   strong: ({ node: _n, children, ...props }) => (
-    <strong className="font-semibold text-gray-700" {...props}>
+    <strong className="font-semibold text-foreground" {...props}>
       {children}
     </strong>
   ),
@@ -71,7 +71,7 @@ const thinkingComponents: Components = {
   ),
   blockquote: ({ node: _n, children, ...props }) => (
     <blockquote
-      className="my-1 border-l-2 border-[#e2d8ca] pl-2.5 text-gray-500 first:mt-0 last:mb-0"
+      className="my-1 border-l-2 border-[#e2d8ca] pl-2.5 text-muted-foreground first:mt-0 last:mb-0"
       {...props}
     >
       {children}
@@ -79,7 +79,7 @@ const thinkingComponents: Components = {
   ),
   h1: ({ node: _n, children, ...props }) => (
     <h4
-      className="my-1 text-[13.5px] font-semibold text-gray-700 first:mt-0 last:mb-0"
+      className="my-1 text-[13.5px] font-semibold text-foreground first:mt-0 last:mb-0"
       {...props}
     >
       {children}
@@ -87,7 +87,7 @@ const thinkingComponents: Components = {
   ),
   h2: ({ node: _n, children, ...props }) => (
     <h4
-      className="my-1 text-[13.5px] font-semibold text-gray-700 first:mt-0 last:mb-0"
+      className="my-1 text-[13.5px] font-semibold text-foreground first:mt-0 last:mb-0"
       {...props}
     >
       {children}
@@ -95,7 +95,7 @@ const thinkingComponents: Components = {
   ),
   h3: ({ node: _n, children, ...props }) => (
     <h4
-      className="my-1 text-[13px] font-semibold text-gray-700 first:mt-0 last:mb-0"
+      className="my-1 text-[13px] font-semibold text-foreground first:mt-0 last:mb-0"
       {...props}
     >
       {children}
@@ -103,7 +103,7 @@ const thinkingComponents: Components = {
   ),
   h4: ({ node: _n, children, ...props }) => (
     <h4
-      className="my-1 text-[13px] font-semibold text-gray-700 first:mt-0 last:mb-0"
+      className="my-1 text-[13px] font-semibold text-foreground first:mt-0 last:mb-0"
       {...props}
     >
       {children}
@@ -168,7 +168,7 @@ export function ThinkingMarkdown({
     <div
       // 统一 leading-[1.4rem]：与 TimelineNode top-[0.15rem] 配合让图标视觉中心
       // 与首行中心同高（图标中心 = 1.4rem × 0.5 = 0.7rem）
-      className="text-[13px] leading-[1.4rem] text-gray-500"
+      className="text-[13px] leading-[1.4rem] text-muted-foreground"
     >
       <div
         ref={contentRef}
@@ -191,7 +191,7 @@ export function ThinkingMarkdown({
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="mt-1 text-[12px] text-gray-400 transition-colors hover:text-gray-600"
+          className="mt-1 text-[12px] text-muted-foreground transition-colors hover:text-muted-foreground"
         >
           {expanded ? "Show less" : "Show more"}
         </button>

@@ -67,7 +67,7 @@ export function BrainstormPanel({
           <motion.span
             animate={{ rotate: isOpen ? 0 : -90 }}
             transition={{ duration: 0.18, ease: "easeInOut" }}
-            className="relative z-0 shrink-0 text-gray-400"
+            className="relative z-0 shrink-0 text-muted-foreground"
           >
             <ChevronDown className="h-3.5 w-3.5" />
           </motion.span>
@@ -78,7 +78,7 @@ export function BrainstormPanel({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
-              className="relative z-0 truncate text-[13px] font-medium text-gray-500"
+              className="relative z-0 truncate text-[13px] font-medium text-muted-foreground"
             >
               {traceHeadline}
             </motion.span>

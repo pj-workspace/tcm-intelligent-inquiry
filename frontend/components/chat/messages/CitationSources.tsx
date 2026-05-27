@@ -52,7 +52,7 @@ function SourceCard({ source, dense = false }: { source: CitationSource; dense?:
       : null;
 
   return (
-    <div className="rounded-xl border border-[#eadfce] bg-white/95 p-3 shadow-sm">
+    <div className="rounded-xl border border-border bg-surface/95 p-3 shadow-sm">
       <div className="flex items-start gap-2.5">
         <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#f7f0e6] text-[#9a5b1f]">
           <Icon className="h-3.5 w-3.5" strokeWidth={1.8} />
@@ -106,7 +106,7 @@ export function CitationMarker({
   // 模型引用了未登记或已过滤的 id 时仍显示灰色占位，避免正文缺角标。
   if (!source) {
     return (
-      <span className="mx-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full border border-stone-200 px-1 align-super text-[10px] font-medium leading-none text-stone-400">
+      <span className="mx-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full border border-border px-1 align-super text-[10px] font-medium leading-none text-stone-400">
         {id.replace(/^[A-Z]/, "")}
       </span>
     );
@@ -130,7 +130,7 @@ export function CitationMarker({
           align="center"
           sideOffset={8}
           collisionPadding={16}
-          className="z-[10060] w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-stone-200 bg-white p-2 shadow-xl"
+          className="z-[10060] w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-border bg-surface p-2 shadow-xl"
         >
           <SourceCard source={source} />
           <HoverCard.Arrow className="fill-white" />
@@ -168,18 +168,18 @@ export function CitationSourcePanel({
         >
           <button
             type="button"
-            className="absolute inset-0 bg-black/20"
+            className="absolute inset-0 bg-foreground/20"
             aria-label="关闭引用来源"
             onClick={onClose}
           />
           <motion.aside
-            className="absolute right-0 top-0 flex h-full w-full max-w-[420px] flex-col border-l border-stone-200 bg-[#fdfbf7] shadow-2xl"
+            className="absolute right-0 top-0 flex h-full w-full max-w-[420px] flex-col border-l border-border bg-background shadow-2xl"
             initial={{ x: 36, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: 36, opacity: 0 }}
             transition={{ type: "spring", stiffness: 260, damping: 30 }}
           >
-            <div className="flex items-center justify-between border-b border-stone-200 px-4 py-3">
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <div>
                 <h2 className="text-sm font-semibold text-stone-900">
                   引用来源 ({sources.length})

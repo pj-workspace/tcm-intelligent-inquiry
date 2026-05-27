@@ -43,7 +43,7 @@ export function ChatAttachmentPanel({
   }
 
   return (
-    <div className="space-y-2 border-b border-gray-100 px-3 py-2 sm:px-4 sm:py-2.5">
+    <div className="space-y-2 border-b border-border px-3 py-2 sm:px-4 sm:py-2.5">
       {(pendingImageUrls.length > 0 ||
         (attachmentUploadBusy && attachmentUploadSkeletonCount > 0)) && (
         <div className="flex flex-wrap gap-2">
@@ -53,14 +53,14 @@ export function ChatAttachmentPanel({
               <img
                 src={url}
                 alt=""
-                className="h-16 w-16 rounded-xl border border-gray-200 bg-gray-50 object-cover"
+                className="h-16 w-16 rounded-xl border border-border bg-muted object-cover"
               />
               <button
                 type="button"
                 onClick={() => onRemovePendingImage(i)}
                 disabled={attachmentUploadBusy}
                 title="移除"
-                className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-gray-900 text-white opacity-90 shadow transition-opacity hover:opacity-100 disabled:opacity-40"
+                className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground opacity-90 shadow transition-opacity hover:opacity-100 disabled:opacity-40"
               >
                 <X className="h-3 w-3" strokeWidth={2.5} />
               </button>
@@ -93,14 +93,14 @@ export function ChatAttachmentPanel({
                     : "继续添加图片"
             }
             aria-label="继续添加图片"
-            className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-gray-500 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-gray-200 disabled:hover:bg-gray-50 disabled:hover:text-gray-500"
+            className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-border bg-muted text-muted-foreground transition-colors hover:border-border hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-border disabled:hover:bg-muted disabled:hover:text-muted-foreground"
           >
             <Plus className="h-6 w-6" strokeWidth={2} />
           </button>
         </div>
       )}
       {attachmentAtCap && !attachmentUploadBusy ? (
-        <p className="text-[11px] text-gray-400">
+        <p className="text-[11px] text-muted-foreground">
           已达本次发送上限（{CHAT_PENDING_ATTACHMENT_MAX} 个）
         </p>
       ) : null}

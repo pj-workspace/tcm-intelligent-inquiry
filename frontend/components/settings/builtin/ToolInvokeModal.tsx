@@ -28,7 +28,7 @@ const CATEGORY_META: Record<ToolCategory, { color: string; bg: string; Icon: Rea
     knowledge: { color: "text-orange-600", bg: "bg-orange-50", Icon: Database },
     formula: { color: "text-emerald-600", bg: "bg-emerald-50", Icon: BookOpen },
     web: { color: "text-blue-600", bg: "bg-blue-50", Icon: Globe },
-    system: { color: "text-gray-500", bg: "bg-gray-100", Icon: Settings },
+    system: { color: "text-muted-foreground", bg: "bg-muted", Icon: Settings },
     mcp: { color: "text-violet-600", bg: "bg-violet-50", Icon: Terminal },
   };
 
@@ -92,17 +92,17 @@ export const ToolInvokeModal = forwardRef<HTMLDivElement, ToolInvokeModalProps>(
   return (
     <motion.div
       ref={ref}
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-foreground/40 p-0 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
       {...uiModalBackdrop}
     >
       <motion.div
-        className="flex h-[min(90dvh,100dvh)] w-full max-w-2xl flex-col rounded-none bg-white shadow-2xl sm:h-[88vh] sm:rounded-2xl"
+        className="flex h-[min(90dvh,100dvh)] w-full max-w-2xl flex-col rounded-none bg-surface shadow-2xl sm:h-[88vh] sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
         {...uiModalPanel}
       >
         {/* ── 头部 ── */}
-        <div className="flex items-start justify-between border-b border-gray-100 px-6 py-5">
+        <div className="flex items-start justify-between border-b border-border px-6 py-5">
           <div className="flex items-center gap-3">
             <div
               className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${meta.bg} ${meta.color}`}
@@ -111,19 +111,19 @@ export const ToolInvokeModal = forwardRef<HTMLDivElement, ToolInvokeModalProps>(
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-semibold text-gray-900">{tool.label}</h2>
+                <h2 className="text-base font-semibold text-foreground">{tool.label}</h2>
                 <span
                   className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${meta.bg} ${meta.color}`}
                 >
                   {tool.category}
                 </span>
               </div>
-              <p className="mt-0.5 font-mono text-xs text-gray-400">{tool.name}</p>
+              <p className="mt-0.5 font-mono text-xs text-muted-foreground">{tool.name}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-muted-foreground"
           >
             <X className="h-4 w-4" />
           </button>
@@ -133,16 +133,16 @@ export const ToolInvokeModal = forwardRef<HTMLDivElement, ToolInvokeModalProps>(
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
           {/* 描述 */}
           <div>
-            <p className="text-sm font-medium text-gray-700">{summary}</p>
+            <p className="text-sm font-medium text-foreground">{summary}</p>
             {detail && (
-              <p className="mt-2 whitespace-pre-line text-xs leading-relaxed text-gray-500">
+              <p className="mt-2 whitespace-pre-line text-xs leading-relaxed text-muted-foreground">
                 {detail}
               </p>
             )}
             {tool.used_by_agents > 0 && (
-              <div className="mt-3 flex items-center gap-1.5 text-xs text-gray-400">
+              <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Users className="h-3.5 w-3.5" />
-                被 <span className="font-medium text-gray-600">{tool.used_by_agents}</span> 个
+                被 <span className="font-medium text-muted-foreground">{tool.used_by_agents}</span> 个
                 Agent 使用
               </div>
             )}
@@ -151,9 +151,9 @@ export const ToolInvokeModal = forwardRef<HTMLDivElement, ToolInvokeModalProps>(
           {/* 参数表 */}
           {tool.args_schema.length > 0 && (
             <div>
-              <div className="mb-3 flex items-center gap-2 text-xs font-medium text-gray-500">
+              <div className="mb-3 flex items-center gap-2 text-xs font-medium text-muted-foreground">
                 <span>参数列表</span>
-                <div className="h-px flex-1 bg-gray-100" />
+                <div className="h-px flex-1 bg-muted" />
               </div>
               <table className="w-full text-xs">
                 <colgroup>
@@ -163,7 +163,7 @@ export const ToolInvokeModal = forwardRef<HTMLDivElement, ToolInvokeModalProps>(
                   <col />
                 </colgroup>
                 <thead>
-                  <tr className="text-left text-gray-400">
+                  <tr className="text-left text-muted-foreground">
                     <th className="pb-2 pr-4 font-medium">参数名</th>
                     <th className="pb-2 pr-4 font-medium">类型</th>
                     <th className="pb-2 pr-4 font-medium">必填</th>
@@ -173,9 +173,9 @@ export const ToolInvokeModal = forwardRef<HTMLDivElement, ToolInvokeModalProps>(
                 <tbody className="divide-y divide-gray-100">
                   {tool.args_schema.map((arg) => (
                     <tr key={arg.name} className="align-middle">
-                      <td className="py-2 pr-4 font-mono text-gray-700">{arg.name}</td>
+                      <td className="py-2 pr-4 font-mono text-foreground">{arg.name}</td>
                       <td className="py-2 pr-4">
-                        <span className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-gray-500">
+                        <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-muted-foreground">
                           {arg.type}
                         </span>
                       </td>
@@ -183,7 +183,7 @@ export const ToolInvokeModal = forwardRef<HTMLDivElement, ToolInvokeModalProps>(
                         {arg.required ? (
                           <span className="font-medium text-red-500">是</span>
                         ) : (
-                          <span className="text-gray-400">
+                          <span className="text-muted-foreground">
                             否
                             {arg.default !== null && arg.default !== undefined
                               ? `（默认 ${String(arg.default)}）`
@@ -191,7 +191,7 @@ export const ToolInvokeModal = forwardRef<HTMLDivElement, ToolInvokeModalProps>(
                           </span>
                         )}
                       </td>
-                      <td className="py-2 leading-relaxed text-gray-500">
+                      <td className="py-2 leading-relaxed text-muted-foreground">
                         {arg.description || "—"}
                       </td>
                     </tr>
@@ -203,21 +203,21 @@ export const ToolInvokeModal = forwardRef<HTMLDivElement, ToolInvokeModalProps>(
 
           {/* 在线试用 */}
           <div>
-            <div className="mb-3 flex items-center gap-2 text-xs font-medium text-gray-500">
+            <div className="mb-3 flex items-center gap-2 text-xs font-medium text-muted-foreground">
               <Play className="h-3.5 w-3.5 text-orange-500" />
               <span>在线试用</span>
-              <div className="h-px flex-1 bg-gray-100" />
+              <div className="h-px flex-1 bg-muted" />
             </div>
 
             {tool.args_schema.length === 0 ? (
-              <p className="mb-3 text-xs text-gray-400">此工具无需参数，直接执行即可。</p>
+              <p className="mb-3 text-xs text-muted-foreground">此工具无需参数，直接执行即可。</p>
             ) : (
               <div className="space-y-3">
                 {tool.args_schema.map((arg) => (
                   <div key={arg.name}>
-                    <label className="mb-1 flex items-center gap-1 text-xs font-medium text-gray-700">
+                    <label className="mb-1 flex items-center gap-1 text-xs font-medium text-foreground">
                       <span className="font-mono">{arg.name}</span>
-                      <span className="rounded bg-gray-100 px-1 text-[10px] text-gray-400">
+                      <span className="rounded bg-muted px-1 text-[10px] text-muted-foreground">
                         {arg.type}
                       </span>
                       {arg.required && <span className="text-red-500">*</span>}
@@ -228,7 +228,7 @@ export const ToolInvokeModal = forwardRef<HTMLDivElement, ToolInvokeModalProps>(
                         onChange={(e) =>
                           setValues((v) => ({ ...v, [arg.name]: e.target.value }))
                         }
-                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+                        className="w-full rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
                       >
                         <option value="true">true</option>
                         <option value="false">false</option>
@@ -249,11 +249,11 @@ export const ToolInvokeModal = forwardRef<HTMLDivElement, ToolInvokeModalProps>(
                             ? "必填"
                             : "可选"
                         }
-                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+                        className="w-full rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
                       />
                     )}
                     {arg.description && (
-                      <p className="mt-1 text-xs text-gray-400">{arg.description}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{arg.description}</p>
                     )}
                   </div>
                 ))}
@@ -264,11 +264,11 @@ export const ToolInvokeModal = forwardRef<HTMLDivElement, ToolInvokeModalProps>(
         </div>
 
         {/* ── 底部固定区：结果 + 操作按钮 ── */}
-        <div className="shrink-0 border-t border-gray-100">
+        <div className="shrink-0 border-t border-border">
           {/* 执行结果 —— 始终可见，不随上方内容滚动 */}
           {(result || invokeError) && (
             <div className="px-6 pt-4">
-              <div className="mb-2 flex items-center gap-2 text-xs font-medium text-gray-500">
+              <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground">
                 {invokeError ? (
                   <>
                     <AlertCircle className="h-3.5 w-3.5 text-red-500" />
@@ -281,7 +281,7 @@ export const ToolInvokeModal = forwardRef<HTMLDivElement, ToolInvokeModalProps>(
                   </>
                 )}
               </div>
-              <pre className="max-h-48 min-h-[3rem] overflow-auto rounded-lg bg-gray-50 p-3 text-xs leading-relaxed text-gray-700 ring-1 ring-inset ring-gray-200 whitespace-pre-wrap break-words">
+              <pre className="max-h-48 min-h-[3rem] overflow-auto rounded-lg bg-muted p-3 text-xs leading-relaxed text-foreground ring-1 ring-inset ring-gray-200 whitespace-pre-wrap break-words">
                 {invokeError ?? result!.text}
               </pre>
             </div>
@@ -292,7 +292,7 @@ export const ToolInvokeModal = forwardRef<HTMLDivElement, ToolInvokeModalProps>(
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100"
+              className="rounded-lg px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted"
             >
               关闭
             </button>

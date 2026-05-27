@@ -320,26 +320,28 @@ function AuthFormInner({
   };
 
   const fieldShell =
-    "rounded-xl border border-[#e5e5e5] bg-[#fafafa] outline-none focus:border-gray-400 focus:bg-white transition-colors";
+    "rounded-xl border border-border bg-input text-foreground outline-none placeholder:text-muted-foreground focus:border-orange-400 focus:bg-surface focus:ring-2 focus:ring-orange-500/15 transition-colors";
   /** 紧凑页登录 / 注册共用同一套控件尺寸，避免 Tab 切换时跳变 */
   const fieldSize = "py-2.5 text-[15px]";
   const inpFull = `w-full px-3 ${fieldShell} ${fieldSize}`;
   const inpFlex = `min-w-0 flex-1 px-3 ${fieldShell} ${fieldSize}`;
+  /** 验证码输入：输入时字距加宽，placeholder 保持正常间距 */
+  const codeInpFlex = `${inpFlex} tracking-[0.35em] placeholder:tracking-normal`;
   const lb = "mb-1.5";
   const compactBtn =
-    "shrink-0 rounded-xl border border-[#e5e5e5] bg-white px-3 py-2.5 text-[13px] font-medium whitespace-nowrap text-[#374151] hover:bg-gray-50 disabled:opacity-50";
+    "shrink-0 rounded-xl border border-border bg-input px-3 py-2.5 text-[13px] font-medium whitespace-nowrap text-foreground shadow-sm transition-colors hover:bg-muted disabled:opacity-50 dark:border-zinc-500/55 dark:shadow-none dark:hover:border-zinc-400/70 dark:hover:bg-muted";
 
   return (
     <div className="relative">
       {!compact && (
-        <div className="flex items-center justify-center gap-2 mb-8 text-2xl font-serif text-[#1a1a1a]">
+        <div className="flex items-center justify-center gap-2 mb-8 text-2xl font-serif text-foreground">
           <Sun className="w-8 h-8 text-orange-500" />
           <span>TCM 智能问诊</span>
         </div>
       )}
 
       <div
-        className={`flex rounded-xl bg-[#f4f4f5] p-1 ${compact ? "mb-4" : "mb-6"}`}
+        className={`flex rounded-xl bg-muted p-1 ${compact ? "mb-4" : "mb-6"}`}
       >
         <button
           type="button"
@@ -349,8 +351,8 @@ function AuthFormInner({
           }}
           className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
             mode === "login"
-              ? "bg-white shadow-sm text-gray-900 hover:bg-gray-50/90"
-              : "text-gray-500 hover:bg-white/70 hover:text-gray-700"
+              ? "bg-surface shadow-sm text-foreground hover:bg-muted/90"
+              : "text-muted-foreground hover:bg-surface/70 hover:text-foreground"
           }`}
         >
           登录
@@ -364,8 +366,8 @@ function AuthFormInner({
           }}
           className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
             mode === "register"
-              ? "bg-white shadow-sm text-gray-900 hover:bg-gray-50/90"
-              : "text-gray-500 hover:bg-white/70 hover:text-gray-700"
+              ? "bg-surface shadow-sm text-foreground hover:bg-muted/90"
+              : "text-muted-foreground hover:bg-surface/70 hover:text-foreground"
           }`}
         >
           注册
@@ -381,7 +383,7 @@ function AuthFormInner({
           <div className="flex justify-start">
             <button
               type="button"
-              className="inline-flex items-center gap-1.5 text-[13px] font-medium text-gray-600 transition-colors hover:text-orange-700"
+              className="inline-flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:text-orange-700"
               onClick={() => {
                 setLoginMethod("password");
                 setLoginOtpCode("");
@@ -396,7 +398,7 @@ function AuthFormInner({
 
         {(mode === "register" || (mode === "login" && loginMethod === "password")) && (
           <div>
-            <label className={`block text-xs font-medium text-gray-500 ${lb}`}>
+            <label className={`block text-xs font-medium text-foreground/80 ${lb}`}>
               {mode === "login" ? "用户名或邮箱" : "用户名"}
             </label>
             <input
@@ -419,7 +421,7 @@ function AuthFormInner({
         {mode === "register" && (
           <>
             <div>
-              <label className={`block text-xs font-medium text-gray-500 ${lb}`}>
+              <label className={`block text-xs font-medium text-foreground/80 ${lb}`}>
                 邮箱
               </label>
               <input
@@ -433,7 +435,7 @@ function AuthFormInner({
               />
             </div>
             <div>
-              <label className={`block text-xs font-medium text-gray-500 ${lb}`}>
+              <label className={`block text-xs font-medium text-foreground/80 ${lb}`}>
                 验证码
               </label>
               <div className="flex gap-2">
@@ -443,7 +445,7 @@ function AuthFormInner({
                   autoComplete="one-time-code"
                   value={regVerifyCode}
                   onChange={(e) => setRegVerifyCode(e.target.value)}
-                  className={`${inpFlex} tracking-[0.35em]`}
+                  className={codeInpFlex}
                   placeholder="6 位数字"
                   required
                   minLength={6}
@@ -469,7 +471,7 @@ function AuthFormInner({
         {mode === "login" && loginMethod === "email_code" && (
           <>
             <div>
-              <label className={`block text-xs font-medium text-gray-500 ${lb}`}>邮箱</label>
+              <label className={`block text-xs font-medium text-foreground/80 ${lb}`}>邮箱</label>
               <input
                 type="email"
                 autoComplete="email"
@@ -481,7 +483,7 @@ function AuthFormInner({
               />
             </div>
             <div>
-              <label className={`block text-xs font-medium text-gray-500 ${lb}`}>
+              <label className={`block text-xs font-medium text-foreground/80 ${lb}`}>
                 邮箱验证码
               </label>
               <div className="flex gap-2">
@@ -493,7 +495,7 @@ function AuthFormInner({
                   onChange={(e) =>
                     setLoginOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))
                   }
-                  className={`${inpFlex} tracking-[0.35em]`}
+                  className={codeInpFlex}
                   placeholder="6 位数字"
                   required={mode === "login" && loginMethod === "email_code"}
                   maxLength={6}
@@ -518,7 +520,7 @@ function AuthFormInner({
         {(mode === "register" || (mode === "login" && loginMethod === "password")) && (
           <div>
             <div className={`flex justify-between items-center ${lb}`}>
-              <label className="block text-xs font-medium text-gray-500">
+              <label className="block text-xs font-medium text-foreground/80">
                 {mode === "login" ? "密码" : "设置密码"}
               </label>
               {mode === "login" && (
@@ -591,7 +593,7 @@ function AuthFormInner({
         {showForgot && (
         <motion.div
           key="auth-forgot"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm"
           onClick={(e) => {
             if (e.target !== e.currentTarget) return;
             if (forgotMailBusy || forgotResetBusy) return;
@@ -603,12 +605,12 @@ function AuthFormInner({
           {...uiModalBackdrop}
         >
           <motion.div
-            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-[#e5e5e5]"
+            className="w-full max-w-md rounded-2xl bg-surface p-6 shadow-xl border border-border"
             onClick={(e) => e.stopPropagation()}
             {...uiModalPanel}
           >
             <h3 className="text-base font-semibold mb-1">忘记密码</h3>
-            <p className="text-sm text-gray-500 mb-4">
+            <p className="text-sm text-muted-foreground mb-4">
               {forgotStep === "email"
                 ? "输入你在本站注册时使用的邮箱。"
                 : "邮件中的验证码 10 分钟内有效，可同时在此设置新密码。"}
@@ -616,7 +618,7 @@ function AuthFormInner({
             {forgotStep === "email" ? (
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs text-gray-500">注册邮箱</label>
+                  <label className="text-xs font-medium text-foreground/80">注册邮箱</label>
                   <input
                     type="email"
                     className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
@@ -645,7 +647,7 @@ function AuthFormInner({
                   placeholder="六位验证码"
                   inputMode="numeric"
                   autoComplete="one-time-code"
-                  className="w-full rounded-xl border px-3 py-2 text-sm tracking-widest"
+                  className="w-full rounded-xl border px-3 py-2 text-sm tracking-widest placeholder:tracking-normal"
                   value={forgotCode}
                   onChange={(e) => setForgotCode(e.target.value)}
                   minLength={6}
@@ -661,7 +663,7 @@ function AuthFormInner({
                 />
                 <button
                   type="button"
-                  className="w-full py-2.5 rounded-xl bg-[#1a1a1a] text-white text-sm font-medium hover:bg-gray-800 disabled:pointer-events-none disabled:opacity-50"
+                  className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:pointer-events-none disabled:opacity-50"
                   disabled={forgotResetBusy || forgotMailBusy}
                   onClick={() => void resetForgot()}
                 >
@@ -683,7 +685,7 @@ function AuthFormInner({
             )}
             <button
               type="button"
-              className="mt-4 w-full py-2.5 text-sm text-gray-600 border rounded-xl hover:bg-gray-50"
+              className="mt-4 w-full py-2.5 text-sm text-muted-foreground border rounded-xl hover:bg-muted"
               onClick={() => {
                 setShowForgot(false);
                 setForgotStep("email");
@@ -723,7 +725,7 @@ export function AuthForm(props: AuthFormProps) {
   return (
     <Suspense
       fallback={
-        <div className="flex justify-center py-12 text-gray-500 text-sm">
+        <div className="flex justify-center py-12 text-muted-foreground text-sm">
           加载中…
         </div>
       }

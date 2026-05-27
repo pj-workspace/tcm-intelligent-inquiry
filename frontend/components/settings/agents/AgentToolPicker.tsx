@@ -56,27 +56,27 @@ function ToolCard({
       className={`flex cursor-pointer items-start gap-2.5 rounded-lg border p-3 transition-colors ${
         checked
           ? checkedCls
-          : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
+          : "border-border bg-surface hover:border-border hover:bg-muted"
       }`}
     >
       <input
         type="checkbox"
-        className={`mt-0.5 rounded border-gray-300 ${checkboxCls}`}
+        className={`mt-0.5 rounded border-border ${checkboxCls}`}
         checked={checked}
         onChange={onToggle}
       />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
-          <span className="text-sm font-medium text-gray-900">{tool.label}</span>
+          <span className="text-sm font-medium text-foreground">{tool.label}</span>
         </div>
-        <p className="mt-0.5 truncate font-mono text-[10px] text-gray-400">
+        <p className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground">
           {tool.mcp_remote_name && tool.mcp_remote_name !== tool.name
             ? `${tool.mcp_remote_name} · ${tool.name}`
             : tool.name}
         </p>
         {summary && (
-          <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-gray-500">
+          <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
             {summary}
           </p>
         )}
@@ -109,7 +109,7 @@ function ToolGroupSection({
   const accent = group.kind === "mcp" ? "violet" : "orange";
 
   return (
-    <div className="rounded-lg border border-gray-100 bg-[#fafaf8]">
+    <div className="rounded-lg border border-border bg-muted">
       <div className="flex items-center gap-2 px-3 py-2">
         <button
           type="button"
@@ -121,14 +121,14 @@ function ToolGroupSection({
           ) : (
             <Wrench className="h-3.5 w-3.5 shrink-0 text-orange-500" />
           )}
-          <span className="truncate text-xs font-semibold text-gray-800">
+          <span className="truncate text-xs font-semibold text-foreground">
             {group.title}
           </span>
-          <span className="shrink-0 text-[10px] text-gray-400">
+          <span className="shrink-0 text-[10px] text-muted-foreground">
             {selectedInGroup}/{group.tools.length}
           </span>
           <ChevronDown
-            className={`ml-auto h-3.5 w-3.5 shrink-0 text-gray-400 transition-transform ${
+            className={`ml-auto h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${
               expanded ? "rotate-180" : ""
             }`}
           />
@@ -142,7 +142,7 @@ function ToolGroupSection({
         </button>
       </div>
       {expanded && (
-        <div className="grid gap-2 border-t border-gray-100 p-3 md:grid-cols-2">
+        <div className="grid gap-2 border-t border-border p-3 md:grid-cols-2">
           {group.tools.map((tool) => (
             <ToolCard
               key={tool.name}
@@ -192,29 +192,29 @@ export function AgentToolPicker({
   return (
     <div className="space-y-3">
       <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <input
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="搜索工具名、MCP 服务、描述…（支持模糊匹配）"
-          className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+          className="w-full rounded-lg border border-border py-2 pl-9 pr-3 text-sm outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
         />
       </div>
 
       {searching && (
-        <p className="text-[11px] text-gray-500">
+        <p className="text-[11px] text-muted-foreground">
           找到 {visibleCount} 个工具
           {visibleCount === 0 ? "，请换个关键词" : ""}
         </p>
       )}
 
       {toolInfos.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-gray-200 py-6 text-center text-xs text-gray-500">
+        <div className="rounded-lg border border-dashed border-border py-6 text-center text-xs text-muted-foreground">
           暂无可绑定工具
         </div>
       ) : visibleGroups.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-gray-200 py-6 text-center text-xs text-gray-500">
+        <div className="rounded-lg border border-dashed border-border py-6 text-center text-xs text-muted-foreground">
           没有匹配「{query.trim()}」的工具
         </div>
       ) : (

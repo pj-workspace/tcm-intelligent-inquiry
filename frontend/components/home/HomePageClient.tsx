@@ -789,7 +789,7 @@ export function HomePageClient() {
     !(messages.length > 0 && conversationRouteSynced);
 
   return (
-    <div className="flex h-dvh max-h-dvh w-full max-w-[100vw] overflow-hidden bg-[#fdfdfc]">
+    <div className="flex h-dvh max-h-dvh w-full max-w-[100vw] overflow-hidden bg-background">
       <ChatWorkspaceModals
         deleteTargetId={deleteTargetId}
         deletePending={deletePending}
@@ -1048,7 +1048,7 @@ export function HomePageClient() {
                       autoFollowMainRef.current = true;
                       scrollToBottom(true);
                     }}
-                    className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-[#e5e5e5] bg-white/92 px-3.5 py-2.5 text-sm text-gray-700 shadow-[0_8px_24px_rgba(0,0,0,0.08)] backdrop-blur hover:bg-gray-50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
+                    className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-border bg-surface/92 px-3.5 py-2.5 text-sm text-foreground shadow-[0_8px_24px_rgba(0,0,0,0.08)] backdrop-blur hover:bg-muted hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300"
                   >
                     <ArrowDown className="h-4 w-4" />
                     <span>回到底部</span>
@@ -1074,7 +1074,7 @@ export function HomePageClient() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 8, transition: { duration: 0.15 } }}
                   transition={{ duration: 0.22, ease: "easeOut" }}
-                  className="border-t border-[#eeece6]/80 bg-[#fdfdfc] px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-4 md:px-8"
+                  className="border-t border-border/80 bg-background px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-4 md:px-8"
                 >
                   <div className="mx-auto w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl max-h-[min(75vh,36rem)] overflow-y-auto">
                     {activeWidget.widgetType === "form" ? (
@@ -1100,7 +1100,7 @@ export function HomePageClient() {
                     )}
                   </div>
                   {activeWidget.widgetType === "choice" ? (
-                    <p className="mx-auto mt-2 max-w-3xl text-center text-[11px] text-gray-400 select-none lg:max-w-4xl xl:max-w-5xl">
+                    <p className="mx-auto mt-2 max-w-3xl text-center text-[11px] text-muted-foreground select-none lg:max-w-4xl xl:max-w-5xl">
                       ↑↓ 导航&nbsp;&nbsp;·&nbsp;&nbsp;Enter 选择&nbsp;&nbsp;·&nbsp;&nbsp;Esc 跳过
                     </p>
                   ) : null}

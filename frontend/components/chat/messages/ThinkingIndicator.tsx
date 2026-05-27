@@ -39,16 +39,16 @@ export function ThinkingIndicator({
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center gap-2 rounded-md px-1 py-0.5 text-[13px] font-medium text-gray-500 hover:bg-gray-100/80 hover:text-gray-700 transition-colors w-fit min-w-0 group -ml-1"
+          className="flex items-center gap-2 rounded-md px-1 py-0.5 text-[13px] font-medium text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-colors w-fit min-w-0 group -ml-1"
         >
           <motion.div
             animate={{ rotate: isOpen ? 0 : -90 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
           >
-            <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
+            <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
           </motion.div>
           <BrainCircuit
-            className={`w-4 h-4 shrink-0 ${isThinking ? "animate-pulse text-orange-500" : "text-gray-400"}`}
+            className={`w-4 h-4 shrink-0 ${isThinking ? "animate-pulse text-orange-500" : "text-muted-foreground"}`}
           />
           <span>
             {isThinking ? (
@@ -56,7 +56,7 @@ export function ThinkingIndicator({
             ) : durationSec != null ? (
               <>
                 思考过程{" "}
-                <span className="tabular-nums text-gray-500">
+                <span className="tabular-nums text-muted-foreground">
                   {formatDurationSec(durationSec)}
                 </span>
               </>
@@ -75,8 +75,8 @@ export function ThinkingIndicator({
               transition={{ duration: 0.4, ease: "easeInOut" }}
               className="overflow-hidden"
             >
-              <div className="pl-4 border-l-2 border-[#e5e5e5] py-2 my-1 ml-1.5">
-                <p className="text-[14px] text-gray-500 italic leading-relaxed whitespace-pre-wrap font-serif">
+              <div className="pl-4 border-l-2 border-border py-2 my-1 ml-1.5">
+                <p className="text-[14px] text-muted-foreground italic leading-relaxed whitespace-pre-wrap font-serif">
                   {content}
                   {isThinking && (
                     <span className="inline-block w-1.5 h-4 ml-1 bg-gray-400 animate-pulse align-middle" />

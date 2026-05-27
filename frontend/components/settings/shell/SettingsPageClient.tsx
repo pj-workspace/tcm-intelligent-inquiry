@@ -17,6 +17,7 @@ import {
   type SettingsTabId,
 } from "./settingsTabs";
 import { SettingsTabSkeleton } from "./SettingsTabSkeleton";
+import { SettingsPageShellSkeleton } from "./SettingsPageShellSkeleton";
 
 const AppearanceTab = dynamic(
   () =>
@@ -82,8 +83,8 @@ function tabButtonClass(active: boolean) {
   return clsx(
     "transition-colors active:scale-[0.99]",
     active
-      ? "bg-white text-orange-600 shadow-sm ring-1 ring-gray-200 hover:bg-orange-50/40"
-      : "text-gray-600 hover:bg-gray-100",
+      ? "bg-surface text-orange-600 shadow-sm ring-1 ring-border hover:bg-orange-50/40 dark:hover:bg-orange-950/30"
+      : "text-muted-foreground hover:bg-muted",
   );
 }
 
@@ -176,19 +177,15 @@ export function SettingsPageClient({ initialTab = "builtin" }: SettingsPageClien
   const activeLabel = settingsTabLabel(activeTab);
 
   if (loading || !token) {
-    return (
-      <div className="fixed inset-0 z-10 flex h-dvh max-h-dvh min-h-0 items-center justify-center overflow-hidden bg-[#fdfdfc]">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-orange-200 border-t-orange-500" />
-      </div>
-    );
+    return <SettingsPageShellSkeleton />;
   }
 
   return (
-    <div className="fixed inset-0 z-10 flex h-dvh max-h-dvh min-h-0 w-full flex-col overflow-hidden bg-[#fdfdfc] text-gray-800">
-      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-[#e5e5e5] bg-white/80 px-4 backdrop-blur-sm md:px-6">
+    <div className="fixed inset-0 z-10 flex h-dvh max-h-dvh min-h-0 w-full flex-col overflow-hidden bg-background text-foreground">
+      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-elevated/80 px-4 backdrop-blur-sm md:px-6">
         <Link
           href="/chat"
-          className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+          className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           aria-label="返回对话"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -196,16 +193,14 @@ export function SettingsPageClient({ initialTab = "builtin" }: SettingsPageClien
         </Link>
         <h1 className="min-w-0 truncate text-base font-semibold sm:hidden">
           设置
-          <span className="font-normal text-gray-400"> · </span>
+          <span className="font-normal text-muted-foreground"> · </span>
           {activeLabel}
         </h1>
-        <h1 className="hidden min-w-0 truncate text-base font-semibold sm:block">
-          工具与 Agent 设置
-        </h1>
+        <h1 className="hidden min-w-0 truncate text-base font-semibold sm:block">设置</h1>
       </header>
 
       <nav
-        className="no-scrollbar flex shrink-0 gap-1 overflow-x-auto border-b border-[#e5e5e5] bg-[#fbfaf7] px-4 py-2 md:hidden"
+        className="no-scrollbar flex shrink-0 gap-1 overflow-x-auto border-b border-border bg-surface-muted px-4 py-2 md:hidden"
         role="tablist"
         aria-label="设置分类"
       >
@@ -235,7 +230,7 @@ export function SettingsPageClient({ initialTab = "builtin" }: SettingsPageClien
 
       <div className="flex min-h-0 w-full min-w-0 flex-1 overflow-hidden">
         <nav
-          className="hidden w-56 shrink-0 border-r border-[#e5e5e5] bg-[#fbfaf7] p-4 md:block"
+          className="hidden w-56 shrink-0 border-r border-border bg-surface-muted p-4 md:block"
           role="tablist"
           aria-label="设置分类"
           aria-orientation="vertical"
@@ -264,7 +259,7 @@ export function SettingsPageClient({ initialTab = "builtin" }: SettingsPageClien
 
         <main
           ref={mainRef}
-          className="flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-y-auto overflow-x-hidden bg-[#fdfdfc] p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:p-6 md:p-8 md:pb-[calc(2rem+env(safe-area-inset-bottom,0px))]"
+          className="flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-y-auto overflow-x-hidden bg-background p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:p-6 md:p-8 md:pb-[calc(2rem+env(safe-area-inset-bottom,0px))]"
         >
           <div className="mx-auto box-border w-full min-w-0 max-w-4xl shrink-0">
             {SETTINGS_TABS.map(({ id }) => (

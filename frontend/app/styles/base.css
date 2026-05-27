@@ -5,14 +5,42 @@
     --muted: #f4f4f5;
     --muted-fg: #71717a;
     --border-color: #e4e4e7;
+    --surface: #ffffff;
+    --surface-muted: #fbfaf7;
+    --sidebar: #f9f9f8;
+    --elevated: #ffffff;
+    --card: #ffffff;
+    --card-border: #ebe8e3;
+    --card-header-border: #f2f0ec;
+    --popover: #ffffff;
+    --accent-muted: #fff7ed;
+    --destructive-muted: #fef2f2;
+    --input: #ffffff;
+    --user-bubble: #f4f4f4;
+    --primary: #1a1a1a;
+    --primary-fg: #ffffff;
   }
 
   .dark {
     --bg: #09090b;
     --fg: #fafafa;
-    --muted: #27272a;
+    --muted: #18181b;
     --muted-fg: #a1a1aa;
     --border-color: #27272a;
+    --surface: #222226;
+    --surface-muted: #111113;
+    --sidebar: #0c0c0e;
+    --elevated: #222226;
+    --card: #222226;
+    --card-border: #27272a;
+    --card-header-border: #27272a;
+    --popover: #27272a;
+    --accent-muted: rgba(124, 45, 18, 0.35);
+    --destructive-muted: rgba(69, 10, 10, 0.45);
+    --input: #141416;
+    --user-bubble: #27272a;
+    --primary: #fafafa;
+    --primary-fg: #09090b;
   }
 
   /**
@@ -51,7 +79,6 @@
     width: 0 !important;
     height: 0 !important;
   }
-
 
   /** 可点击按钮：手型 + 悬浮/按下时颜色与缩放等有平滑过渡 */
   button {

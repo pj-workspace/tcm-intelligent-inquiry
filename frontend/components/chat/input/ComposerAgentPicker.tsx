@@ -13,7 +13,7 @@ import {
 import type { GenerationState } from "@/types/chat";
 
 const triggerCls =
-  "inline-flex max-w-[min(10rem,38vw)] shrink-0 items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs font-medium text-gray-700 outline-none transition-colors hover:bg-gray-100 disabled:opacity-45 sm:max-w-[12rem] sm:px-3";
+  "inline-flex max-w-[min(10rem,38vw)] shrink-0 items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-1.5 text-xs font-medium text-foreground outline-none transition-colors hover:bg-muted disabled:opacity-45 sm:max-w-[12rem] sm:px-3";
 
 type ComposerAgentPickerProps = {
   genState: GenerationState;
@@ -61,12 +61,12 @@ export function ComposerAgentPicker({
           position="popper"
           sideOffset={8}
           collisionPadding={12}
-          className="ui-radix-floating z-[9999] max-h-[min(16rem,calc(100vh-6rem))] min-w-[10.5rem] overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
+          className="ui-radix-floating z-[9999] max-h-[min(16rem,calc(100vh-6rem))] min-w-[10.5rem] overflow-hidden rounded-xl border border-border bg-surface py-1 shadow-lg"
         >
           <Select.Viewport className="max-h-[min(15rem,calc(100vh-8rem))] p-1">
             <Select.Item
               value={SYSTEM_AGENT_SELECT_VALUE}
-              className="relative cursor-pointer select-none rounded-lg px-2.5 py-2 text-xs outline-none data-[highlighted]:bg-gray-50"
+              className="relative cursor-pointer select-none rounded-lg px-2.5 py-2 text-xs outline-none data-[highlighted]:bg-muted"
             >
               <Select.ItemText>{SYSTEM_AGENT_LABEL}</Select.ItemText>
               <Select.ItemIndicator className="absolute right-2 top-1/2 -translate-y-1/2">
@@ -77,7 +77,7 @@ export function ComposerAgentPicker({
               <Select.Item
                 key={a.id}
                 value={a.id}
-                className="relative cursor-pointer select-none rounded-lg px-2.5 py-2 text-xs outline-none data-[highlighted]:bg-gray-50"
+                className="relative cursor-pointer select-none rounded-lg px-2.5 py-2 text-xs outline-none data-[highlighted]:bg-muted"
               >
                 <Select.ItemText className="line-clamp-2">{a.name}</Select.ItemText>
                 <Select.ItemIndicator className="absolute right-2 top-1/2 -translate-y-1/2">

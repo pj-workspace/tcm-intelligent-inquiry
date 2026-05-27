@@ -185,7 +185,7 @@ export const assistantMarkdownComponents: Components = {
   table: ({ node, children, ...props }) => {
     void node;
     return (
-      <div className="no-scrollbar my-3 w-full max-w-full overflow-x-auto rounded-xl border border-[#e6ded2] bg-white/70 shadow-[0_1px_2px_rgba(28,25,23,0.04)]">
+      <div className="no-scrollbar my-3 w-full max-w-full overflow-x-auto rounded-xl border border-border bg-surface/70 shadow-[0_1px_2px_rgba(28,25,23,0.04)]">
         <table
           className="w-full min-w-[min(100%,520px)] border-collapse text-[0.92rem] leading-snug"
           {...props}
@@ -203,7 +203,7 @@ export const assistantMarkdownComponents: Components = {
     void node;
     return (
       <th
-        className="border border-[#e6ded2] bg-[#f7f2ea] px-3 py-2 text-left font-semibold text-[#2b2721]"
+        className="border border-border bg-muted px-3 py-2 text-left font-semibold text-foreground"
         {...props}
       >
         {children}
@@ -214,7 +214,7 @@ export const assistantMarkdownComponents: Components = {
     void node;
     return (
       <td
-        className="border border-[#e6ded2] px-3 py-2 align-top text-[#2f2a23]"
+        className="border border-border px-3 py-2 align-top text-foreground"
         {...props}
       >
         {children}

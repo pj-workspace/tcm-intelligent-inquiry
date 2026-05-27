@@ -89,20 +89,20 @@ export function AgentsTab() {
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h2 className="text-lg font-semibold text-gray-900">Agent 管理</h2>
-          <p className="mt-1 text-sm text-gray-500">
+          <h2 className="text-lg font-semibold text-foreground">Agent 管理</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             自定义系统提示词、工具集与默认知识库，创建多用途的 AI 助手。
           </p>
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
           {agents.length > 0 && (
-            <div className="hidden items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1.5 text-xs text-gray-500 ring-1 ring-inset ring-gray-200 sm:flex">
-              共 <span className="font-semibold text-gray-700">{agents.length}</span> 个 Agent
+            <div className="hidden items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs text-muted-foreground ring-1 ring-inset ring-gray-200 sm:flex">
+              共 <span className="font-semibold text-foreground">{agents.length}</span> 个 Agent
             </div>
           )}
           <button
             onClick={handleStartCreate}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-black px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-gray-800 sm:w-auto"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground shadow-sm transition-colors hover:opacity-90 sm:w-auto"
           >
             <Plus className="h-4 w-4" />
             创建 Agent
@@ -128,8 +128,8 @@ export function AgentsTab() {
 
       <div className="grid gap-4">
         {agents.length === 0 && !error ? (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 py-12 text-center text-sm text-gray-500">
-            <Bot className="mb-3 h-8 w-8 text-gray-300" />
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
+            <Bot className="mb-3 h-8 w-8 text-muted-foreground/40" />
             <p>暂无自定义 Agent</p>
             <p className="mt-1 text-xs">点击右上角创建新的智能助手</p>
           </div>

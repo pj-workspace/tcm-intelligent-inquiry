@@ -76,7 +76,7 @@ export function BrainstormStepItem({
         kind={answered || dismissed ? "user_input_done" : "user_input"}
         isFirst={isFirst}
       >
-        <div className="text-[13px] leading-[1.4rem] text-gray-600">
+        <div className="text-[13px] leading-[1.4rem] text-muted-foreground">
           <div className="font-medium text-amber-700/90">
             {answered
               ? "用户已补充"
@@ -87,7 +87,7 @@ export function BrainstormStepItem({
               : "等待用户补充"}
           </div>
           {step.question.trim() ? (
-            <div className="mt-0.5 text-gray-500">{step.question}</div>
+            <div className="mt-0.5 text-muted-foreground">{step.question}</div>
           ) : null}
           {answered ? (
             <div className="mt-1 rounded-md bg-emerald-50/70 px-2.5 py-1.5 text-emerald-800">
@@ -129,7 +129,7 @@ export function BrainstormStepItem({
   const lineClass = clsx(
     // leading-[1.4rem] 与 thinking/interim 一致，使图标 top-[0.15rem] 居中于首行
     "relative flex w-fit max-w-full items-center gap-1.5 rounded-md px-1 text-left text-[13px] leading-[1.4rem] transition-colors",
-    failed ? "text-gray-400 cursor-default" : "text-[#5b78ad]",
+    failed ? "text-muted-foreground cursor-default" : "text-[#5b78ad]",
     canExpand && "cursor-pointer hover:bg-[#5b78ad]/[0.07]",
     !canExpand && !failed && "cursor-default",
   );
@@ -178,7 +178,7 @@ export function BrainstormStepItem({
             transition={{ duration: 0.22, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <div className="mt-1.5 max-h-64 overflow-y-auto rounded-md bg-gray-50/60 px-3 py-2 text-[12.5px] leading-relaxed text-gray-600">
+            <div className="mt-1.5 max-h-64 overflow-y-auto rounded-md bg-muted/60 px-3 py-2 text-[12.5px] leading-relaxed text-muted-foreground">
               <pre className="whitespace-pre-wrap break-words font-mono text-[12px]">
                 {step.outputPreview ?? ""}
               </pre>

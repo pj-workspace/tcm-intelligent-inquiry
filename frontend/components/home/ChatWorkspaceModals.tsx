@@ -109,19 +109,19 @@ export function ChatWorkspaceModals({
         {renameConvModal && (
           <motion.div
             key="rename-conv"
-            className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-[300] flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm"
             onClick={(e) => e.target === e.currentTarget && onCloseRenameConv()}
             {...uiModalBackdrop}
           >
             <motion.div
-              className="w-full max-w-md rounded-2xl border border-[#e5e5e5] bg-white p-6 shadow-lg"
+              className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-lg"
               onClick={(e) => e.stopPropagation()}
               {...uiModalPanel}
             >
-              <h2 className="text-lg font-semibold text-gray-900">编辑会话名称</h2>
+              <h2 className="text-lg font-semibold text-foreground">编辑会话名称</h2>
               <input
                 autoFocus
-                className="mt-4 w-full rounded-xl border border-[#e5e5e5] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                className="mt-4 w-full rounded-xl border border-border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
                 value={renameConvModal.draft}
                 onChange={(e) => onRenameConvDraftChange(e.target.value)}
                 onKeyDown={(e) => {
@@ -132,14 +132,14 @@ export function ChatWorkspaceModals({
               <motion.div className="mt-6 flex justify-end gap-2" layout={false}>
                 <button
                   type="button"
-                  className="rounded-xl border border-[#e5e5e5] px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  className="rounded-xl border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
                   onClick={onCloseRenameConv}
                 >
                   取消
                 </button>
                 <button
                   type="button"
-                  className="rounded-xl bg-[#1a1a1a] px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+                  className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
                   onClick={onSaveRenameConv}
                 >
                   保存
@@ -154,19 +154,19 @@ export function ChatWorkspaceModals({
         {newGroupModalOpen && (
           <motion.div
             key="new-group"
-            className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-[300] flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm"
             onClick={(e) => e.target === e.currentTarget && onCloseNewGroup()}
             {...uiModalBackdrop}
           >
             <motion.div
-              className="w-full max-w-md rounded-2xl border border-[#e5e5e5] bg-white p-6 shadow-lg"
+              className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-lg"
               onClick={(e) => e.stopPropagation()}
               {...uiModalPanel}
             >
-              <h2 className="text-lg font-semibold text-gray-900">新建分组</h2>
+              <h2 className="text-lg font-semibold text-foreground">新建分组</h2>
               <input
                 autoFocus
-                className="mt-4 w-full rounded-xl border border-[#e5e5e5] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                className="mt-4 w-full rounded-xl border border-border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
                 placeholder="分组名称"
                 value={newGroupNameDraft}
                 onChange={(e) => onNewGroupNameChange(e.target.value)}
@@ -178,14 +178,14 @@ export function ChatWorkspaceModals({
               <div className="mt-6 flex justify-end gap-2">
                 <button
                   type="button"
-                  className="rounded-xl border border-[#e5e5e5] px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  className="rounded-xl border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
                   onClick={onCloseNewGroup}
                 >
                   取消
                 </button>
                 <button
                   type="button"
-                  className="rounded-xl bg-[#1a1a1a] px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+                  className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
                   onClick={onSubmitNewGroup}
                 >
                   创建
@@ -200,19 +200,19 @@ export function ChatWorkspaceModals({
         {renameFolderModal && (
           <motion.div
             key={`rename-folder-${renameFolderModal.id}`}
-            className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-[300] flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm"
             onClick={(e) => e.target === e.currentTarget && onCloseRenameFolder()}
             {...uiModalBackdrop}
           >
             <motion.div
-              className="w-full max-w-md rounded-2xl border border-[#e5e5e5] bg-white p-6 shadow-lg"
+              className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-lg"
               onClick={(e) => e.stopPropagation()}
               {...uiModalPanel}
             >
-              <h2 className="text-lg font-semibold text-gray-900">重命名分组</h2>
+              <h2 className="text-lg font-semibold text-foreground">重命名分组</h2>
               <input
                 autoFocus
-                className="mt-4 w-full rounded-xl border border-[#e5e5e5] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                className="mt-4 w-full rounded-xl border border-border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
                 value={renameFolderModal.draft}
                 onChange={(e) => onRenameFolderDraftChange(e.target.value)}
                 onKeyDown={(e) => {
@@ -223,14 +223,14 @@ export function ChatWorkspaceModals({
               <motion.div className="mt-6 flex justify-end gap-2" layout={false}>
                 <button
                   type="button"
-                  className="rounded-xl border border-[#e5e5e5] px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  className="rounded-xl border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
                   onClick={onCloseRenameFolder}
                 >
                   取消
                 </button>
                 <button
                   type="button"
-                  className="rounded-xl bg-[#1a1a1a] px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+                  className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
                   onClick={onSaveRenameFolder}
                 >
                   保存

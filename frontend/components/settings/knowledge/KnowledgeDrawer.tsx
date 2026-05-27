@@ -75,20 +75,20 @@ export function KnowledgeDrawer({
       {open && kb ? (
         <motion.div
           key={kb.id}
-          className="fixed inset-0 z-50 flex bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:justify-center sm:p-4 md:p-6"
+          className="fixed inset-0 z-50 flex bg-foreground/40 p-0 backdrop-blur-sm sm:items-center sm:justify-center sm:p-4 md:p-6"
           onClick={(e) => e.target === e.currentTarget && onClose()}
           {...uiModalBackdrop}
         >
           <motion.div
-            className="relative flex h-dvh w-full max-w-none flex-col rounded-none bg-white shadow-2xl sm:h-auto sm:max-h-[min(calc(100dvh-2rem),900px)] sm:max-w-3xl sm:rounded-2xl"
+            className="relative flex h-dvh w-full max-w-none flex-col rounded-none bg-surface shadow-2xl sm:h-auto sm:max-h-[min(calc(100dvh-2rem),900px)] sm:max-w-3xl sm:rounded-2xl"
             onClick={(e) => e.stopPropagation()}
             {...uiModalPanel}
           >
           {/* Header */}
-          <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-4 py-4 sm:px-6">
+          <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-4 sm:px-6">
             <div className="min-w-0 flex-1">
-              <h2 className="truncate text-base font-semibold text-gray-900">{kb.name}</h2>
-              <p className="mt-0.5 truncate text-xs text-gray-500">
+              <h2 className="truncate text-base font-semibold text-foreground">{kb.name}</h2>
+              <p className="mt-0.5 truncate text-xs text-muted-foreground">
                 {kb.document_count} 篇文档
                 {kb.total_chunks ? ` · ${kb.total_chunks} 片段` : ""}
                 {kb.embedding_model ? ` · ${kb.embedding_model}` : ""}
@@ -96,14 +96,14 @@ export function KnowledgeDrawer({
             </div>
             <button
               onClick={onClose}
-              className="ml-4 shrink-0 rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+              className="ml-4 shrink-0 rounded-full p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
 
           {/* Tabs */}
-          <div className="shrink-0 border-b border-gray-100 px-4 sm:px-6">
+          <div className="shrink-0 border-b border-border px-4 sm:px-6">
             <nav className="no-scrollbar -mb-px flex gap-4 overflow-x-auto sm:gap-6">
               {(
                 [
@@ -118,7 +118,7 @@ export function KnowledgeDrawer({
                   className={`flex items-center gap-1.5 whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
                     activeTab === key
                       ? "border-orange-500 text-orange-600"
-                      : "border-transparent text-gray-500 hover:border-gray-200 hover:text-gray-700"
+                      : "border-transparent text-muted-foreground hover:border-border hover:text-foreground"
                   }`}
                 >
                   <Icon className="h-4 w-4" />
@@ -142,12 +142,12 @@ export function KnowledgeDrawer({
             {activeTab === "docs" && (
               <>
                 {loadingDocs ? (
-                  <div className="flex items-center justify-center py-16 text-sm text-gray-500">
+                  <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" /> 加载文档列表中…
                   </div>
                 ) : !documents || documents.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 text-center text-gray-500">
-                    <FileText className="mb-3 h-8 w-8 text-gray-300" />
+                  <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
+                    <FileText className="mb-3 h-8 w-8 text-muted-foreground/40" />
                     <p className="text-sm">暂无已入库文档</p>
                     <button
                       onClick={() => setActiveTab("upload")}
@@ -157,20 +157,20 @@ export function KnowledgeDrawer({
                     </button>
                   </div>
                 ) : (
-                  <ul className="divide-y divide-gray-100 rounded-xl border border-gray-100 overflow-hidden">
+                  <ul className="divide-y divide-gray-100 rounded-xl border border-border overflow-hidden">
                     {documents.map((doc) => {
                       const isDeleting = deletingDocId === doc.id;
                       return (
                         <li
                           key={doc.id}
-                          className="flex items-center gap-4 px-5 py-3.5 text-sm hover:bg-gray-50 transition-colors"
+                          className="flex items-center gap-4 px-5 py-3.5 text-sm hover:bg-muted transition-colors"
                         >
-                          <FileText className="h-4 w-4 shrink-0 text-gray-400" />
+                          <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                           <div className="min-w-0 flex-1">
-                            <div className="truncate font-medium text-gray-800" title={doc.filename}>
+                            <div className="truncate font-medium text-foreground" title={doc.filename}>
                               {doc.filename}
                             </div>
-                            <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-gray-500">
+                            <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
                               <span>{doc.chunk_count} 片段</span>
                               <span>{formatFileSize(doc.file_size)}</span>
                               <span>{formatTime(doc.created_at)}</span>
@@ -181,7 +181,7 @@ export function KnowledgeDrawer({
                             title="删除该文档"
                             disabled={isDeleting}
                             onClick={() => onRequestDeleteDoc(doc)}
-                            className="shrink-0 rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                            className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
                           >
                             {isDeleting ? (
                               <Loader2 className="h-4 w-4 animate-spin" />

@@ -110,8 +110,8 @@ export function KnowledgeUploadPanel({
   return (
     <div className="flex flex-col h-full">
       <div className="mb-4">
-        <h3 className="text-sm font-medium text-gray-900">上传文档</h3>
-        <p className="mt-1 text-xs text-gray-500">
+        <h3 className="text-sm font-medium text-foreground">上传文档</h3>
+        <p className="mt-1 text-xs text-muted-foreground">
           大文件将异步入库，下方可查看处理进度。
         </p>
       </div>
@@ -138,25 +138,25 @@ export function KnowledgeUploadPanel({
           "mt-3 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-6 py-8 text-sm transition-colors select-none outline-none",
           isDragging
             ? "border-orange-400 bg-orange-50 text-orange-600"
-            : "border-gray-300 bg-gray-50 text-gray-500 hover:border-orange-300 hover:bg-orange-50/40",
+            : "border-border bg-muted text-muted-foreground hover:border-orange-300 hover:bg-orange-50/40",
         ].join(" ")}
       >
         <Upload
           className={[
             "h-8 w-8 transition-colors",
-            isDragging ? "text-orange-400" : "text-gray-400",
+            isDragging ? "text-orange-400" : "text-muted-foreground",
           ].join(" ")}
         />
         <span className="font-medium">
           {isDragging ? "松开鼠标以上传文件" : "拖拽文件到此处，或点击选择"}
         </span>
-        <span className="text-xs text-gray-400">
+        <span className="text-xs text-muted-foreground">
           支持 PDF、TXT、Markdown（.md）、Word（.docx），可多选
         </span>
       </div>
 
       {ingestJobs.length > 0 && (
-        <ul className="mt-4 space-y-3 border-t border-gray-100 pt-4 text-sm">
+        <ul className="mt-4 space-y-3 border-t border-border pt-4 text-sm">
           {ingestJobs.map((j) => {
             const isTerminal = TERMINAL.has(j.status);
 
@@ -198,10 +198,10 @@ export function KnowledgeUploadPanel({
             return (
               <li
                 key={j.jobId}
-                className="overflow-hidden rounded-lg border border-gray-200 bg-white"
+                className="overflow-hidden rounded-lg border border-border bg-surface"
               >
                 {/* 进度条 */}
-                <div className="h-1.5 w-full bg-gray-100">
+                <div className="h-1.5 w-full bg-muted">
                   <div
                     className={[
                       "h-full transition-all duration-500 ease-out",
@@ -216,9 +216,9 @@ export function KnowledgeUploadPanel({
 
                 {/* 文件信息行 */}
                 <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
-                  <span className="min-w-0 truncate text-gray-700">
+                  <span className="min-w-0 truncate text-foreground">
                     {j.filename}
-                    <span className="ml-2 font-mono text-xs text-gray-400">
+                    <span className="ml-2 font-mono text-xs text-muted-foreground">
                       {j.jobId.slice(0, 8)}…
                     </span>
                   </span>

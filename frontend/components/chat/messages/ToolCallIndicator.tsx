@@ -28,9 +28,9 @@ export function ToolCallIndicator({ toolName, status }: ToolCallIndicatorProps) 
           className={clsx(
             "flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-[13px] border transition-colors relative overflow-hidden",
             isRunning
-              ? "bg-[#fafafa] border-orange-200/80 text-gray-700 shadow-[0_0_0_1px_rgba(251,146,60,0.15)]"
+              ? "bg-muted border-orange-200/80 text-foreground shadow-[0_0_0_1px_rgba(251,146,60,0.15)]"
               : status === "success"
-              ? "bg-white border-[#e5e5e5] text-gray-600 shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
+              ? "bg-surface border-border text-muted-foreground shadow-[0_1px_2px_rgba(0,0,0,0.02)]"
               : "bg-red-50 border-red-100 text-red-600"
           )}
           animate={
@@ -60,15 +60,15 @@ export function ToolCallIndicator({ toolName, status }: ToolCallIndicatorProps) 
               <Wrench className="w-4 h-4 text-red-500 shrink-0" />
             )}
             <span className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-gray-600">
+              <span className="text-muted-foreground">
                 {isRunning
                   ? "正在调用工具"
                   : status === "success"
                   ? "工具调用成功"
                   : "工具调用失败"}
               </span>
-              <span className="text-gray-300">·</span>
-              <span className="font-mono text-xs text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded-md">
+              <span className="text-muted-foreground/40">·</span>
+              <span className="font-mono text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md">
                 {toolName}
               </span>
             </span>

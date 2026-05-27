@@ -36,7 +36,7 @@ export function RoundTokensHint({
       {show ? (
         <span
           title={title}
-          className="max-w-full truncate text-xs tabular-nums text-gray-400"
+          className="max-w-full truncate text-xs tabular-nums text-muted-foreground/90"
         >
           {prefix} · 约 {usage!.total.toLocaleString("zh-CN")} tokens
         </span>

@@ -13,15 +13,15 @@ import type { CatalogModelOption, ChatModelCatalogResponse } from "@/types/model
 const MODEL_PICK_SEP = "\u001f";
 
 const menuPanelCls =
-  "ui-radix-floating overflow-hidden rounded-lg border-2 border-gray-200 bg-white py-1 shadow-lg outline-none";
-const menuSectionLabelCls = "px-2 pb-1 pt-2 text-[11px] font-medium text-gray-400";
+  "ui-radix-floating overflow-hidden rounded-lg border-2 border-border bg-surface py-1 shadow-lg outline-none";
+const menuSectionLabelCls = "px-2 pb-1 pt-2 text-[11px] font-medium text-muted-foreground";
 const menuToggleRowCls = "flex items-center justify-between gap-2 px-2 py-1.5";
-const menuToggleLabelCls = "text-xs font-medium text-gray-900";
-const menuHintCls = "px-2 text-[10px] text-gray-400";
-const menuHintInlineCls = "text-[10px] text-gray-400";
+const menuToggleLabelCls = "text-xs font-medium text-foreground";
+const menuHintCls = "px-2 text-[10px] text-muted-foreground";
+const menuHintInlineCls = "text-[10px] text-muted-foreground";
 
 const pillTriggerCls =
-  "inline-flex max-w-[min(11rem,42vw)] shrink-0 items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs font-medium text-gray-700 outline-none transition-colors hover:bg-gray-100 disabled:opacity-45 sm:max-w-[14rem] sm:px-3";
+  "inline-flex max-w-[min(11rem,42vw)] shrink-0 items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-1.5 text-xs font-medium text-foreground outline-none transition-colors hover:bg-muted disabled:opacity-45 sm:max-w-[14rem] sm:px-3";
 
 type ComposerModelMenuProps = {
   genState: GenerationState;
@@ -43,7 +43,7 @@ function ToggleSwitch({
   checked,
   disabled,
   onToggle,
-  activeClassName = "bg-gray-900",
+  activeClassName = "bg-orange-500",
 }: {
   checked: boolean;
   disabled?: boolean;
@@ -64,14 +64,14 @@ function ToggleSwitch({
       className={clsx(
         "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/25",
-        checked ? activeClassName : "bg-gray-200",
+        checked ? activeClassName : "bg-muted",
         disabled ? "cursor-not-allowed opacity-45" : "cursor-pointer",
       )}
     >
       <span
         aria-hidden
         className={clsx(
-          "pointer-events-none block h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
+          "pointer-events-none block h-4 w-4 rounded-full bg-surface shadow-sm transition-transform",
           checked ? "translate-x-[18px]" : "translate-x-0.5",
         )}
       />
@@ -132,18 +132,18 @@ function ModelMenuRow({
     <div
       className={clsx(
         "group relative mx-0 flex items-center rounded-lg",
-        !providerConfigured || disabled ? "opacity-45" : "hover:bg-gray-50",
+        !providerConfigured || disabled ? "opacity-45" : "hover:bg-muted",
       )}
     >
       <DropdownMenu.Item
         disabled={!providerConfigured || disabled}
         className={clsx(
-          "flex min-w-0 flex-1 cursor-pointer select-none items-center rounded-lg py-1.5 pl-2 text-sm outline-none focus:bg-gray-50 data-[disabled]:pointer-events-none",
+          "flex min-w-0 flex-1 cursor-pointer select-none items-center rounded-lg py-1.5 pl-2 text-sm outline-none focus:bg-muted data-[disabled]:pointer-events-none",
           providerConfigured && !disabled ? "pr-1" : "pr-2",
         )}
         onSelect={() => onSelectModel(providerId, model.id)}
       >
-        <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-gray-900">
+        <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">
           {model.full_label ?? model.label}
         </span>
       </DropdownMenu.Item>
@@ -164,8 +164,8 @@ function ModelMenuRow({
           >
             <DropdownMenu.SubTrigger
               className={clsx(
-                "hidden items-center gap-0.5 rounded px-0.5 py-0.5 text-[11px] font-medium text-gray-500 outline-none",
-                "hover:bg-gray-100 hover:text-gray-800",
+                "hidden items-center gap-0.5 rounded px-0.5 py-0.5 text-[11px] font-medium text-muted-foreground outline-none",
+                "hover:bg-muted hover:text-foreground",
                 "group-hover:flex data-[state=open]:flex",
               )}
             onPointerEnter={(e) => e.preventDefault()}
@@ -218,12 +218,12 @@ function ModelMenuRow({
           </DropdownMenu.Sub>
 
           {selected ? (
-            <Check className="h-3.5 w-3.5 shrink-0 text-gray-700" strokeWidth={2.5} aria-hidden />
+            <Check className="h-3.5 w-3.5 shrink-0 text-foreground" strokeWidth={2.5} aria-hidden />
           ) : null}
         </div>
       ) : selected ? (
         <Check
-          className="mr-2 h-3.5 w-3.5 shrink-0 text-gray-700"
+          className="mr-2 h-3.5 w-3.5 shrink-0 text-foreground"
           strokeWidth={2.5}
           aria-hidden
         />
@@ -280,7 +280,7 @@ export function ComposerModelMenu({
     <DropdownMenu.Root modal={false}>
       <DropdownMenu.Trigger asChild disabled={disabled && !modelCatalog?.providers?.length}>
         <button type="button" className={pillTriggerCls} disabled={disabled}>
-          <Sparkles className="h-3.5 w-3.5 shrink-0 text-gray-500" aria-hidden />
+          <Sparkles className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
           <span className="min-w-0 truncate">{label}</span>
           <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-55" aria-hidden />
         </button>
@@ -297,10 +297,10 @@ export function ComposerModelMenu({
           )}
         >
           {/* 联网搜索 — 最上端（紧凑） */}
-          <div className="border-b border-gray-100">
+          <div className="border-b border-border">
             <div className={menuToggleRowCls}>
               <div className="flex min-w-0 items-center gap-1.5">
-                <Globe className="h-3.5 w-3.5 shrink-0 text-gray-500" aria-hidden />
+                <Globe className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
                 <div className="min-w-0 leading-tight">
                   <div className={menuToggleLabelCls}>联网搜索</div>
                   <div className={menuHintInlineCls}>
@@ -327,7 +327,7 @@ export function ComposerModelMenu({
                       "flex-1 rounded border px-1.5 py-0.5 text-[10px] font-medium transition-colors",
                       webSearchMode === mode
                         ? "border-emerald-300 bg-emerald-50 text-emerald-800"
-                        : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50",
+                        : "border-border bg-surface text-muted-foreground hover:bg-muted",
                     )}
                   >
                     {mode === "auto" ? "自动" : "手动"}
@@ -343,11 +343,11 @@ export function ComposerModelMenu({
           </DropdownMenu.Label>
           <div className="max-h-[min(16rem,40vh)] overflow-y-auto pb-1">
             {!modelCatalog?.providers?.length ? (
-              <p className="px-2 py-2 text-xs text-gray-500">使用服务端默认模型</p>
+              <p className="px-2 py-2 text-xs text-muted-foreground">使用服务端默认模型</p>
             ) : (
               modelCatalog.providers.map((prov) => (
                 <div key={prov.id} className="mb-1">
-                  <div className="px-2 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                  <div className="px-2 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                     {prov.label}
                     {!prov.configured ? " · 未配置 KEY" : ""}
                   </div>

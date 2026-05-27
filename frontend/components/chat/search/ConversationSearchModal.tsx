@@ -109,30 +109,30 @@ export function ConversationSearchModal({
           key="conv-search-overlay"
           ref={overlayRef}
           onClick={handleOverlayClick}
-          className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 pt-[12vh] backdrop-blur-[2px]"
+          className="fixed inset-0 z-50 flex items-start justify-center bg-foreground/30 pt-[12vh] backdrop-blur-[2px]"
           {...uiModalBackdrop}
         >
           <motion.div
             key="conv-search-panel"
-            className="mx-4 flex max-h-[70vh] w-full max-w-[34rem] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl"
+            className="mx-4 flex max-h-[70vh] w-full max-w-[34rem] flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl"
             onClick={(e) => e.stopPropagation()}
             {...uiModalPanel}
           >
         {/* 搜索栏 */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
-          <Search className="w-4 h-4 text-gray-400 shrink-0" />
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
+          <Search className="w-4 h-4 text-muted-foreground shrink-0" />
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="搜索对话"
-            className="flex-1 bg-transparent text-gray-800 placeholder-gray-400 text-sm outline-none"
+            className="flex-1 bg-transparent text-foreground placeholder-gray-400 text-sm outline-none"
           />
           <button
             type="button"
             onClick={onClose}
-            className="shrink-0 rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+            className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-muted-foreground transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -145,23 +145,23 @@ export function ConversationSearchModal({
             <button
               type="button"
               onClick={() => { onNewChat(); onClose(); }}
-              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-foreground hover:bg-muted rounded-lg transition-colors"
             >
-              <SquarePen className="w-4 h-4 text-gray-500 shrink-0" />
+              <SquarePen className="w-4 h-4 text-muted-foreground shrink-0" />
               <span className="font-medium">新建对话</span>
             </button>
           </div>
 
           {/* 分组列表 */}
           {groups.length === 0 ? (
-            <p className="px-4 py-6 text-center text-sm text-gray-400">
+            <p className="px-4 py-6 text-center text-sm text-muted-foreground">
               没有找到匹配的对话
             </p>
           ) : (
             groups.map((group) => (
               <div key={group.label} className="px-2">
                 {group.label && (
-                  <div className="px-3 pt-2 pb-1 text-xs font-semibold text-gray-400">
+                  <div className="px-3 pt-2 pb-1 text-xs font-semibold text-muted-foreground">
                     {group.label}
                   </div>
                 )}
@@ -171,7 +171,7 @@ export function ConversationSearchModal({
                     type="button"
                     onClick={() => { onSelect(c.id); onClose(); }}
                     className={clsx(
-                      "w-full flex items-center px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors text-left"
+                      "w-full flex items-center px-3 py-2.5 text-sm text-foreground hover:bg-muted rounded-lg transition-colors text-left"
                     )}
                   >
                     <span className="truncate">{c.title || "未命名"}</span>

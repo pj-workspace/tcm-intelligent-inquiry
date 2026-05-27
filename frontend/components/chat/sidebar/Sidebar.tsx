@@ -32,7 +32,7 @@ const SECTION_PREVIEW_LIMIT = 8;
 
 /** 时间分段标题：比「聊天」区块标题更轻、更小 */
 const TIME_SECTION_LABEL_CLASS =
-  "px-2 pt-1 pb-1 text-[11px] font-medium text-gray-400/80";
+  "px-2 pt-1 pb-1 text-[11px] font-medium text-muted-foreground/80";
 
 export type SidebarConversation = ServerConversation;
 
@@ -124,8 +124,8 @@ export function Sidebar({
 }: SidebarProps) {
   const isDrawer = variant === "drawer";
   const toolbarBtnClass = isDrawer
-    ? "flex h-10 w-10 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-200/70 hover:text-gray-700 active:scale-95 transition-colors"
-    : "flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-200/70 hover:text-gray-700 active:scale-95 transition-colors";
+    ? "flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/70 hover:text-foreground active:scale-95 transition-colors"
+    : "flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/70 hover:text-foreground active:scale-95 transition-colors";
   const { loading: authLoading, token } = useAuth();
   const listAreaLoading = authLoading || conversationsLoading;
 
@@ -203,7 +203,7 @@ export function Sidebar({
     <div
       style={isDrawer ? undefined : { width: collapsed ? 0 : 276 }}
       className={clsx(
-        "h-full flex-col flex-shrink-0 overflow-hidden bg-[#f9f9f8] border-r border-[#e5e5e5] flex",
+        "h-full flex-col flex-shrink-0 overflow-hidden bg-sidebar border-r border-border flex",
         !isDrawer && "transition-[width] duration-300 ease-in-out hidden md:flex",
         isDrawer && "w-full border-r-0",
       )}
@@ -255,12 +255,12 @@ export function Sidebar({
           {/* 分组 */}
           <div>
             <div className="flex items-center justify-between px-2 mb-1.5">
-              <span className="text-xs font-semibold text-gray-400">分组</span>
+              <span className="text-xs font-semibold text-muted-foreground">分组</span>
               <button
                 type="button"
                 title="新建分组"
                 onClick={onCreateFolder}
-                className="p-1 rounded-md text-gray-400 hover:bg-gray-200/80 hover:text-gray-700"
+                className="p-1 rounded-md text-muted-foreground hover:bg-muted/80 hover:text-foreground"
               >
                 <Plus className="w-3.5 h-3.5" />
               </button>
@@ -273,8 +273,8 @@ export function Sidebar({
                     "group/gf relative flex items-center rounded-lg px-2 py-1.5 text-sm transition-colors",
                     isDrawer ? "min-h-[2.75rem]" : "min-h-[2.25rem]",
                     sidebarFilter === g.id
-                      ? "bg-white shadow-sm border border-[#e5e5e5] text-gray-900 font-medium"
-                      : "text-gray-600 hover:bg-gray-100/80 border border-transparent"
+                      ? "bg-surface shadow-sm border border-border text-foreground font-medium"
+                      : "text-muted-foreground hover:bg-muted/80 border border-transparent"
                   )}
                 >
                   <button
@@ -296,7 +296,7 @@ export function Sidebar({
                         <button
                           type="button"
                           className={clsx(
-                            "rounded p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-200/60",
+                            "rounded p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/60",
                             isDrawer ? "opacity-100" : "opacity-0 group-hover/gf:opacity-100",
                           )}
                           aria-label="分组操作"
@@ -307,13 +307,13 @@ export function Sidebar({
                       </DropdownMenu.Trigger>
                       <DropdownMenu.Portal>
                         <DropdownMenu.Content
-                          className="ui-radix-floating z-[300] min-w-[9rem] rounded-lg border border-[#e5e5e5] bg-white py-1 text-sm shadow-lg"
+                          className="ui-radix-floating z-[300] min-w-[9rem] rounded-lg border border-border bg-surface py-1 text-sm shadow-lg"
                           align="end"
                           sideOffset={4}
                         >
                           {onRenameFolder && (
                             <DropdownMenu.Item
-                              className="flex cursor-pointer items-center gap-2 px-3 py-2 outline-none hover:bg-gray-50"
+                              className="flex cursor-pointer items-center gap-2 px-3 py-2 outline-none hover:bg-muted"
                               onSelect={() => onRenameFolder(g.id, g.name)}
                             >
                               <Pencil className="w-3.5 h-3.5" /> 重命名分组
@@ -342,7 +342,7 @@ export function Sidebar({
               <span
                 className={clsx(
                   "text-xs font-semibold",
-                  batchMode ? "text-orange-800/95" : "text-gray-400"
+                  batchMode ? "text-orange-800/95" : "text-muted-foreground"
                 )}
               >
                 {batchMode ? "批量管理" : "聊天"}
@@ -355,8 +355,8 @@ export function Sidebar({
                 className={clsx(
                   "shrink-0 rounded-lg p-1.5 transition-colors",
                   batchMode
-                    ? "bg-white px-2 text-[11px] font-medium text-orange-900 shadow-sm ring-1 ring-orange-200/80 hover:bg-orange-50/80"
-                    : "text-gray-400 hover:bg-gray-200/80 hover:text-gray-700"
+                    ? "bg-surface px-2 text-[11px] font-medium text-orange-900 shadow-sm ring-1 ring-orange-200/80 hover:bg-orange-50/80"
+                    : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
                 )}
               >
                 {batchMode ? (
@@ -379,19 +379,19 @@ export function Sidebar({
             )}
 
             {listAreaLoading ? (
-              <div className="px-2 py-2 flex items-center gap-2 text-sm text-gray-400">
+              <div className="px-2 py-2 flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 shrink-0 animate-spin opacity-70" aria-hidden />
                 <span>加载会话…</span>
               </div>
             ) : conversationsFull.length === 0 && !showPendingNewChatSkeleton ? (
-              <p className="px-2 text-sm text-gray-400 leading-relaxed">暂无会话。</p>
+              <p className="px-2 text-sm text-muted-foreground leading-relaxed">暂无会话。</p>
             ) : (
               <div className="mt-1 flex min-h-0 flex-1 flex-col gap-2.5">
                 {showPendingNewChatSkeleton && (
                   <div className="space-y-0.5">
                     <div className={TIME_SECTION_LABEL_CLASS}>今天</div>
                     <div
-                      className="pointer-events-none relative flex min-h-[2.75rem] w-full items-stretch rounded-xl border border-[#e5e5e5] bg-white px-3 py-2.5 text-sm shadow-sm"
+                      className="pointer-events-none relative flex min-h-[2.75rem] w-full items-stretch rounded-xl border border-border bg-surface px-3 py-2.5 text-sm shadow-sm"
                       aria-busy
                     >
                       <div className="flex min-w-0 flex-1 items-center">
@@ -419,7 +419,7 @@ export function Sidebar({
                         <button
                           type="button"
                           onClick={() => toggleSectionExpanded(section.id)}
-                          className="w-full rounded-lg px-2 py-1.5 text-left text-xs text-gray-500 transition-colors hover:bg-gray-100/85 hover:text-gray-700"
+                          className="w-full rounded-lg px-2 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-muted/85 hover:text-foreground"
                         >
                           更多 ({hiddenCount})
                         </button>
@@ -432,21 +432,21 @@ export function Sidebar({
           </div>
         </div>
 
-        <div className="p-4 border-t border-[#e5e5e5] space-y-2">
+        <div className="p-4 border-t border-border space-y-2">
           {authLoading ? (
-            <div className="h-10 w-full rounded-lg bg-gray-200/60 animate-pulse" aria-hidden />
+            <div className="h-10 w-full rounded-lg bg-muted/60 animate-pulse" aria-hidden />
           ) : !token ? (
             <div className="flex gap-2">
               <Link
                 href="/login"
-                className="flex flex-1 items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium text-white bg-[#1a1a1a] rounded-lg hover:bg-gray-800 transition-colors"
+                className="flex flex-1 items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium text-primary-foreground bg-primary rounded-lg hover:opacity-90 transition-colors"
               >
                 <LogIn className="w-4 h-4 shrink-0" />
                 登录
               </Link>
               <Link
                 href="/register"
-                className="flex flex-1 items-center justify-center px-3 py-2.5 text-sm font-medium text-[#1a1a1a] bg-white border border-[#e5e5e5] rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex flex-1 items-center justify-center px-3 py-2.5 text-sm font-medium text-foreground bg-surface border border-border rounded-lg hover:bg-muted transition-colors"
               >
                 注册
               </Link>
@@ -454,9 +454,9 @@ export function Sidebar({
           ) : null}
           <Link
             href="/settings"
-            className="w-full flex items-center gap-3 px-2 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md transition-colors text-left"
+            className="w-full flex items-center gap-3 px-2 py-2 text-sm text-foreground hover:bg-muted rounded-md transition-colors text-left"
           >
-            <Settings className="w-4 h-4 text-gray-500" />
+            <Settings className="w-4 h-4 text-muted-foreground" />
             <span>设置</span>
           </Link>
         </div>

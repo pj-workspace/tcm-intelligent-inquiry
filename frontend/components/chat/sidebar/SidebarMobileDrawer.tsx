@@ -71,12 +71,12 @@ export function SidebarMobileDrawer({
           <motion.button
             type="button"
             aria-label="关闭侧栏"
-            className="absolute inset-0 bg-black/30 backdrop-blur-[1px]"
+            className="absolute inset-0 bg-foreground/30 backdrop-blur-[1px]"
             onClick={onClose}
             {...uiModalBackdrop}
           />
           <motion.aside
-            className="absolute inset-y-0 left-0 flex w-[min(280px,88vw)] flex-col overflow-hidden border-r border-[#e5e5e5] bg-[#f9f9f8] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] shadow-xl"
+            className="absolute inset-y-0 left-0 flex w-[min(280px,88vw)] flex-col overflow-hidden border-r border-border bg-sidebar pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] shadow-xl"
             {...uiDrawerSlide}
           >
             <Sidebar

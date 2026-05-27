@@ -3,20 +3,11 @@
  */
 import { Suspense } from "react";
 import { SettingsPageClient } from "@/components/settings";
-import { SettingsTabSkeleton } from "@/components/settings/shell/SettingsTabSkeleton";
+import { SettingsPageShellSkeleton } from "@/components/settings/shell/SettingsPageShellSkeleton";
 import { parseSettingsTabId } from "@/components/settings/shell/settingsTabs";
 
 function SettingsPageFallback() {
-  return (
-    <div className="fixed inset-0 z-10 flex h-dvh max-h-dvh min-h-0 flex-col overflow-hidden bg-[#fdfdfc]">
-      <div className="flex h-14 shrink-0 items-center border-b border-[#e5e5e5] px-4 md:px-6" />
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
-        <div className="mx-auto max-w-4xl">
-          <SettingsTabSkeleton />
-        </div>
-      </div>
-    </div>
-  );
+  return <SettingsPageShellSkeleton />;
 }
 
 /** 设置页：挂载 `SettingsPageClient` 处理 Tab 与数据拉取。 */

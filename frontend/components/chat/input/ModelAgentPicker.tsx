@@ -81,14 +81,14 @@ export function ModelAgentPicker({
   const agentTriggerCls = clsx(
     "flex shrink-0 items-center gap-1 outline-none transition-colors disabled:opacity-45",
     compact
-      ? "max-w-[min(9rem,34vw)] rounded-full border border-gray-200 bg-gray-50 px-2 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100 sm:max-w-[11rem] sm:px-2.5"
-      : "w-full max-w-[min(20rem,46vw)] rounded-lg border border-transparent px-2 py-1.5 text-sm font-medium text-gray-800 hover:bg-gray-100 focus-visible:border-gray-300",
+      ? "max-w-[min(9rem,34vw)] rounded-full border border-border bg-muted px-2 py-1.5 text-xs font-medium text-foreground hover:bg-muted sm:max-w-[11rem] sm:px-2.5"
+      : "w-full max-w-[min(20rem,46vw)] rounded-lg border border-transparent px-2 py-1.5 text-sm font-medium text-foreground hover:bg-muted focus-visible:border-border",
   );
   const modelTriggerCls = clsx(
     "flex shrink-0 items-center gap-1 outline-none transition-colors disabled:opacity-45",
     compact
-      ? "max-w-[min(10rem,38vw)] rounded-full border border-gray-200 bg-gray-50 px-2 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100 sm:max-w-[12rem] sm:px-2.5"
-      : "w-full max-w-[min(20rem,46vw)] rounded-lg border border-transparent px-2 py-1.5 text-sm font-medium text-gray-800 hover:bg-gray-100 focus-visible:border-gray-300",
+      ? "max-w-[min(10rem,38vw)] rounded-full border border-border bg-muted px-2 py-1.5 text-xs font-medium text-foreground hover:bg-muted sm:max-w-[12rem] sm:px-2.5"
+      : "w-full max-w-[min(20rem,46vw)] rounded-lg border border-transparent px-2 py-1.5 text-sm font-medium text-foreground hover:bg-muted focus-visible:border-border",
   );
 
   return (
@@ -117,12 +117,12 @@ export function ModelAgentPicker({
                               position="popper"
                               sideOffset={6}
                               collisionPadding={12}
-                              className="ui-radix-floating z-[9999] max-h-[min(16rem,calc(100vh-6rem))] min-w-[10.5rem] overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
+                              className="ui-radix-floating z-[9999] max-h-[min(16rem,calc(100vh-6rem))] min-w-[10.5rem] overflow-hidden rounded-xl border border-border bg-surface py-1 shadow-lg"
                             >
                               <Select.Viewport className="max-h-[min(15rem,calc(100vh-8rem))] p-1">
                                 <Select.Item
                                   value={SYSTEM_AGENT_SELECT_VALUE}
-                                  className="relative cursor-pointer select-none rounded-lg px-2.5 py-2 text-xs outline-none data-[highlighted]:bg-gray-50"
+                                  className="relative cursor-pointer select-none rounded-lg px-2.5 py-2 text-xs outline-none data-[highlighted]:bg-muted"
                                 >
                                   <Select.ItemText>{SYSTEM_AGENT_LABEL}</Select.ItemText>
                                   <Select.ItemIndicator className="absolute right-2 top-1/2 -translate-y-1/2">
@@ -133,7 +133,7 @@ export function ModelAgentPicker({
                                   <Select.Item
                                     key={a.id}
                                     value={a.id}
-                                    className="relative cursor-pointer select-none rounded-lg px-2.5 py-2 text-xs outline-none data-[highlighted]:bg-gray-50"
+                                    className="relative cursor-pointer select-none rounded-lg px-2.5 py-2 text-xs outline-none data-[highlighted]:bg-muted"
                                   >
                                     <Select.ItemText className="line-clamp-2">{a.name}</Select.ItemText>
                                     <Select.ItemIndicator className="absolute right-2 top-1/2 -translate-y-1/2">
@@ -151,9 +151,9 @@ export function ModelAgentPicker({
                     {!modelCatalog?.providers?.length ? (
                       <span
                         className={clsx(
-                          "truncate font-medium text-gray-500 opacity-75",
+                          "truncate font-medium text-muted-foreground opacity-75",
                           compact
-                            ? "inline-flex shrink-0 rounded-full border border-gray-200 bg-gray-50 px-2 py-1.5 text-[11px] sm:text-xs"
+                            ? "inline-flex shrink-0 rounded-full border border-border bg-muted px-2 py-1.5 text-[11px] sm:text-xs"
                             : "rounded-lg px-2 py-1.5 text-xs",
                         )}
                         title="使用服务端配置的默认对话模型（未获取到模型目录）"
@@ -193,12 +193,12 @@ export function ModelAgentPicker({
                               position="popper"
                               sideOffset={6}
                               collisionPadding={12}
-                              className="ui-radix-floating z-[9999] max-h-[min(24rem,calc(100vh-6rem))] min-w-[min(22rem,var(--radix-select-trigger-width))] overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
+                              className="ui-radix-floating z-[9999] max-h-[min(24rem,calc(100vh-6rem))] min-w-[min(22rem,var(--radix-select-trigger-width))] overflow-hidden rounded-xl border border-border bg-surface py-1 shadow-lg"
                             >
                               <Select.Viewport className="max-h-[min(22rem,calc(100vh-8rem))] p-1">
                                 {modelCatalog.providers.map((prov) => (
                                   <Select.Group key={prov.id}>
-                                    <Select.Label className="px-2.5 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                                    <Select.Label className="px-2.5 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                                       {prov.label}
                                       {!prov.configured ? " · 未配置 KEY" : ""}
                                     </Select.Label>
@@ -207,11 +207,11 @@ export function ModelAgentPicker({
                                         key={`${prov.id}:${m.id}`}
                                         value={`${prov.id}${MODEL_PICK_SEP}${m.id}`}
                                         disabled={!prov.configured}
-                                        className="relative cursor-pointer select-none rounded-lg p-0 text-sm outline-none data-[disabled]:cursor-not-allowed data-[highlighted]:bg-gray-50 data-[disabled]:opacity-45"
+                                        className="relative cursor-pointer select-none rounded-lg p-0 text-sm outline-none data-[disabled]:cursor-not-allowed data-[highlighted]:bg-muted data-[disabled]:opacity-45"
                                       >
                                         <HoverCard.Root openDelay={220} closeDelay={80}>
                                           <HoverCard.Trigger asChild>
-                                            <div className="flex w-full items-center justify-between gap-2 px-2.5 py-2 text-gray-900">
+                                            <div className="flex w-full items-center justify-between gap-2 px-2.5 py-2 text-foreground">
                                               <Select.ItemText asChild>
                                                 <span className="flex-1 whitespace-normal text-left text-[13px] leading-snug line-clamp-2">
                                                   {m.full_label ?? m.label}
@@ -219,7 +219,7 @@ export function ModelAgentPicker({
                                               </Select.ItemText>
                                               <span
                                                 className={clsx(
-                                                  "flex shrink-0 items-center gap-0.5 text-[11px] font-medium tabular-nums text-gray-400",
+                                                  "flex shrink-0 items-center gap-0.5 text-[11px] font-medium tabular-nums text-muted-foreground",
                                                   !prov.configured && "opacity-60",
                                                 )}
                                               >
@@ -237,15 +237,15 @@ export function ModelAgentPicker({
                                               align="start"
                                               sideOffset={12}
                                               collisionPadding={16}
-                                              className="z-[10050] w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-gray-200 bg-white p-3 text-sm text-gray-900 shadow-xl outline-none"
+                                              className="z-[10050] w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-border bg-surface p-3 text-sm text-foreground shadow-xl outline-none"
                                             >
                                               <div className="text-[15px] font-semibold leading-snug">
                                                 {m.full_label ?? m.label}
                                               </div>
-                                              <div className="mt-1 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-xs text-gray-500">
+                                              <div className="mt-1 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-xs text-muted-foreground">
                                                 <span>{prov.label}</span>
-                                                <span className="text-gray-300">·</span>
-                                                <code className="rounded bg-gray-100 px-1 py-px font-mono text-[10px] text-gray-600">
+                                                <span className="text-muted-foreground/40">·</span>
+                                                <code className="rounded bg-muted px-1 py-px font-mono text-[10px] text-muted-foreground">
                                                   {m.id}
                                                 </code>
                                               </div>
@@ -256,18 +256,18 @@ export function ModelAgentPicker({
                                                   填写对应 Key 后启用。
                                                 </p>
                                               ) : null}
-                                              <p className="mt-3 text-xs leading-relaxed text-gray-600">
+                                              <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
                                                 {m.description}
                                               </p>
                                               {prov.id === "deepseek" && prov.configured ? (
-                                                <p className="mt-2 text-[11px] leading-snug text-gray-500">
+                                                <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
                                                   官方支持思考模式与工具调用并存；多轮请求需完整回传每步{" "}
                                                   <span className="font-mono">reasoning_content</span>
                                                   ，本项目已自动处理。
                                                 </p>
                                               ) : null}
                                               {m.context_window_hint ? (
-                                                <p className="mt-3 border-t border-gray-100 pt-2 text-[11px] italic leading-snug text-gray-500">
+                                                <p className="mt-3 border-t border-border pt-2 text-[11px] italic leading-snug text-muted-foreground">
                                                   {m.context_window_hint}
                                                 </p>
                                               ) : null}

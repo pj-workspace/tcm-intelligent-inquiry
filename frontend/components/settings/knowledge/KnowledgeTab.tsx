@@ -122,15 +122,15 @@ export function KnowledgeTab() {
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h2 className="text-lg font-semibold text-gray-900">知识库</h2>
-          <p className="mt-1 text-sm text-gray-500">
+          <h2 className="text-lg font-semibold text-foreground">知识库</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             创建个人知识库并上传 PDF、TXT、Markdown 或 Word 文档（.docx），供对话中「检索知识库」工具使用。
           </p>
         </div>
         <button
           type="button"
           onClick={() => setCreateOpen(true)}
-          className="flex w-full shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-800 shadow-sm transition hover:bg-gray-50 sm:w-auto"
+          className="flex w-full shrink-0 items-center justify-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground shadow-sm transition hover:bg-muted sm:w-auto"
         >
           <Plus className="h-4 w-4" />
           新建知识库
@@ -142,7 +142,7 @@ export function KnowledgeTab() {
       )}
 
       <div className="space-y-3">
-        <h3 className="text-sm font-medium text-gray-900">我的知识库</h3>
+        <h3 className="text-sm font-medium text-foreground">我的知识库</h3>
 
         {k.kbs.length > 0 && (
           <SettingsListToolbar
@@ -155,14 +155,14 @@ export function KnowledgeTab() {
         )}
 
         {k.kbs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 py-12 text-center text-sm text-gray-500">
-            <Database className="mb-3 h-8 w-8 text-gray-300" />
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
+            <Database className="mb-3 h-8 w-8 text-muted-foreground/40" />
             <p>暂无知识库</p>
             <p className="mt-1 text-xs">创建后即可上传文档</p>
             <button
               type="button"
               onClick={() => setCreateOpen(true)}
-              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground hover:opacity-90"
             >
               <Plus className="h-4 w-4" />
               创建知识库

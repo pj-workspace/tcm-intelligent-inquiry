@@ -88,15 +88,15 @@ export function WidgetCard({
     const label = dismissed ? "已跳过" : answer!;
     return (
       <div className="my-3 w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl mx-auto px-4 sm:px-5 md:px-6 lg:px-8">
-        <div className="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+        <div className="flex items-start gap-3 rounded-xl border border-border bg-muted px-4 py-3">
           <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100">
             <Check className="h-3 w-3 text-emerald-600" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[13px] text-gray-500 leading-snug">{question}</p>
+            <p className="text-[13px] text-muted-foreground leading-snug">{question}</p>
             <p
               className={`mt-0.5 text-[14px] font-medium leading-snug ${
-                dismissed ? "italic text-gray-400" : "text-gray-800"
+                dismissed ? "italic text-muted-foreground" : "text-foreground"
               }`}
             >
               {label}
@@ -114,11 +114,11 @@ export function WidgetCard({
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2 }}
-        className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm"
+        className="overflow-hidden rounded-2xl border border-border bg-surface shadow-sm"
       >
         {/* 问题头 */}
-        <div className="border-b border-gray-100 px-5 py-4">
-          <p className="text-[15px] font-semibold leading-snug text-gray-900">{question}</p>
+        <div className="border-b border-border px-5 py-4">
+          <p className="text-[15px] font-semibold leading-snug text-foreground">{question}</p>
         </div>
 
         {/* 选项列表 */}
@@ -134,21 +134,21 @@ export function WidgetCard({
                   onMouseEnter={() => setHoveredIdx(idx)}
                   onMouseLeave={() => setHoveredIdx(null)}
                   className={`flex w-full items-center gap-3 px-5 py-3 text-left transition-colors disabled:pointer-events-none disabled:opacity-50 ${
-                    isHovered ? "bg-gray-50" : "bg-white"
+                    isHovered ? "bg-muted" : "bg-surface"
                   }`}
                 >
                   <span
                     className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[12px] font-semibold tabular-nums transition-colors ${
                       isHovered
                         ? "bg-gray-800 text-white"
-                        : "bg-gray-100 text-gray-500"
+                        : "bg-muted text-muted-foreground"
                     }`}
                   >
                     {idx + 1}
                   </span>
-                  <span className="flex-1 text-[14px] text-gray-800">{label}</span>
+                  <span className="flex-1 text-[14px] text-foreground">{label}</span>
                   {isHovered && (
-                    <ArrowRight className="h-4 w-4 shrink-0 text-gray-400" />
+                    <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                   )}
                 </button>
               </li>
@@ -165,9 +165,9 @@ export function WidgetCard({
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="flex items-center gap-2 bg-gray-50 px-5 py-3"
+                    className="flex items-center gap-2 bg-muted px-5 py-3"
                   >
-                    <PenLine className="h-4 w-4 shrink-0 text-gray-400" />
+                    <PenLine className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <input
                       ref={freeInputRef}
                       type="text"
@@ -182,13 +182,13 @@ export function WidgetCard({
                           setFreeText("");
                         }
                       }}
-                      className="flex-1 bg-transparent text-[14px] text-gray-800 outline-none placeholder:text-gray-400"
+                      className="flex-1 bg-transparent text-[14px] text-foreground outline-none placeholder:text-muted-foreground"
                     />
                     <button
                       type="button"
                       onClick={handleFreeSubmit}
                       disabled={!freeText.trim() || disabled}
-                      className="rounded-md bg-gray-800 px-3 py-1 text-[12px] font-medium text-white transition-opacity disabled:opacity-40 hover:bg-gray-700"
+                      className="rounded-md bg-gray-800 px-3 py-1 text-[12px] font-medium text-white transition-opacity disabled:opacity-40 hover:opacity-90"
                     >
                       发送
                     </button>
@@ -203,12 +203,12 @@ export function WidgetCard({
                     disabled={disabled}
                     onClick={() => setShowFreeInput(true)}
                     onMouseEnter={() => setHoveredIdx(null)}
-                    className="flex w-full items-center gap-3 bg-white px-5 py-3 text-left transition-colors hover:bg-gray-50 disabled:pointer-events-none disabled:opacity-50"
+                    className="flex w-full items-center gap-3 bg-surface px-5 py-3 text-left transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
                   >
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gray-100">
-                      <PenLine className="h-3.5 w-3.5 text-gray-500" />
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted">
+                      <PenLine className="h-3.5 w-3.5 text-muted-foreground" />
                     </span>
-                    <span className="flex-1 text-[14px] text-gray-400 italic">
+                    <span className="flex-1 text-[14px] text-muted-foreground italic">
                       自定义回答…
                     </span>
                   </motion.button>
@@ -219,12 +219,12 @@ export function WidgetCard({
         </ul>
 
         {/* 底部跳过 */}
-        <div className="flex items-center justify-end border-t border-gray-100 px-5 py-2.5">
+        <div className="flex items-center justify-end border-t border-border px-5 py-2.5">
           <button
             type="button"
             disabled={disabled}
             onClick={handleSkip}
-            className="text-[12px] text-gray-400 transition-colors hover:text-gray-600 disabled:opacity-40"
+            className="text-[12px] text-muted-foreground transition-colors hover:text-muted-foreground disabled:opacity-40"
           >
             跳过
           </button>

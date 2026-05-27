@@ -31,7 +31,7 @@ export function SettingsListToolbar({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="relative min-w-0 flex-1">
           <Search
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden
           />
           <input
@@ -39,13 +39,13 @@ export function SettingsListToolbar({
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
             placeholder={placeholder}
-            className="h-10 w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-9 text-sm outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15"
+            className="h-10 w-full rounded-lg border border-border bg-surface py-2 pl-9 pr-9 text-sm outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-500/15"
           />
           {query ? (
             <button
               type="button"
               onClick={() => onQueryChange("")}
-              className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-muted-foreground"
               aria-label="清除搜索"
             >
               <X className="h-4 w-4" />
@@ -53,14 +53,14 @@ export function SettingsListToolbar({
           ) : null}
         </div>
         {showCount ? (
-          <p className="shrink-0 text-xs text-gray-500 sm:text-right">
+          <p className="shrink-0 text-xs text-muted-foreground sm:text-right">
             显示{" "}
-            <span className="font-medium tabular-nums text-gray-700">{filteredCount}</span>
+            <span className="font-medium tabular-nums text-foreground">{filteredCount}</span>
             {filteredCount !== totalCount ? (
               <>
                 {" "}
                 / 共{" "}
-                <span className="font-medium tabular-nums text-gray-700">{totalCount}</span>
+                <span className="font-medium tabular-nums text-foreground">{totalCount}</span>
               </>
             ) : null}
           </p>

@@ -58,7 +58,7 @@ function resolveToolMeta(
 function ToolChip({ label, dot, title }: { label: string; dot: string; title: string }) {
   return (
     <span
-      className="inline-flex max-w-full items-center gap-1.5 rounded border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs text-gray-700"
+      className="inline-flex max-w-full items-center gap-1.5 rounded border border-border bg-muted px-2 py-0.5 text-xs text-foreground"
       title={title}
     >
       <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
@@ -101,10 +101,10 @@ export function AgentCard({
 
   return (
     <div
-      className={`overflow-hidden rounded-xl border bg-white shadow-sm transition-all hover:shadow-md ${
+      className={`overflow-hidden rounded-xl border bg-surface shadow-sm transition-all hover:shadow-md ${
         isDefault
           ? "border-orange-300 ring-1 ring-orange-100"
-          : "border-[#e5e5e5]"
+          : "border-border"
       }`}
     >
       <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5">
@@ -113,14 +113,14 @@ export function AgentCard({
             className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
               isDefault
                 ? "bg-orange-100 text-orange-600"
-                : "bg-gray-100 text-gray-600"
+                : "bg-muted text-muted-foreground"
             }`}
           >
             <Bot className="h-5 w-5" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-semibold text-gray-900">{agent.name}</h3>
+              <h3 className="font-semibold text-foreground">{agent.name}</h3>
               {isDefault && (
                 <span className="flex items-center gap-1 rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-medium text-orange-700">
                   <Star className="h-3 w-3 fill-orange-500 text-orange-500" />
@@ -128,15 +128,15 @@ export function AgentCard({
                 </span>
               )}
             </div>
-            <p className="mt-1 text-sm text-gray-600">
+            <p className="mt-1 text-sm text-muted-foreground">
               {agent.description || "暂无说明"}
             </p>
 
             <div className="mt-3">
               {toolCount === 0 ? (
                 <>
-                  <div className="text-[11px] font-medium text-gray-400">绑定工具</div>
-                  <p className="mt-1 text-xs italic text-gray-400">无</p>
+                  <div className="text-[11px] font-medium text-muted-foreground">绑定工具</div>
+                  <p className="mt-1 text-xs italic text-muted-foreground">无</p>
                 </>
               ) : (
                 <>
@@ -145,9 +145,9 @@ export function AgentCard({
                     onClick={() => toolsCollapsible && setToolsExpanded((v) => !v)}
                     disabled={!toolsCollapsible}
                     className={clsx(
-                      "flex items-center gap-1 text-[11px] font-medium text-gray-400",
+                      "flex items-center gap-1 text-[11px] font-medium text-muted-foreground",
                       toolsCollapsible &&
-                        "rounded-md transition-colors hover:text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/20",
+                        "rounded-md transition-colors hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/20",
                     )}
                   >
                     绑定工具（{toolCount}）
@@ -163,10 +163,10 @@ export function AgentCard({
                   </button>
 
                   {toolsCollapsible && !toolsExpanded ? (
-                    <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-gray-500">
+                    <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
                       {toolsPreviewText}
                       {toolCount > TOOLS_PREVIEW_COUNT ? (
-                        <span className="text-gray-400"> 等 {toolCount} 个</span>
+                        <span className="text-muted-foreground"> 等 {toolCount} 个</span>
                       ) : null}
                     </p>
                   ) : (
@@ -192,18 +192,18 @@ export function AgentCard({
             </div>
 
             <div className="mt-3">
-              <div className="text-[11px] font-medium text-gray-400">默认知识库</div>
-              <p className="mt-1 text-xs text-gray-600">
+              <div className="text-[11px] font-medium text-muted-foreground">默认知识库</div>
+              <p className="mt-1 text-xs text-muted-foreground">
                 {agent.default_kb_id ? (
                   <>
                     {knowledgeBases.find((k) => k.id === agent.default_kb_id)?.name ??
                       "（未在列表中）"}{" "}
-                    <span className="font-mono text-gray-400">
+                    <span className="font-mono text-muted-foreground">
                       {agent.default_kb_id}
                     </span>
                   </>
                 ) : (
-                  <span className="italic text-gray-400">未指定</span>
+                  <span className="italic text-muted-foreground">未指定</span>
                 )}
               </p>
             </div>
@@ -217,7 +217,7 @@ export function AgentCard({
             className={`flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
               isDefault
                 ? "bg-orange-50 text-orange-600 hover:bg-orange-100"
-                : "text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
           >
             <Star className={`h-4 w-4 ${isDefault ? "fill-orange-500" : ""}`} />
@@ -225,21 +225,21 @@ export function AgentCard({
           <button
             onClick={() => onClone(agent)}
             title="克隆此 Agent"
-            className="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             <Copy className="h-4 w-4" />
           </button>
           <button
             onClick={() => onEdit(agent)}
             title="编辑"
-            className="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             <Edit2 className="h-4 w-4" />
           </button>
           <button
             onClick={() => onDelete(agent.id)}
             title="删除"
-            className="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 hover:bg-red-50 hover:text-red-600"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-red-50 hover:text-red-600"
           >
             <Trash2 className="h-4 w-4" />
           </button>
@@ -247,22 +247,22 @@ export function AgentCard({
       </div>
 
       {/* 系统提示词折叠区 */}
-      <div className="border-t border-gray-50 bg-[#fafaf8]">
+      <div className="border-t border-border bg-muted">
         <button
           type="button"
           onClick={() => hasPrompt && setShowPrompt((v) => !v)}
           disabled={!hasPrompt}
-          className={`flex w-full items-center justify-between px-5 py-2.5 text-xs text-gray-500 transition-colors ${
-            hasPrompt ? "hover:bg-gray-100/50" : "cursor-default opacity-60"
+          className={`flex w-full items-center justify-between px-5 py-2.5 text-xs text-muted-foreground transition-colors ${
+            hasPrompt ? "hover:bg-muted/50" : "cursor-default opacity-60"
           }`}
         >
           <span className="flex items-center gap-1.5">
             <FileText className="h-3.5 w-3.5" />
             系统提示词
             {hasPrompt ? (
-              <span className="text-gray-400">（{trimmedPrompt.length} 字符）</span>
+              <span className="text-muted-foreground">（{trimmedPrompt.length} 字符）</span>
             ) : (
-              <span className="italic text-gray-400">未配置（使用系统默认）</span>
+              <span className="italic text-muted-foreground">未配置（使用系统默认）</span>
             )}
           </span>
           {hasPrompt && (
@@ -274,8 +274,8 @@ export function AgentCard({
           )}
         </button>
         {hasPrompt && showPrompt && (
-          <div className="border-t border-gray-100 px-5 py-3">
-            <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words text-xs leading-relaxed text-gray-600">
+          <div className="border-t border-border px-5 py-3">
+            <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words text-xs leading-relaxed text-muted-foreground">
               {trimmedPrompt}
             </pre>
           </div>

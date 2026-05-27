@@ -41,7 +41,7 @@ function UserBubbleAttachments({
           onClick={() => onOpenPreview(0)}
           className={clsx(
             "group/img relative block h-28 w-28 max-w-[min(100%,7rem)] shrink-0 overflow-hidden rounded-xl sm:h-32 sm:w-32 sm:max-w-[8rem]",
-            "bg-white text-left shadow-sm ring-1 ring-black/[0.08] transition-[box-shadow,ring-color]",
+            "bg-surface text-left shadow-sm ring-1 ring-border/80 transition-[box-shadow,ring-color]",
             "hover:ring-black/14 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300/80"
           )}
           aria-label="查看大图"
@@ -55,7 +55,7 @@ function UserBubbleAttachments({
             loading="lazy"
             draggable={false}
           />
-          <span className="pointer-events-none absolute inset-0 rounded-xl bg-black/0 transition-colors group-hover/img:bg-black/[0.03]" />
+          <span className="pointer-events-none absolute inset-0 rounded-xl bg-foreground/0 transition-colors group-hover/img:bg-foreground/[0.03]" />
         </button>
       </div>
     );
@@ -82,7 +82,7 @@ function UserBubbleAttachments({
               }
               className={clsx(
                 "group/img relative h-[3.625rem] w-[3.625rem] shrink-0 overflow-hidden rounded-xl sm:h-16 sm:w-16",
-                "bg-white/80 shadow-sm ring-1 ring-black/[0.06] transition-[box-shadow,ring-color]",
+                "bg-elevated/80 shadow-sm ring-1 ring-border/60 transition-[box-shadow,ring-color]",
                 "hover:ring-black/12 hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300/80"
               )}
               aria-label={
@@ -101,11 +101,11 @@ function UserBubbleAttachments({
                 draggable={false}
               />
               {showPlusBadge && plusOverlayCount > 0 ? (
-                <span className="absolute inset-0 flex items-center justify-center bg-black/52 text-[15px] font-semibold tabular-nums text-white backdrop-blur-[1px] sm:text-base">
+                <span className="absolute inset-0 flex items-center justify-center bg-foreground/52 text-[15px] font-semibold tabular-nums text-white backdrop-blur-[1px] sm:text-base">
                   +{plusOverlayCount}
                 </span>
               ) : (
-                <span className="pointer-events-none absolute inset-0 bg-black/0 transition-colors group-hover/img:bg-black/[0.05]" />
+                <span className="pointer-events-none absolute inset-0 bg-foreground/0 transition-colors group-hover/img:bg-foreground/[0.05]" />
               )}
             </button>
           );
@@ -154,7 +154,7 @@ export function UserBubble({ content, imageUrls, copied, onCopy, onEdit, message
             <div
               className={clsx(
                 "min-w-0 max-w-full text-[15px] leading-relaxed break-words [overflow-wrap:anywhere]",
-                "rounded-3xl rounded-tr-sm bg-[#f4f4f4] px-4 py-3 text-[#1a1a1a] sm:px-5 sm:py-3.5"
+                "rounded-3xl rounded-tr-sm bg-user-bubble px-4 py-3 text-foreground sm:px-5 sm:py-3.5"
               )}
             >
               {text}
@@ -168,7 +168,7 @@ export function UserBubble({ content, imageUrls, copied, onCopy, onEdit, message
             <button
               type="button"
               onClick={onCopy}
-              className="p-1.5 rounded-lg text-gray-500 hover:text-gray-800 hover:bg-black/5 transition-colors"
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
               title={copied ? "已复制" : "复制"}
               aria-label={copied ? "已复制" : "复制"}
             >
@@ -181,7 +181,7 @@ export function UserBubble({ content, imageUrls, copied, onCopy, onEdit, message
             <button
               type="button"
               onClick={() => onEdit?.(content, imageUrls)}
-              className="p-1.5 rounded-lg text-gray-500 hover:text-gray-800 hover:bg-black/5 transition-colors"
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
               title="填入输入框编辑"
               aria-label="填入输入框编辑"
             >

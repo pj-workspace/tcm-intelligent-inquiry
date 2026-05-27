@@ -175,22 +175,22 @@ export function BillingTab() {
           <PieChart className="h-5 w-5" aria-hidden />
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="text-lg font-semibold text-gray-900">计费与用量</h2>
-          <p className="mt-1 text-sm leading-relaxed text-gray-500">
+          <h2 className="text-lg font-semibold text-foreground">计费与用量</h2>
+          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
             查看你的 AI 使用情况和账户余额。仅统计
-            <strong className="font-medium text-gray-700">当前登录账号</strong>
+            <strong className="font-medium text-foreground">当前登录账号</strong>
             下的对话，未登录时的聊天不会计入。
           </p>
         </div>
       </header>
 
       {/* DeepSeek 余额 */}
-      <section className="rounded-2xl border border-[#e8e4dc] bg-white p-5 shadow-sm">
+      <section className="rounded-2xl border border-card-border bg-surface p-5 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h3 className="text-sm font-semibold text-gray-900">DeepSeek 账户余额</h3>
-            <p className="mt-1 text-xs leading-relaxed text-gray-500">
-              余额反映<strong className="font-medium text-gray-600">部署侧配置的 API Key</strong>
+            <h3 className="text-sm font-semibold text-foreground">DeepSeek 账户余额</h3>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              余额反映<strong className="font-medium text-muted-foreground">部署侧配置的 API Key</strong>
               ，并非个人钱包；数值仅供参考。
             </p>
           </div>
@@ -198,7 +198,7 @@ export function BillingTab() {
             type="button"
             onClick={() => void loadBalance()}
             disabled={balanceLoading || !token}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-muted disabled:opacity-50"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${balanceLoading ? "animate-spin" : ""}`} />
             刷新
@@ -207,7 +207,7 @@ export function BillingTab() {
 
         <div className="mt-4">
           {balanceLoading && !balance ? (
-            <div className="flex items-center gap-2 text-sm text-gray-400">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
               查询中…
             </div>
@@ -227,34 +227,34 @@ export function BillingTab() {
                 <p className="text-xs text-amber-700">上游标记余额不可用，以下为最近一次快照。</p>
               ) : null}
               {balance.balances?.length ? (
-                <ul className="divide-y divide-gray-100 rounded-xl border border-gray-100 bg-[#fafaf9]">
+                <ul className="divide-y divide-gray-100 rounded-xl border border-border bg-muted">
                   {balance.balances.map((line, i) => (
                     <li key={`${line.currency}-${i}`} className="flex flex-wrap gap-x-4 gap-y-1 px-4 py-3 text-sm">
-                      <span className="font-medium text-gray-800">
+                      <span className="font-medium text-foreground">
                         {line.currency?.trim() || "余额"}
                       </span>
-                      <span className="tabular-nums text-gray-600">
-                        总计 <strong className="text-gray-900">{line.total_balance || "—"}</strong>
+                      <span className="tabular-nums text-muted-foreground">
+                        总计 <strong className="text-foreground">{line.total_balance || "—"}</strong>
                       </span>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-gray-500">暂无余额明细字段。</p>
+                <p className="text-sm text-muted-foreground">暂无余额明细字段。</p>
               )}
             </div>
           ) : (
-            <p className="text-sm text-gray-500">无法加载余额。</p>
+            <p className="text-sm text-muted-foreground">无法加载余额。</p>
           )}
         </div>
       </section>
 
       {/* 用量汇总 */}
-      <section className="rounded-2xl border border-[#e8e4dc] bg-white p-5 shadow-sm">
+      <section className="rounded-2xl border border-card-border bg-surface p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="text-sm font-semibold text-gray-900">我的用量</h3>
+          <h3 className="text-sm font-semibold text-foreground">我的用量</h3>
           <div
-            className="inline-flex max-w-full flex-wrap rounded-lg border border-gray-200 bg-[#fbfaf7] p-0.5"
+            className="inline-flex max-w-full flex-wrap rounded-lg border border-border bg-surface-muted p-0.5"
             role="group"
             aria-label="统计区间天数"
           >
@@ -265,8 +265,8 @@ export function BillingTab() {
                 onClick={() => setDays(d)}
                 className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                   days === d
-                    ? "bg-white text-orange-600 shadow-sm ring-1 ring-gray-200"
-                    : "text-gray-600 hover:text-gray-900"
+                    ? "bg-surface text-orange-600 shadow-sm ring-1 ring-gray-200"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {d} 天
@@ -274,13 +274,13 @@ export function BillingTab() {
             ))}
           </div>
         </div>
-        <p className="mt-2 text-xs text-gray-400">
+        <p className="mt-2 text-xs text-muted-foreground">
           区间：滑动窗口，终点为请求时刻（服务端 UTC）；跨日边界以后端为准。
         </p>
 
         <div className="mt-4">
           {summaryLoading && !summary ? (
-            <div className="flex items-center gap-2 text-sm text-gray-400">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
               加载汇总…
             </div>
@@ -292,35 +292,35 @@ export function BillingTab() {
           ) : totals ? (
             <>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-xl border border-gray-100 bg-[#fafaf9] px-4 py-3">
-                  <div className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                <div className="rounded-xl border border-border bg-muted px-4 py-3">
+                  <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                     请求次数
                   </div>
-                  <div className="mt-1 text-xl font-semibold tabular-nums text-gray-900">
+                  <div className="mt-1 text-xl font-semibold tabular-nums text-foreground">
                     {fmtNum(totals.requests)}
                   </div>
                 </div>
-                <div className="rounded-xl border border-gray-100 bg-[#fafaf9] px-4 py-3">
-                  <div className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                <div className="rounded-xl border border-border bg-muted px-4 py-3">
+                  <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                     Prompt tokens
                   </div>
-                  <div className="mt-1 text-xl font-semibold tabular-nums text-gray-900">
+                  <div className="mt-1 text-xl font-semibold tabular-nums text-foreground">
                     {fmtNum(totals.prompt_tokens)}
                   </div>
                 </div>
-                <div className="rounded-xl border border-gray-100 bg-[#fafaf9] px-4 py-3">
-                  <div className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                <div className="rounded-xl border border-border bg-muted px-4 py-3">
+                  <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                     Completion tokens
                   </div>
-                  <div className="mt-1 text-xl font-semibold tabular-nums text-gray-900">
+                  <div className="mt-1 text-xl font-semibold tabular-nums text-foreground">
                     {fmtNum(totals.completion_tokens)}
                   </div>
                 </div>
-                <div className="rounded-xl border border-gray-100 bg-[#fafaf9] px-4 py-3">
-                  <div className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                <div className="rounded-xl border border-border bg-muted px-4 py-3">
+                  <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                     合计 tokens
                   </div>
-                  <div className="mt-1 text-xl font-semibold tabular-nums text-gray-900">
+                  <div className="mt-1 text-xl font-semibold tabular-nums text-foreground">
                     {fmtNum(totals.total_tokens)}
                   </div>
                 </div>
@@ -329,38 +329,38 @@ export function BillingTab() {
               {/* Mobile: provider cards */}
               <div className="mt-6 space-y-3 md:hidden">
                 {summary!.by_provider.length === 0 ? (
-                  <p className="rounded-xl border border-gray-100 px-4 py-8 text-center text-sm text-gray-400">
+                  <p className="rounded-xl border border-border px-4 py-8 text-center text-sm text-muted-foreground">
                     该区间内暂无用量记录
                   </p>
                 ) : (
                   summary!.by_provider.map((row) => (
                     <div
                       key={row.provider_id}
-                      className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm"
+                      className="rounded-xl border border-border bg-surface p-3 shadow-sm"
                     >
-                      <div className="font-medium text-gray-800">{row.provider_id}</div>
+                      <div className="font-medium text-foreground">{row.provider_id}</div>
                       <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
                         <div>
-                          <dt className="text-gray-400">请求</dt>
-                          <dd className="tabular-nums font-medium text-gray-900">
+                          <dt className="text-muted-foreground">请求</dt>
+                          <dd className="tabular-nums font-medium text-foreground">
                             {fmtNum(row.requests)}
                           </dd>
                         </div>
                         <div>
-                          <dt className="text-gray-400">合计 tokens</dt>
-                          <dd className="tabular-nums font-medium text-gray-900">
+                          <dt className="text-muted-foreground">合计 tokens</dt>
+                          <dd className="tabular-nums font-medium text-foreground">
                             {fmtNum(row.total_tokens)}
                           </dd>
                         </div>
                         <div>
-                          <dt className="text-gray-400">Prompt</dt>
-                          <dd className="tabular-nums text-gray-700">
+                          <dt className="text-muted-foreground">Prompt</dt>
+                          <dd className="tabular-nums text-foreground">
                             {fmtNum(row.prompt_tokens)}
                           </dd>
                         </div>
                         <div>
-                          <dt className="text-gray-400">Completion</dt>
-                          <dd className="tabular-nums text-gray-700">
+                          <dt className="text-muted-foreground">Completion</dt>
+                          <dd className="tabular-nums text-foreground">
                             {fmtNum(row.completion_tokens)}
                           </dd>
                         </div>
@@ -370,9 +370,9 @@ export function BillingTab() {
                 )}
               </div>
 
-              <div className="mt-6 hidden overflow-x-auto rounded-xl border border-gray-100 md:block">
+              <div className="mt-6 hidden overflow-x-auto rounded-xl border border-border md:block">
                 <table className="min-w-full text-left text-sm">
-                  <thead className="bg-[#f7f6f3] text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  <thead className="bg-muted text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     <tr>
                       <th className="px-4 py-3">厂商</th>
                       <th className="px-4 py-3 text-right">请求</th>
@@ -381,29 +381,29 @@ export function BillingTab() {
                       <th className="px-4 py-3 text-right">合计</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100 bg-white">
+                  <tbody className="divide-y divide-gray-100 bg-surface">
                     {summary!.by_provider.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                        <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                           该区间内暂无用量记录
                         </td>
                       </tr>
                     ) : (
                       summary!.by_provider.map((row) => (
-                        <tr key={row.provider_id} className="hover:bg-gray-50/80">
-                          <td className="px-4 py-2.5 font-medium text-gray-800">
+                        <tr key={row.provider_id} className="hover:bg-muted/80">
+                          <td className="px-4 py-2.5 font-medium text-foreground">
                             {row.provider_id}
                           </td>
-                          <td className="px-4 py-2.5 text-right tabular-nums text-gray-700">
+                          <td className="px-4 py-2.5 text-right tabular-nums text-foreground">
                             {fmtNum(row.requests)}
                           </td>
-                          <td className="px-4 py-2.5 text-right tabular-nums text-gray-700">
+                          <td className="px-4 py-2.5 text-right tabular-nums text-foreground">
                             {fmtNum(row.prompt_tokens)}
                           </td>
-                          <td className="px-4 py-2.5 text-right tabular-nums text-gray-700">
+                          <td className="px-4 py-2.5 text-right tabular-nums text-foreground">
                             {fmtNum(row.completion_tokens)}
                           </td>
-                          <td className="px-4 py-2.5 text-right tabular-nums text-gray-900">
+                          <td className="px-4 py-2.5 text-right tabular-nums text-foreground">
                             {fmtNum(row.total_tokens)}
                           </td>
                         </tr>
@@ -414,21 +414,21 @@ export function BillingTab() {
               </div>
             </>
           ) : (
-            <p className="text-sm text-gray-500">暂无数据</p>
+            <p className="text-sm text-muted-foreground">暂无数据</p>
           )}
         </div>
       </section>
 
       {/* 最近请求 */}
-      <section className="rounded-2xl border border-[#e8e4dc] bg-white p-5 shadow-sm">
+      <section className="rounded-2xl border border-card-border bg-surface p-5 shadow-sm">
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h3 className="text-sm font-semibold text-gray-900">最近请求</h3>
+            <h3 className="text-sm font-semibold text-foreground">最近请求</h3>
             <button
               type="button"
               onClick={() => void resetAndLoadEvents()}
               disabled={eventsLoading || !token}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-muted disabled:opacity-50"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${eventsLoading ? "animate-spin" : ""}`} />
               刷新列表
@@ -448,7 +448,7 @@ export function BillingTab() {
           {/* Mobile: event cards */}
           <div className="space-y-3 md:hidden">
           {eventsLoading && eventsRows.length === 0 ? (
-            <p className="rounded-xl border border-gray-100 px-4 py-8 text-center text-sm text-gray-400">
+            <p className="rounded-xl border border-border px-4 py-8 text-center text-sm text-muted-foreground">
               <Loader2 className="inline h-4 w-4 animate-spin" /> 加载中…
             </p>
           ) : eventsError ? (
@@ -457,7 +457,7 @@ export function BillingTab() {
               {eventsError}
             </div>
           ) : eventsRows.length === 0 ? (
-            <p className="rounded-xl border border-gray-100 px-4 py-8 text-center text-sm text-gray-400">
+            <p className="rounded-xl border border-border px-4 py-8 text-center text-sm text-muted-foreground">
               暂无事件
             </p>
           ) : eventsList.filteredCount === 0 ? (
@@ -469,19 +469,19 @@ export function BillingTab() {
             eventsList.paginatedItems.map((ev) => (
               <div
                 key={ev.usage_event_id}
-                className="rounded-xl border border-gray-100 bg-white p-3 shadow-sm"
+                className="rounded-xl border border-border bg-surface p-3 shadow-sm"
               >
-                <div className="text-xs text-gray-500">{fmtIsoShort(ev.created_at)}</div>
+                <div className="text-xs text-muted-foreground">{fmtIsoShort(ev.created_at)}</div>
                 <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-                  <span className="font-medium text-gray-800">{ev.provider_id}</span>
-                  <span className="text-gray-300">·</span>
-                  <span className="truncate text-gray-600">{ev.chat_model ?? "—"}</span>
+                  <span className="font-medium text-foreground">{ev.provider_id}</span>
+                  <span className="text-muted-foreground/40">·</span>
+                  <span className="truncate text-muted-foreground">{ev.chat_model ?? "—"}</span>
                 </div>
                 <div className="mt-2 flex items-center justify-between gap-2 text-xs">
-                  <span className="min-w-0 truncate text-gray-600">
+                  <span className="min-w-0 truncate text-muted-foreground">
                     {eventConversationLabel(ev)}
                   </span>
-                  <span className="shrink-0 tabular-nums font-medium text-gray-900">
+                  <span className="shrink-0 tabular-nums font-medium text-foreground">
                     {fmtNum(effectiveEventTokens(ev))} tokens
                   </span>
                 </div>
@@ -490,9 +490,9 @@ export function BillingTab() {
           )}
           </div>
 
-          <div className="hidden overflow-x-auto rounded-xl border border-gray-100 md:block">
+          <div className="hidden overflow-x-auto rounded-xl border border-border md:block">
           <table className="min-w-full text-left text-sm">
-            <thead className="bg-[#f7f6f3] text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <thead className="bg-muted text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-4 py-3">时间</th>
                 <th className="px-4 py-3">厂商</th>
@@ -501,10 +501,10 @@ export function BillingTab() {
                 <th className="px-4 py-3 text-right">Tokens</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 bg-white">
+            <tbody className="divide-y divide-gray-100 bg-surface">
               {eventsLoading && eventsRows.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                  <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                     <Loader2 className="inline h-4 w-4 animate-spin" /> 加载中…
                   </td>
                 </tr>
@@ -519,7 +519,7 @@ export function BillingTab() {
                 </tr>
               ) : eventsRows.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                  <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                     暂无事件
                   </td>
                 </tr>
@@ -534,18 +534,18 @@ export function BillingTab() {
                 </tr>
               ) : (
                 eventsList.paginatedItems.map((ev) => (
-                  <tr key={ev.usage_event_id} className="hover:bg-gray-50/80">
-                    <td className="whitespace-nowrap px-4 py-2.5 text-gray-600">
+                  <tr key={ev.usage_event_id} className="hover:bg-muted/80">
+                    <td className="whitespace-nowrap px-4 py-2.5 text-muted-foreground">
                       {fmtIsoShort(ev.created_at)}
                     </td>
-                    <td className="px-4 py-2.5 font-medium text-gray-800">{ev.provider_id}</td>
-                    <td className="max-w-[12rem] truncate px-4 py-2.5 text-gray-600">
+                    <td className="px-4 py-2.5 font-medium text-foreground">{ev.provider_id}</td>
+                    <td className="max-w-[12rem] truncate px-4 py-2.5 text-muted-foreground">
                       {ev.chat_model ?? "—"}
                     </td>
-                    <td className="max-w-[14rem] truncate px-4 py-2.5 text-gray-700">
+                    <td className="max-w-[14rem] truncate px-4 py-2.5 text-foreground">
                       {eventConversationLabel(ev)}
                     </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-gray-900">
+                    <td className="px-4 py-2.5 text-right tabular-nums text-foreground">
                       {fmtNum(effectiveEventTokens(ev))}
                     </td>
                   </tr>

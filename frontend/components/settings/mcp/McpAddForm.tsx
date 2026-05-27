@@ -121,15 +121,15 @@ export function McpAddForm({
   return (
     <form
       onSubmit={onSubmit}
-      className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
+      className="rounded-xl border border-border bg-surface p-6 shadow-sm"
     >
-      <div className="mb-4 text-sm font-medium text-gray-900">添加新服务</div>
+      <div className="mb-4 text-sm font-medium text-foreground">添加新服务</div>
 
-      <div className="mb-4 rounded-lg border border-dashed border-gray-200 bg-gray-50">
+      <div className="mb-4 rounded-lg border border-dashed border-border bg-muted">
         <button
           type="button"
           onClick={() => setShowJson((v) => !v)}
-          className="flex w-full items-center gap-2 px-4 py-3 text-xs font-medium text-gray-500 hover:text-gray-700"
+          className="flex w-full items-center gap-2 px-4 py-3 text-xs font-medium text-muted-foreground hover:text-foreground"
         >
           <FileJson className="h-4 w-4 text-orange-400" />
           从 JSON 配置导入（粘贴 Cursor / Claude Desktop mcp.json）
@@ -140,13 +140,13 @@ export function McpAddForm({
           )}
         </button>
         {showJson && (
-          <div className="border-t border-gray-200 px-4 pb-4 pt-3">
+          <div className="border-t border-border px-4 pb-4 pt-3">
             <textarea
               rows={6}
               className={`w-full rounded-md border px-3 py-2 font-mono text-xs outline-none focus:ring-1 ${
                 jsonError
                   ? "border-red-300 focus:border-red-400 focus:ring-red-300"
-                  : "border-gray-300 focus:border-orange-400 focus:ring-orange-400"
+                  : "border-border focus:border-orange-400 focus:ring-orange-400"
               }`}
               placeholder={`整份 mcpServers，或单条：\n"qq-mail": {\n  "command": "docker",\n  "args": ["compose", "-f", "/path/docker-compose.yml", "run", "qq-mail-mcp"]\n}`}
               value={jsonText}
@@ -189,8 +189,8 @@ export function McpAddForm({
                 onClick={() => setFormData({ ...formData, transport: t })}
                 className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                   formData.transport === t
-                    ? "bg-black text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted"
                 }`}
               >
                 {t === "http" ? "HTTP / SSE" : "stdio（本地 command）"}
@@ -200,13 +200,13 @@ export function McpAddForm({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1 sm:col-span-2">
-              <label className="text-xs font-medium text-gray-700">
+              <label className="text-xs font-medium text-foreground">
                 服务名称 <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 required
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+                className="w-full rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
                 placeholder="例如：paper-search-mcp"
                 value={formData.name}
                 onChange={(e) =>
@@ -218,7 +218,7 @@ export function McpAddForm({
             {isStdio ? (
               <>
                 <div className="space-y-1 sm:col-span-2">
-                  <label className="text-xs font-medium text-gray-700">
+                  <label className="text-xs font-medium text-foreground">
                     快速粘贴（Cursor 单条 stdio，可直接复制 mcp.json 里的一段）
                   </label>
                   <textarea
@@ -228,7 +228,7 @@ export function McpAddForm({
                         ? "border-red-300 focus:border-red-400 focus:ring-red-300"
                         : stdioPasteOk
                           ? "border-green-300 focus:border-green-400 focus:ring-green-300"
-                          : "border-gray-300 focus:border-orange-400 focus:ring-orange-400"
+                          : "border-border focus:border-orange-400 focus:ring-orange-400"
                     }`}
                     placeholder={`"qq-mail": {\n  "command": "docker",\n  "args": [\n    "compose",\n    "-f",\n    "/Users/you/Mcp/qq-mail-mcp-server/docker-compose.yml",\n    "run", "--rm", "-i", "-T", "qq-mail-mcp"\n  ]\n}`}
                     value={stdioPasteText}
@@ -244,13 +244,13 @@ export function McpAddForm({
                   )}
                 </div>
                 <div className="space-y-1 sm:col-span-2">
-                  <label className="text-xs font-medium text-gray-700">
+                  <label className="text-xs font-medium text-foreground">
                     command <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     required
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-sm outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+                    className="w-full rounded-md border border-border px-3 py-2 font-mono text-sm outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
                     placeholder="/Users/you/.local/bin/uv 或 docker"
                     value={formData.command}
                     onChange={(e) =>
@@ -259,12 +259,12 @@ export function McpAddForm({
                   />
                 </div>
                 <div className="space-y-1 sm:col-span-2">
-                  <label className="text-xs font-medium text-gray-700">
+                  <label className="text-xs font-medium text-foreground">
                     args（每行一个，或 JSON 数组）
                   </label>
                   <textarea
                     rows={4}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-xs outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+                    className="w-full rounded-md border border-border px-3 py-2 font-mono text-xs outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
                     placeholder={'run\n--directory\n/path/to/project\n-m\nmodule'}
                     value={formData.argsText}
                     onChange={(e) =>
@@ -273,12 +273,12 @@ export function McpAddForm({
                   />
                 </div>
                 <div className="space-y-1 sm:col-span-2">
-                  <label className="text-xs font-medium text-gray-700">
+                  <label className="text-xs font-medium text-foreground">
                     env（JSON 对象，可选）
                   </label>
                   <textarea
                     rows={3}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-xs outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+                    className="w-full rounded-md border border-border px-3 py-2 font-mono text-xs outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
                     placeholder={'{\n  "MCP_TRANSPORT": "stdio"\n}'}
                     value={formData.envText}
                     onChange={(e) =>
@@ -290,13 +290,13 @@ export function McpAddForm({
             ) : (
               <>
                 <div className="space-y-1 sm:col-span-2">
-                  <label className="text-xs font-medium text-gray-700">
+                  <label className="text-xs font-medium text-foreground">
                     URL <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="url"
                     required
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+                    className="w-full rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
                     placeholder="https://example.com/mcp"
                     value={formData.url}
                     onChange={(e) =>
@@ -305,12 +305,12 @@ export function McpAddForm({
                   />
                 </div>
                 <div className="space-y-1 sm:col-span-2">
-                  <label className="text-xs font-medium text-gray-700">
+                  <label className="text-xs font-medium text-foreground">
                     Bearer Token（可选）
                   </label>
                   <input
                     type="password"
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+                    className="w-full rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
                     placeholder="留空则不带 Authorization 头"
                     value={formData.authToken}
                     onChange={(e) =>
@@ -322,12 +322,12 @@ export function McpAddForm({
             )}
 
             <div className="space-y-1 sm:col-span-2">
-              <label className="text-xs font-medium text-gray-700">
+              <label className="text-xs font-medium text-foreground">
                 说明（可选）
               </label>
               <input
                 type="text"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+                className="w-full rounded-md border border-border px-3 py-2 text-sm outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
                 placeholder="提供搜索能力的外部服务…"
                 value={formData.description}
                 onChange={(e) =>
@@ -343,14 +343,14 @@ export function McpAddForm({
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100"
+          className="rounded-lg px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted"
         >
           取消
         </button>
         <button
           type="submit"
           disabled={isSubmitting || (isBulk && bulkCount === 0)}
-          className="flex items-center gap-2 rounded-lg bg-black px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-gray-800 disabled:opacity-50"
+          className="flex items-center gap-2 rounded-lg bg-primary text-primary-foreground shadow-sm transition-colors hover:opacity-90 disabled:opacity-50"
         >
           {isSubmitting ? (
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white" />

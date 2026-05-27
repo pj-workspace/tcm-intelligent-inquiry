@@ -131,15 +131,15 @@ export function SectionShell({
   children: ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-[#ebe8e3] bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
-      <header className="flex items-start gap-4 border-b border-[#f2f0ec] bg-gradient-to-br from-orange-50/60 via-white to-transparent px-6 py-5">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-100 to-orange-50 text-orange-700 shadow-inner ring-1 ring-orange-100/80">
+    <section className="overflow-hidden rounded-2xl border border-card-border bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+      <header className="flex items-start gap-4 border-b border-card-header-border bg-gradient-to-br from-orange-50/60 via-surface to-transparent px-6 py-5 dark:from-orange-950/40">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-100 to-orange-50 text-orange-700 shadow-inner ring-1 ring-orange-100/80 dark:from-orange-900/50 dark:to-orange-950/30 dark:text-orange-300 dark:ring-orange-900/50">
           <Icon className="h-5 w-5" strokeWidth={2} />
         </div>
         <div className="min-w-0 pt-0.5">
-          <h2 className="text-[15px] font-semibold tracking-tight text-[#1c1917]">{title}</h2>
+          <h2 className="text-[15px] font-semibold tracking-tight text-foreground">{title}</h2>
           {description ? (
-            <p className="mt-1 max-w-xl text-[13px] leading-relaxed text-gray-600">{description}</p>
+            <p className="mt-1 max-w-xl text-[13px] leading-relaxed text-muted-foreground">{description}</p>
           ) : null}
         </div>
       </header>

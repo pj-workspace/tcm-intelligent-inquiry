@@ -85,7 +85,7 @@ export function ImagePreviewLightbox({
           transition={{ duration: 0.2 }}
           onClick={onClose}
         >
-          <div className="pointer-events-none absolute inset-0 bg-black/88 backdrop-blur-[2px]" />
+          <div className="pointer-events-none absolute inset-0 bg-foreground/88 backdrop-blur-[2px]" />
 
           <div
             className="relative z-10 flex max-h-full max-w-[min(100%,96vw)] flex-col items-center outline-none"
@@ -118,7 +118,7 @@ export function ImagePreviewLightbox({
               e.stopPropagation();
               onClose();
             }}
-            className="absolute right-4 top-4 z-20 rounded-full bg-white/10 p-2.5 text-white transition-colors hover:bg-white/20"
+            className="absolute right-4 top-4 z-20 rounded-full bg-surface/10 p-2.5 text-white transition-colors hover:bg-surface/20"
           >
             <X className="h-5 w-5" strokeWidth={2} />
           </button>
@@ -129,7 +129,7 @@ export function ImagePreviewLightbox({
                 type="button"
                 aria-label="上一张"
                 title="上一张"
-                className="absolute left-2 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/12 p-2.5 text-white transition-colors hover:bg-white/22 sm:left-4"
+                className="absolute left-2 top-1/2 z-20 -translate-y-1/2 rounded-full bg-surface/12 p-2.5 text-white transition-colors hover:bg-surface/22 sm:left-4"
                 onClick={(e) => {
                   e.stopPropagation();
                   onIndexChange((safeIndex - 1 + urls.length) % urls.length);
@@ -141,7 +141,7 @@ export function ImagePreviewLightbox({
                 type="button"
                 aria-label="下一张"
                 title="下一张"
-                className="absolute right-2 top-1/2 z-20 -translate-y-1/2 rounded-full bg-white/12 p-2.5 text-white transition-colors hover:bg-white/22 sm:right-4"
+                className="absolute right-2 top-1/2 z-20 -translate-y-1/2 rounded-full bg-surface/12 p-2.5 text-white transition-colors hover:bg-surface/22 sm:right-4"
                 onClick={(e) => {
                   e.stopPropagation();
                   onIndexChange((safeIndex + 1) % urls.length);

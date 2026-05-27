@@ -63,7 +63,7 @@
 }
 
 .ai-content blockquote {
-  @apply border-l-2 border-[#d9d1c4] pl-3 text-muted-foreground;
+  @apply border-l-2 border-border pl-3 text-muted-foreground;
   margin-top: 0;
   margin-bottom: 0.625rem;
 }
@@ -167,7 +167,7 @@
 }
 
 .ai-content a {
-  color: #8a4b18;
+  color: color-mix(in srgb, var(--fg) 70%, #c2410c);
   text-decoration: underline;
   text-decoration-thickness: 0.08em;
   text-underline-offset: 0.18em;
@@ -205,10 +205,10 @@
   top: 0;
   background: linear-gradient(
     to bottom,
-    rgba(251, 250, 247, 0.88) 0%,
-    rgba(251, 250, 247, 0.55) 40%,
-    rgba(251, 250, 247, 0.2) 72%,
-    rgba(251, 250, 247, 0) 100%
+    color-mix(in srgb, var(--bg) 88%, transparent) 0%,
+    color-mix(in srgb, var(--bg) 55%, transparent) 40%,
+    color-mix(in srgb, var(--bg) 20%, transparent) 72%,
+    transparent 100%
   );
 }
 
@@ -216,10 +216,10 @@
   bottom: 0;
   background: linear-gradient(
     to top,
-    rgba(251, 250, 247, 0.88) 0%,
-    rgba(251, 250, 247, 0.55) 40%,
-    rgba(251, 250, 247, 0.2) 72%,
-    rgba(251, 250, 247, 0) 100%
+    color-mix(in srgb, var(--bg) 88%, transparent) 0%,
+    color-mix(in srgb, var(--bg) 55%, transparent) 40%,
+    color-mix(in srgb, var(--bg) 20%, transparent) 72%,
+    transparent 100%
   );
 }
 
